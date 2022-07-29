@@ -1,0 +1,79 @@
+
+[model]
+model_src=ECMWF
+num_ens=50
+io_module=ecmwf_teton
+fcst_hour_int=12
+fcst_hour_max=168
+tigge_forecast_time=0/12/24/36/48/60/72/84/96/108/120/132/144/156
+
+[locations]
+atcf_dir=/ct12/abrammer/graphics/ecmf_tc_data/data
+model_dir=/tornlab_rit/torn/ecmwf
+
+work_dir=/rt11/torn/ar_sens/work_ecmwf
+output_dir=/rt11/torn/ar_sens/output_ecmwf
+script_dir=/home11/staff/torn/JHT-python
+figure_dir=/rt11/torn/html/AR-Sens/ECMWF
+outgrid_dir=/rt11/torn/html/AR-Sens/ECMWF
+log_dir=/rt11/torn/ar_sens/log_ecmwf
+
+save_work_dir=True
+
+[vitals_plot]
+precip_hour_1=[36, 48, 60, 72,  84,  96, 108, 120, 132, 144]
+precip_hour_2=[60, 72, 84, 96, 108, 120, 132, 144, 156, 168]
+#min_lat_precip=30
+#max_lat_precip=45
+#min_lon_precip=-115
+#max_lon_precip=-80
+
+[metric]
+precipitation_mean_metric=False
+precipitation_eof_metric=True
+precip_metric_loc=/rt11/torn/ar_sens/metrics_pcp
+ivt_eof_metric=True
+ivt_metric_loc=/rt11/torn/ar_sens/metrics_ivt
+slp_eof_metric=True
+slp_metric_loc=/rt11/torn/ar_sens/metrics_slp
+hght_eof_metric=True
+hght_metric_loc=/rt11/torn/ar_sens/metrics_hght
+ivt_landfall_metric=True
+ivt_land_metric_loc=/rt11/torn/ar_sens/metrics_ivtl
+coast_points_file=/home11/staff/torn/JHT-python/latlon_coast_1p0.txt
+#min_lat_precip=30
+#max_lat_precip=45
+#min_lon_precip=-115
+#max_lon_precip=-80
+
+[fields]
+fields_hour_max=120
+calc_ivt=True
+calc_height=True
+#height_levels=[1000, 925, 850, 700, 500, 300, 250, 200]
+thetae_levels=[1000, 925, 850, 700]
+#wind_levels=[1000, 925, 850, 700, 500, 300, 250, 200]
+#qvapor_levels=[1000, 925, 850, 700, 500, 300, 250, 200]
+pv_levels=[850, 700, 500, 300, 250, 200]
+calc_pv_pres=True
+calc_theta-e=True
+calc_qvapor=True
+calc_winds=False
+calc_refractivity=True
+
+[sens]
+zero_non_sig_sens=True
+grid_interval=10.
+barb_interval=6
+pv_levels=[250]
+thetae_levels=[850]
+drop_file_type=cw3e
+dropsonde_file=/rt11/torn/ar_sens/dropsondes/{0}_drops.txt
+drop_mark_size=6
+drop_mark_color=black
+drop_mark_type=+
+rawinsonde_file=/free/torn/SHOUT/pynew/rawindsondes.tx
+rawin_mark_size=6
+rawin_mark_color=gray
+range_rings=False
+output_sens=True

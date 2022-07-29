@@ -1,0 +1,102 @@
+
+[model]
+model_src=WESTWRF
+io_module=westwrf_comet
+fcst_hour_int=12
+fcst_hour_max=120
+tigge_forecast_time=0/12/24/36/48/60/72/84/96/108/120/132/144/156
+projection=LambertConformal
+#  2021
+#num_ens=47
+#central_latitude=39
+#central_longitude=-135
+#standard_parallel1=39
+#standard_parallel2=50
+#stdlon=-135
+#  2022
+num_ens=51
+central_latitude=39
+central_longitude=-125
+standard_parallel1=39
+standard_parallel2=50
+grid_type='regular'
+
+[locations]
+atcf_dir=/ct12/abrammer/graphics/ecmf_tc_data/data
+model_dir=/cw3e/mead/projects/cwp110/scratch/minghua/ESA/Preprocessing/input_sample_data/wwrf_nrt_ens
+#/cw3e/mead/projects/cwp110/scratch/minghua/ESA/Preprocessing/input_sample_data/wwrf_nrt_ens/2022010900/ecm000
+
+work_dir=/cw3e/mead/projects/cwp110/scratch/ryantorn/ww_sens/work
+output_dir=/cw3e/mead/projects/cwp110/scratch/ryantorn/ww_sens/output
+script_dir=/cw3e/mead/projects/cwp110/ryantorn/JHT-python
+figure_dir=/cw3e/mead/projects/cwp110/scratch/ryantorn/ww_sens/figures
+outgrid_dir=/cw3e/mead/projects/cwp110/scratch/ryantorn/ww_sens/grids
+log_dir=/cw3e/mead/projects/cwp110/scratch/ryantorn/ww_sens/log
+
+save_work_dir=True
+
+[vitals_plot]
+#precip_hour_1=[36, 48, 60, 72,  84,  96]
+#precip_hour_2=[60, 72, 84, 96, 108, 120]
+precip_hour_1=[36, 48, 60, 72,  84,  96, 108, 120, 132]
+precip_hour_2=[60, 72, 84, 96, 108, 120, 132, 144, 156]
+min_lat_precip=30
+max_lat_precip=52
+min_lon_precip=-132
+max_lon_precip=-110
+
+[metric]
+precipitation_mean_metric=False
+precipitation_eof_metric=True
+precip_metric_loc=/cw3e/mead/projects/cwp110/scratch/ryantorn/ww_sens/metrics_pcp
+ivt_eof_metric=True
+ivt_metric_loc=/rt11/torn/ar_sens/metrics_ivt
+slp_eof_metric=True
+slp_metric_loc=/rt11/torn/ar_sens/metrics_slp
+ivt_landfall_metric=True
+ivt_land_metric_loc=/cw3e/mead/projects/cwp110/scratch/ryantorn/ww_sens/metrics_ivtl
+coast_points_file=/cw3e/mead/projects/cwp110/ryantorn/JHT-python/latlon_coast_1p0.txt
+#min_lat_precip=30
+#max_lat_precip=45
+#min_lon_precip=-115
+#max_lon_precip=-80
+
+[fields]
+fields_hour_max=120
+#  2021
+#min_lat=27
+#min_lon=-156
+#max_lat=58
+#max_lon=-105
+#  2022
+min_lat=28
+min_lon=-150
+calc_ivt=True
+calc_height=True
+#height_levels=[1000, 925, 850, 700, 500, 300, 250, 200]
+thetae_levels=[1000, 925, 850, 700]
+#wind_levels=[1000, 925, 850, 700, 500, 300, 250, 200]
+#qvapor_levels=[1000, 925, 850, 700, 500, 300, 250, 200]
+pv_levels=[850, 700, 500, 250]
+calc_pv_pres=True
+calc_theta-e=True
+calc_qvapor=True
+calc_winds=False
+calc_refractivity=True
+
+[sens]
+zero_non_sig_sens=True
+grid_interval=10.
+barb_interval=6
+pv_levels=[250]
+thetae_levels=[850]
+dropsonde_file=./2019083100_drop_info.txt
+drop_mark_size=6
+drop_mark_color=black
+drop_mark_type=+
+rawinsonde_file=/free/torn/SHOUT/pynew/rawindsondes.tx
+rawin_mark_size=6
+rawin_mark_color=gray
+range_rings=False
+output_sens=False
+plot_summary=False

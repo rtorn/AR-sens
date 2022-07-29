@@ -1,0 +1,66 @@
+
+[model]
+model_src=GEFS
+num_ens=30
+io_module=gefs_teton
+fcst_hour_int=12
+fcst_hour_max=156
+tigge_forecast_time=0/12/24/36/48/60/72/84/96/108/120/132/144/156
+
+[locations]
+atcf_dir=/ct12/abrammer/graphics/ecmf_tc_data/data
+model_dir=https://nomads.ncep.noaa.gov/dods/gefs
+
+work_dir=/rt11/torn/ar_sens/work_gefs
+output_dir=/rt11/torn/ar_sens/output
+script_dir=/home11/staff/torn/JHT-python
+figure_dir=/rt11/torn/html/AR-Sens/GEFS
+outgrid_dir=/rt11/torn/html/AR-Sens/GEFS
+log_dir=/rt11/torn/ar_sens/log_gefs
+
+save_work_dir=True
+
+[vitals_plot]
+precip_hour_1=[36, 60, 84, 108, 132]
+precip_hour_2=[60, 84, 108, 132, 156]
+
+[metric]
+precipitation_eof_metric=True
+precip_metric_loc=/rt11/torn/ar_sens/metrics
+ivt_eof_metric=True
+ivt_metric_loc=/rt11/torn/ar_sens/metrics_ivt
+slp_eof_metric=True
+slp_metric_loc=/rt11/torn/ar_sens/metrics_slp
+ivt_landfall_metric=True
+ivt_land_metric_loc=/rt11/torn/ar_sens/metrics_ivtl
+coast_points_file=/home11/staff/torn/JHT-python/latlon_coast_1p0.txt
+
+[fields]
+fields_hour_max=120
+calc_ivt=True
+calc_height=True
+#height_levels=[1000, 925, 850, 700, 500, 300, 250, 200]
+thetae_levels=[1000, 925, 850, 700]
+#wind_levels=[1000, 925, 850, 700, 500, 300, 250, 200]
+#qvapor_levels=[1000, 925, 850, 700, 500, 300, 250, 200]
+pv_levels=[850, 700, 500, 300, 250]
+calc_pv_pres=True
+calc_theta-e=True
+calc_qvapor=True
+calc_winds=False
+calc_refractivity=True
+
+[sens]
+zero_non_sig_sens=True
+grid_interval=10.
+barb_interval=6
+dropsonde_file=./2019083100_drop_info.txt
+drop_mark_size=6
+drop_mark_color=black
+drop_mark_type=+
+rawinsonde_file=/free/torn/SHOUT/pynew/rawindsondes.tx
+rawin_mark_size=6
+rawin_mark_color=gray
+range_rings=False
+output_sens=False
+plot_summary=False

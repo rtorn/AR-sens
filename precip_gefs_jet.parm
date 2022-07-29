@@ -1,0 +1,71 @@
+
+[model]
+model_src=GEFS
+num_ens=30
+io_module=gefs_jet
+fcst_hour_int=6
+fcst_hour_max=156
+precip_hour_start=6
+precip_hour_int=12
+precip_hour_max=168
+tigge_forecast_time=0/12/24/36/48/60/72/84/96/108/120/132/144/156
+
+[locations]
+atcf_dir=/public/data/nhc/a-decks
+model_dir=/public/data/grids/gens
+
+work_dir=/lfs1/HFIP/hfip-ahw/ar_sens/work_gefs
+output_dir=/lfs1/HFIP/hfip-ahw/ar_sens/output
+script_dir=/home/Ryan.Torn/JHT-python
+figure_dir=/lfs1/HFIP/hfip-ahw/ar_sens/html/GEFS
+outgrid_dir=/lfs1/HFIP/hfip-ahw/ar_sens/html/GEFS
+log_dir=/lfs1/HFIP/hfip-ahw/ar_sens/log_gefs
+
+save_work_dir=True
+
+[vitals_plot]
+precip_hour_1=[36, 60, 84, 108, 132]
+precip_hour_2=[60, 84, 108, 132, 156]
+
+[metric]
+precipitation_mean_metric=False
+precipitation_eof_metric=True
+precip_metric_loc=/lfs1/HFIP/hfip-ahw/ar_sens/metrics_pcp
+ivt_eof_metric=True
+ivt_metric_loc=/lfs1/HFIP/hfip-ahw/ar_sens/metrics_ivt
+slp_eof_metric=True
+slp_metric_loc=/lfs1/HFIP/hfip-ahw/ar_sens/metrics_slp
+ivt_landfall_metric=True
+ivt_land_metric_loc=/lfs1/HFIP/hfip-ahw/ar_sens/metrics_ivtl
+coast_points_file=/home/Ryan.Torn/JHT-python/latlon_coast_1p0.txt
+
+[fields]
+fields_hour_max=120
+calc_ivt=True
+calc_height=True
+#height_levels=[1000, 925, 850, 700, 500, 300, 250, 200]
+thetae_levels=[1000, 925, 850, 700]
+#wind_levels=[1000, 925, 850, 700, 500, 300, 250, 200]
+#qvapor_levels=[1000, 925, 850, 700, 500, 300, 250, 200]
+pv_levels=[500, 300, 250, 200]
+calc_pv_pres=True
+calc_theta-e=True
+calc_qvapor=True
+calc_winds=False
+calc_refractivity=True
+
+[sens]
+zero_non_sig_sens=True
+grid_interval=10.
+barb_interval=6
+pv_levels=[250]
+thetae_levels=[850]
+dropsonde_file=./2019083100_drop_info.txt
+drop_mark_size=6
+drop_mark_color=black
+drop_mark_type=+
+rawinsonde_file=/free/torn/SHOUT/pynew/rawindsondes.tx
+rawin_mark_size=6
+rawin_mark_color=gray
+range_rings=False
+output_sens=True
