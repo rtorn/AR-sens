@@ -179,18 +179,21 @@ def main():
 
 
     #  Create a tar file of gridded sensitivity files, if needed
-    os.chdir(config['figure_dir'])
+    if eval(config['sens'].get('output_sens', 'False')):
 
-    for met in metlist:
+       os.chdir(config['figure_dir'])
 
-       tarout = '{0}/{1}/{1}_{2}_esens.tar'.format(config['outgrid_dir'],datea,met)
-       tar = tarfile.open(tarout, 'w')
-       for f in glob.glob('{0}/*sens.nc'.format(met)):
-          tar.add(f)
-       tar.close()
+       for met in metlist:
 
-       for f in glob.glob('{0}/{1}/*sens.nc'.format(config['figure_dir'],met)):
-          os.remove(f)
+          tarout = '{0}/{1}/{1}_{2}_esens.tar'.format(config['outgrid_dir'],datea,met)
+          tar = tarfile.open(tarout, 'w')
+          for f in glob.glob('{0}/*sens.nc'.format(met)):
+             tar.add(f)
+          tar.close()
+
+          for f in glob.glob('{0}/{1}/*sens.nc'.format(config['figure_dir'],met)):
+             os.remove(f)
+
 
     #  Clean up work directory, if desired
     os.chdir('{0}/..'.format(config['work_dir']))
