@@ -158,29 +158,27 @@ class ComputeForecastMetrics:
 
         for infull in glob.glob('{0}/{1}_*'.format(self.config['metric'].get('ivt_metric_loc'),self.datea_str)):
 
-           try:
-              f = open(infull, 'r')
-           except IOError:
-              logging.warning('{0} does not exist.  Cannot compute IVT EOF'.format(infull))
-              return None
-
            print(infull)
 
            #  Read the text file that contains information on the precipitation metric
-           fhr  = int(f.readline())
-           lat1 = float(f.readline())
-           lon1 = float(f.readline())
-           lat2 = float(f.readline())
-           lon2 = float(f.readline())
-
-           f.close()
+           try:
+              conf = configparser.ConfigParser()
+              conf.read(infull)
+              fhr = int(conf['definition'].get('forecast_hour'))
+              metname = conf['definition'].get('metric_name','ivteof')
+              eofn = int(conf['definition'].get('eof_number',1))
+              lat1 = float(conf['definition'].get('latitude_min'))
+              lat2 = float(conf['definition'].get('latitude_max'))
+              lon1 = float(conf['definition'].get('longitude_min'))
+              lon2 = float(conf['definition'].get('longitude_max'))
+           except IOError:
+              logging.warning('{0} does not exist.  Cannot compute IVT EOF'.format(infull))
+              return None
 
            if eval(self.config.get('flip_lon','False')):
               lon1 = (lon1 + 360.) % 360.
               lon2 = (lon2 + 360.) % 360.
 
-           inpath, infile = infull.rsplit('/', 1)
-           infile1, metname = infile.split('_', 1)
            fff = '%0.3i' % fhr
 
            g1 = self.dpp.ReadGribFiles(self.datea_str, fhr, self.config)
@@ -230,8 +228,9 @@ class ComputeForecastMetrics:
            wgts = np.sqrt(coslat)[..., np.newaxis]
 
            solver = Eof_xarray(ensmat.rename({'ensemble': 'time'}), weights=wgts)
-           pc1    = np.squeeze(solver.pcs(npcs=1, pcscaling=1))
 
+           pcout  = solver.pcs(npcs=eofn, pcscaling=1)
+           pc1 = np.squeeze(pcout[:,eofn-1])
            pc1[:] = pc1[:] / np.std(pc1)
 
            #  Compute the IVT pattern associated with a 1 PC perturbation
@@ -757,10 +756,10 @@ class ComputeForecastMetrics:
               fhr2 = int(conf['definition'].get('forecast_hour2',120))
               metname = conf['definition'].get('metric_name','pcp')
               eofn = int(conf['definition'].get('eof_number',1))
-              lat1 = float(conf['definition'].get('latitude_min', 25.0))
-              lat2 = float(conf['definition'].get('latitude_max', 55.0))
-              lon1 = float(conf['definition'].get('longitude_min', 25.0))
-              lon2 = float(conf['definition'].get('longitude_max', 55.0))
+              lat1 = float(conf['definition'].get('latitude_min'))
+              lat2 = float(conf['definition'].get('latitude_max'))
+              lon1 = float(conf['definition'].get('longitude_min'))
+              lon2 = float(conf['definition'].get('longitude_max'))
            except IOError:
               logging.warning('{0} does not exist.  Cannot compute precip EOF'.format(infull))
               return None
@@ -952,23 +951,24 @@ class ComputeForecastMetrics:
            print(infull)
 
            #  Read the text file that contains information on the precipitation metric
-           fhr  = int(f.readline())
-           lat1 = float(f.readline())
-           lon1 = float(f.readline())
-           lat2 = float(f.readline())
-           lon2 = float(f.readline())
-
-           #eofn = int(conf['definition'].get('eof_number',1))
-           eofn = 1
+           try:
+              conf = configparser.ConfigParser()
+              conf.read(infull)
+              fhr = int(conf['definition'].get('forecast_hour'))
+              metname = conf['definition'].get('metric_name','mslp')
+              eofn = int(conf['definition'].get('eof_number',1))
+              lat1 = float(conf['definition'].get('latitude_min'))
+              lat2 = float(conf['definition'].get('latitude_max'))
+              lon1 = float(conf['definition'].get('longitude_min'))
+              lon2 = float(conf['definition'].get('longitude_max'))
+           except IOError:
+              logging.warning('{0} does not exist.  Cannot compute SLP EOF'.format(infull))
+              return None
 
            if eval(self.config.get('flip_lon','False')):
               lon1 = (lon1 + 360.) % 360.
               lon2 = (lon2 + 360.) % 360.
 
-           f.close()
-
-           inpath, infile = infull.rsplit('/', 1)
-           infile1, metname = infile.split('_', 1)
            fff = '%0.3i' % fhr
 
            g1 = self.dpp.ReadGribFiles(self.datea_str, fhr, self.config)
