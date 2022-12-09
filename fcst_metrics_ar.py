@@ -1,4 +1,5 @@
 import os, sys, glob
+import pandas as pd
 import numpy as np
 import xarray as xr
 import json
@@ -93,6 +94,10 @@ class ComputeForecastMetrics:
         #  Compute IVT EOF metric
         if self.config['metric'].get('ivt_landfall_metric', 'False') == 'True':
            self.__ivt_landfall_eof()
+
+        #  Compute basin EOF metric
+        if self.config['metric'].get('basin_metric', 'False') == 'True':
+           self.__precip_basin_eof()
 
         #  Compute SLP EOF metric
         if self.config['metric'].get('slp_eof_metric', 'False') == 'True':
@@ -930,6 +935,130 @@ class ComputeForecastMetrics:
 
            self.metlist.append('f{0}_{1}eof'.format(fff2,metname))
 
+    def __precip_basin_eof(self):
+
+ 
+        #wget --no-check-certificate https://cw3e.ucsd.edu/Projects/QPF/data/eps_watershed_precip8.nc
+
+        for infull in glob.glob('{0}/{1}_*'.format(self.config['metric'].get('basin_metric_loc'),self.datea_str)):
+
+           try:
+              f = open(infull, 'r')
+           except IOError:
+              logging.warning('{0} does not exist.  Cannot compute basin precip EOF'.format(infull))
+              return None
+
+           print(infull)
+
+           try:
+              conf = configparser.ConfigParser()
+              conf.read(infull)
+              fhr1 = int(conf['definition'].get('forecast_hour1',0))
+              fhr2 = int(conf['definition'].get('forecast_hour2',120))
+              metname = conf['definition'].get('metric_name','basin')
+              eofn = int(conf['definition'].get('eof_number',1))
+              basin_name = conf['definition'].get('basin_name')
+              basid = conf['definition'].get('hucid')
+              accumulated = eval(conf['definition'].get('accumulation','False'))
+           except IOError:
+              logging.warning('{0} does not exist.  Cannot compute precip EOF'.format(infull))
+              return None
+
+           #metlist = [e.strip() for e in config['sens']['metrics'].split(',')]
+
+           fff2 = '%0.3i' % fhr2
+
+           db = pd.read_csv(filepath_or_buffer=self.config['metric'].get('basin_huc_file'), \
+                              sep = ',', header=None, skipinitialspace=True, quotechar="\"")
+           db.columns = ['ID','Name']
+
+           if not basid:
+              basid = db[db['Name']==basin_name]['ID'].values
+#           hucdex = db[db['Name']==basin_name].index.values
+
+           ds = xr.open_dataset('watershed_precip.nc', decode_times=False).rename({'time': 'hour'})
+           prate = ((ds.precip.sel(hour=slice(fhr1, fhr2), HUCID=int(basid)).squeeze()).transpose()).load()
+
+           ensmat = prate.copy(deep=True)
+           if accumulated:
+
+              ylabel = 'Accumulated Precipitation (mm)'
+              for t in range(ensmat.shape[1]):
+                 ensmat[:,t] = ensmat[:,t] + np.sum(prate[:,0:t],axis=1)
+
+           else:
+
+              ylabel = 'Precipitation Rate (mm 6 $\mathregular{h^{-1}}$)'
+             
+
+           e_mean = np.mean(ensmat, axis=0)
+           for n in range(ensmat.shape[0]):
+              ensmat[n,:] = ensmat[n,:] - e_mean[:]
+
+           solver = Eof_xarray(ensmat.rename({'Ensemble': 'time'}))
+           pcout  = solver.pcs(npcs=3, pcscaling=1)
+           pc1 = np.squeeze(pcout[:,eofn-1])
+           pc1[:] = pc1[:] / np.std(pc1)
+
+           #  Compute the precipitation pattern associated with a 1 PC perturbation
+           dpcp = np.zeros(e_mean.shape)
+
+           for n in range(ensmat.shape[0]):
+              dpcp[:] = dpcp[:] + ensmat[n,:] * pc1[n]
+
+           dpcp[:] = dpcp[:] / float(ensmat.shape[0])
+
+           if np.sum(dpcp) < 0.0:
+              dpcp[:] = -dpcp[:]
+              pc1[:]    = -pc1[:]
+
+           #  Create plots of MSLP and maximum wind for each member, mean and EOF perturbation
+           fig = plt.figure(figsize=(10, 6))
+
+           for n in range(ensmat.shape[0]):
+              plt.plot(ensmat.hour, ensmat[n,:]+e_mean[:], color='lightgray')
+
+           plt.plot(ensmat.hour, e_mean, color='black', linewidth=3)
+           plt.plot(ensmat.hour, e_mean[:]+dpcp[:], '--', color='black', linewidth=3)
+
+           plt.xlabel("Forecast Hour", fontsize=15)
+           plt.xlim((fhr1, fhr2))
+           plt.xticks(np.arange(np.ceil(float(fhr1)/12.)*12., np.floor(float(fhr2)/12.)*12., step=12.))
+           plt.ylabel(ylabel, fontsize=15)
+           plt.ylim(bottom=0.)
+           if eofn == 1:
+              fracvar = '%4.3f' % solver.varianceFraction(neigs=1)
+           else:
+              fracvar = '%4.3f' % solver.varianceFraction(neigs=eofn)[-1]
+           plt.title("{0} {1}-{2} hour {3} Precipitation, {4} of variance".format(str(self.datea_str),fhr1,fhr2,\
+                                  basin_name,fracvar))
+
+           outdir = '{0}/f{1}_{2}eof'.format(self.config['figure_dir'],'%0.3i' % fhr2,metname)
+           if not os.path.isdir(outdir):
+              try:
+                 os.makedirs(outdir)
+              except OSError as e:
+                 raise e
+
+           plt.savefig('{0}/metric.png'.format(outdir), format='png', dpi=150, bbox_inches='tight')
+           plt.close(fig)
+
+           f_met_basineof_nc = {'coords': {},
+                                'attrs': {'FORECAST_METRIC_LEVEL': '',
+                                          'FORECAST_METRIC_NAME': 'integrated min. SLP PC',
+                                          'FORECAST_METRIC_SHORT_NAME': 'intslp'},
+                                'dims': {'num_ens': ensmat.shape[0]},
+                                'data_vars': {'fore_met_init': {'dims': ('num_ens',),
+                                                              'attrs': {'units': '',
+                                                                        'description': 'integrated min. SLP PC'},
+                                                               'data': pc1.data}}}
+
+           xr.Dataset.from_dict(f_met_basineof_nc).to_netcdf(
+               "{0}/{1}_f{2}_{3}eof.nc".format(self.config['work_dir'], str(self.datea_str), fff2, metname), encoding={'fore_met_init': {'dtype': 'float32'}})
+
+           self.metlist.append('f{0}_{1}eof'.format(fff2,metname))
+
+
 
     def __slp_eof(self):
         '''
@@ -950,7 +1079,7 @@ class ComputeForecastMetrics:
 
            print(infull)
 
-           #  Read the text file that contains information on the precipitation metric
+           #  Read the text file that contains information on the SLP metric
            try:
               conf = configparser.ConfigParser()
               conf.read(infull)
