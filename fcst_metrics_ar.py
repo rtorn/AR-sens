@@ -940,6 +940,10 @@ class ComputeForecastMetrics:
  
         #wget --no-check-certificate https://cw3e.ucsd.edu/Projects/QPF/data/eps_watershed_precip8.nc
 
+        db = pd.read_csv(filepath_or_buffer=self.config['metric'].get('basin_huc_file'), \
+                           sep = ',', header=None, skipinitialspace=True, quotechar="\"")
+        db.columns = ['ID','Name','Size']
+
         for infull in glob.glob('{0}/{1}_*'.format(self.config['metric'].get('basin_metric_loc'),self.datea_str)):
 
            try:
@@ -957,40 +961,58 @@ class ComputeForecastMetrics:
               fhr2 = int(conf['definition'].get('forecast_hour2',120))
               metname = conf['definition'].get('metric_name','basin')
               eofn = int(conf['definition'].get('eof_number',1))
-              basin_name = conf['definition'].get('basin_name')
-              basid = conf['definition'].get('hucid')
+              basin_input = conf['definition'].get('basin_name')
+              hucid_input = conf['definition'].get('hucid')
               accumulated = eval(conf['definition'].get('accumulation','False'))
            except IOError:
               logging.warning('{0} does not exist.  Cannot compute precip EOF'.format(infull))
               return None
 
-           #metlist = [e.strip() for e in config['sens']['metrics'].split(',')]
-
-           fff2 = '%0.3i' % fhr2
-
-           db = pd.read_csv(filepath_or_buffer=self.config['metric'].get('basin_huc_file'), \
-                              sep = ',', header=None, skipinitialspace=True, quotechar="\"")
-           db.columns = ['ID','Name']
-
-           if not basid:
-              basid = db[db['Name']==basin_name]['ID'].values
-#           hucdex = db[db['Name']==basin_name].index.values
-
            ds = xr.open_dataset('watershed_precip.nc', decode_times=False).rename({'time': 'hour'})
-           prate = ((ds.precip.sel(hour=slice(fhr1, fhr2), HUCID=int(basid)).squeeze()).transpose()).load()
 
-           ensmat = prate.copy(deep=True)
-           if accumulated:
+           if hucid_input:
 
-              ylabel = 'Accumulated Precipitation (mm)'
-              for t in range(ensmat.shape[1]):
-                 ensmat[:,t] = ensmat[:,t] + np.sum(prate[:,0:t],axis=1)
+              hucid_list = [e.strip() for e in hucid_input.split(',')]
+
+              basin_list = []
+              for hucid in hucid_list:
+                  basin_list.append(db[db['ID'] == int(hucid)]['Name'].values)
 
            else:
 
-              ylabel = 'Precipitation Rate (mm 6 $\mathregular{h^{-1}}$)'
-             
+              basin_list = [e.strip() for e in basin_input.split(',')]
 
+              hucid_list = []
+              for basin in basin_list:
+                  hucid_list.append(db[db['Name'] == basin]['ID'].values)
+
+           basinsum = 0.
+
+           ensmat = ((ds.precip.sel(hour=slice(fhr1, fhr2), HUCID=int(hucid_list[0])).squeeze()).transpose()).load()
+
+           for hucid in hucid_list:
+
+              bmask = db['ID'] == int(hucid)
+              print('{0} ({1}), {2} Acres'.format(db[bmask]['Name'].values,db[bmask]['ID'].values,np.round(db[bmask]['Size'].values)))
+
+              prate = ((ds.precip.sel(hour=slice(fhr1, fhr2), HUCID=int(hucid)).squeeze()).transpose()).load()
+              prate[:,:] = prate[:,:] * db[bmask]['Size'].values
+              basinsum = basinsum + db[bmask]['Size'].values
+
+#              ensmat = prate.copy(deep=True)
+              if accumulated:
+
+                 ylabel = 'Accumulated Precipitation (mm)'
+                 for t in range(ensmat.shape[1]):
+                    ensmat[:,t] = ensmat[:,t] + np.sum(prate[:,0:t],axis=1)
+
+              else:
+
+                 ensmat[:,:] = ensmat[:,:] + prate[:,:]
+                 ylabel = 'Precipitation Rate (mm 6 $\mathregular{h^{-1}}$)'
+
+           
+           ensmat[:,:] = ensmat[:,:] / basinsum 
            e_mean = np.mean(ensmat, axis=0)
            for n in range(ensmat.shape[0]):
               ensmat[n,:] = ensmat[n,:] - e_mean[:]
@@ -1030,8 +1052,10 @@ class ComputeForecastMetrics:
               fracvar = '%4.3f' % solver.varianceFraction(neigs=1)
            else:
               fracvar = '%4.3f' % solver.varianceFraction(neigs=eofn)[-1]
-           plt.title("{0} {1}-{2} hour {3} Precipitation, {4} of variance".format(str(self.datea_str),fhr1,fhr2,\
-                                  basin_name,fracvar))
+#           plt.title("{0} {1}-{2} hour {3} Precipitation, {4} of variance".format(str(self.datea_str),fhr1,fhr2,\
+#                                  basin_name,fracvar))
+           plt.title("{0} {1}-{2} hour Precipitation, {3} of variance".format(str(self.datea_str),fhr1,fhr2,\
+                                  fracvar))
 
            outdir = '{0}/f{1}_{2}eof'.format(self.config['figure_dir'],'%0.3i' % fhr2,metname)
            if not os.path.isdir(outdir):
@@ -1053,6 +1077,7 @@ class ComputeForecastMetrics:
                                                                         'description': 'integrated min. SLP PC'},
                                                                'data': pc1.data}}}
 
+           fff2 = '%0.3i' % fhr2
            xr.Dataset.from_dict(f_met_basineof_nc).to_netcdf(
                "{0}/{1}_f{2}_{3}eof.nc".format(self.config['work_dir'], str(self.datea_str), fff2, metname), encoding={'fore_met_init': {'dtype': 'float32'}})
 
@@ -1142,7 +1167,7 @@ class ComputeForecastMetrics:
            ax = self.__background_map(ax, lat1, lon1, lat2, lon2)
 
            #  Plot the SLP EOF pattern in shading
-           slpfac = np.ceil(np.max(dslp) / 5.0)
+           slpfac = np.ceil(np.max(np.abs(dslp)) / 5.0)
            cntrs = np.array([-5., -4., -3., -2., -1., 1., 2., 3., 4., 5]) * slpfac
            pltf = plt.contourf(ensmat.longitude.values,ensmat.latitude.values,dslp,cntrs, \
                                 cmap=matplotlib.colors.ListedColormap(colorlist), extend='both')
