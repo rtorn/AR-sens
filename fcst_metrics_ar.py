@@ -1079,9 +1079,9 @@ class ComputeForecastMetrics:
 
            fff2 = '%0.3i' % fhr2
            xr.Dataset.from_dict(f_met_basineof_nc).to_netcdf(
-               "{0}/{1}_f{2}_{3}eof.nc".format(self.config['work_dir'], str(self.datea_str), fff2, metname), encoding={'fore_met_init': {'dtype': 'float32'}})
+               "{0}/{1}_f{2}_{3}.nc".format(self.config['work_dir'], str(self.datea_str), fff2, metname), encoding={'fore_met_init': {'dtype': 'float32'}})
 
-           self.metlist.append('f{0}_{1}eof'.format(fff2,metname))
+           self.metlist.append('f{0}_{1}'.format(fff2,metname))
 
 
 
