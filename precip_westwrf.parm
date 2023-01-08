@@ -23,8 +23,10 @@ grid_type='regular'
 
 [locations]
 atcf_dir=/ct12/abrammer/graphics/ecmf_tc_data/data
-model_dir=/cw3e/mead/projects/cwp110/scratch/minghua/ESA/Preprocessing/input_sample_data/wwrf_nrt_ens
+model_dir=/cw3e/mead/datasets/cw3e/NRT/2022-2023/NRT_ens/{yyyymmddhh}/cf
+#/cw3e/mead/projects/cwp110/scratch/minghua/ESA/Preprocessing/input_sample_data/wwrf_nrt_ens
 #/cw3e/mead/projects/cwp110/scratch/minghua/ESA/Preprocessing/input_sample_data/wwrf_nrt_ens/2022010900/ecm000
+#/cw3e/mead/projects/cwp102/ESA/wwrf_nrt_ens
 
 work_dir=/cw3e/mead/projects/cwp110/scratch/ryantorn/ww_sens/work
 output_dir=/cw3e/mead/projects/cwp110/scratch/ryantorn/ww_sens/output
