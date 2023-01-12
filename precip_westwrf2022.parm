@@ -5,24 +5,28 @@ io_module=westwrf_comet
 fcst_hour_int=12
 fcst_hour_max=120
 tigge_forecast_time=0/12/24/36/48/60/72/84/96/108/120/132/144/156
+projection=LambertConformal
+#  2021
+#num_ens=47
+#central_latitude=39
+#central_longitude=-135
+#standard_parallel1=39
+#standard_parallel2=50
+#stdlon=-135
+#  2022
 num_ens=51
-
-flip_lon=True
-projection=RotatedLatLon
-central_latitude=51
-central_longitude=55
-#central_rotated_longitude=125
-
-grid_type=Cassini
-grid_latinc=0.08
-grid_loninc=0.08
-grid_lat0=51.0
-grid_lon0=180.0
-grid_stdlon=125.0
+central_latitude=39
+central_longitude=-125
+standard_parallel1=39
+standard_parallel2=50
+grid_type='regular'
 
 [locations]
 atcf_dir=/ct12/abrammer/graphics/ecmf_tc_data/data
 model_dir=/cw3e/mead/datasets/cw3e/NRT/2022-2023/NRT_ens/{yyyymmddhh}/cf
+#/cw3e/mead/projects/cwp110/scratch/minghua/ESA/Preprocessing/input_sample_data/wwrf_nrt_ens
+#/cw3e/mead/projects/cwp110/scratch/minghua/ESA/Preprocessing/input_sample_data/wwrf_nrt_ens/2022010900/ecm000
+#/cw3e/mead/projects/cwp102/ESA/wwrf_nrt_ens
 
 work_dir=/cw3e/mead/projects/cwp110/scratch/ryantorn/ww_sens/work
 output_dir=/cw3e/mead/projects/cwp110/scratch/ryantorn/ww_sens/output
@@ -40,11 +44,8 @@ precip_hour_1=[36, 48, 60, 72,  84,  96, 108, 120, 132]
 precip_hour_2=[60, 72, 84, 96, 108, 120, 132, 144, 156]
 min_lat_precip=30
 max_lat_precip=52
-#min_lon_precip=-132
-#max_lon_precip=-110
-min_lon_precip=228
-max_lon_precip=250
-
+min_lon_precip=-132
+max_lon_precip=-110
 
 [metric]
 precipitation_mean_metric=False
@@ -64,10 +65,14 @@ coast_points_file=/cw3e/mead/projects/cwp110/ryantorn/JHT-python/latlon_coast_1p
 
 [fields]
 fields_hour_max=120
-min_lat=16
-#min_lon=-163
-min_lon=200
-max_lon=250
+#  2021
+#min_lat=27
+#min_lon=-156
+#max_lat=58
+#max_lon=-105
+#  2022
+min_lat=23
+min_lon=-159.6
 calc_ivt=True
 calc_height=True
 #height_levels=[1000, 925, 850, 700, 500, 300, 250, 200]
