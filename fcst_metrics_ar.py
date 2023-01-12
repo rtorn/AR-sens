@@ -194,9 +194,9 @@ class ComputeForecastMetrics:
 
            ensmat = g1.create_ens_array('temperature', g1.nens, vDict)
 
-           vDict = {'latitude': (lat1, lat2), 'longitude': (lon1, lon2), 'isobaricInhPa': (300, 1000),
+           fDict = {'latitude': (lat1, lat2), 'longitude': (lon1, lon2), 'isobaricInhPa': (300, 1000),
                     'description': 'Integrated Water Vapor Transport', 'units': 'hPa', '_FillValue': -9999.}
-           vDict = g1.set_var_bounds('temperature', vDict)
+           fDict = g1.set_var_bounds('temperature', vDict)
 
            if 'ivt' in g1.var_dict:
 
@@ -207,16 +207,16 @@ class ComputeForecastMetrics:
 
               for n in range(g1.nens):
 
-                 uwnd = g1.read_grib_field('zonal_wind', n, vDict) * units('m / sec')
-                 vwnd = g1.read_grib_field('meridional_wind', n, vDict) * units('m / sec')
+                 uwnd = g1.read_grib_field('zonal_wind', n, fDict) * units('m / sec')
+                 vwnd = g1.read_grib_field('meridional_wind', n, fDict) * units('m / sec')
 
-                 tmpk = np.squeeze(g1.read_grib_field('temperature', n, vDict)) * units('K')
+                 tmpk = np.squeeze(g1.read_grib_field('temperature', n, fDict)) * units('K')
                  pres = (tmpk.isobaricInhPa.values * units.hPa).to(units.Pa)
 
                  if g1.has_specific_humidity:
-                    qvap = np.squeeze(g1.read_grib_field('specific_humidity', n, vDict)) * units('dimensionless')
+                    qvap = np.squeeze(g1.read_grib_field('specific_humidity', n, fDict)) * units('dimensionless')
                  else:
-                    relh = np.minimum(np.maximum(g1.read_grib_field('relative_humidity', n, vDict), 0.01), 100.0) * units('percent')
+                    relh = np.minimum(np.maximum(g1.read_grib_field('relative_humidity', n, fDict), 0.01), 100.0) * units('percent')
                     qvap = mpcalc.mixing_ratio_from_relative_humidity(pres[:,None,None], tmpk, relh)
 
                  #  Integrate water vapor over the pressure levels
@@ -229,10 +229,15 @@ class ComputeForecastMetrics:
               ensmat[n,:,:] = ensmat[n,:,:] - e_mean[:,:]
 
            #  Compute the EOF of the precipitation pattern and then the PCs
-           coslat = np.cos(np.deg2rad(ensmat.latitude.values)).clip(0., 1.)
-           wgts = np.sqrt(coslat)[..., np.newaxis]
+           if self.config.get('grid_type','LatLon') == 'LatLon':
 
-           solver = Eof_xarray(ensmat.rename({'ensemble': 'time'}), weights=wgts)
+              coslat = np.cos(np.deg2rad(ensmat.latitude.values)).clip(0., 1.)
+              wgts = np.sqrt(coslat)[..., np.newaxis]
+              solver = Eof_xarray(ensmat.rename({'ensemble': 'time'}), weights=wgts)
+
+           else:
+
+              solver = Eof_xarray(ensmat.rename({'ensemble': 'time'}))
 
            pcout  = solver.pcs(npcs=eofn, pcscaling=1)
            pc1 = np.squeeze(pcout[:,eofn-1])
@@ -252,17 +257,22 @@ class ComputeForecastMetrics:
            colorlist = ("#FFFFFF", "#FFFC00", "#FFE100", "#FFC600", "#FFAA00", "#FF7D00", \
                         "#FF4B00", "#FF1900", "#E60015", "#B3003E", "#80007B", "#570088")
 
-           ax = plt.axes(projection=ccrs.PlateCarree())
-           ax = self.__background_map(ax, lat1, lon1, lat2, lon2)
+           plotBase = self.config.copy()
+           plotBase['grid_interval'] = self.config['vitals_plot'].get('grid_interval', 5)
+           plotBase['left_labels'] = 'True'
+           plotBase['right_labels'] = 'None'
+
+           ax = background_map(self.config.get('projection', 'PlateCarree'), lon1, lon2, lat1, lat2, plotBase)
 
            mivt = [0.0, 250., 300., 400., 500., 600., 700., 800., 1000., 1200., 1400., 1600., 2000.]
            norm = matplotlib.colors.BoundaryNorm(mivt,len(mivt))
-           pltf = plt.contourf(ensmat.longitude.values,ensmat.latitude.values,e_mean,mivt, \
+           pltf = plt.contourf(ensmat.longitude.values,ensmat.latitude.values,e_mean,mivt,transform=ccrs.PlateCarree(), \
                                 cmap=matplotlib.colors.ListedColormap(colorlist), norm=norm, extend='max')
 
            ivtfac = np.floor(np.log10(np.max(divt)))
            cntrs = np.array([-9., -8., -7., -6., -5., -4., -3., -2., -1.5, -1., -0.8, -0.6, 0.6, 0.8, 1., 1.5, 2., 3., 4., 5., 6., 7., 8., 9.]) * (10**ivtfac)
-           pltm = plt.contour(ensmat.longitude.values,ensmat.latitude.values,divt,cntrs,linewidths=1.5, colors='k', zorder=10)
+           pltm = plt.contour(ensmat.longitude.values,ensmat.latitude.values,divt,cntrs,linewidths=1.5, \
+                                transform=ccrs.PlateCarree(),colors='k',zorder=10)
 
            #  Add colorbar to the plot
            cbar = plt.colorbar(pltf, fraction=0.15, aspect=45., pad=0.04, orientation='horizontal', ticks=mivt)
@@ -350,6 +360,8 @@ class ComputeForecastMetrics:
            if eval(self.config.get('flip_lon','False')):
               for i in range(len(loncoa)):
                  loncoa[i] = (loncoa[i] + 360.) % 360.
+              for i in range(len(lonlist)):
+                 lonlist[i] = (lonlist[i] + 360.) % 360.
 
            lat1 = np.min(latlist)
            lat2 = np.max(latlist)
@@ -772,7 +784,6 @@ class ComputeForecastMetrics:
            if eval(self.config.get('flip_lon','False')):
               lon1 = (lon1 + 360.) % 360.
               lon2 = (lon2 + 360.) % 360.
-              lonc = (lonc + 360.) % 360.
 
            fff2 = '%0.3i' % fhr2
            fint      = int(self.config.get('fcst_hour_int'))
@@ -881,23 +892,24 @@ class ComputeForecastMetrics:
            colorlist = ("#FFFFFF", "#00ECEC", "#01A0F6", "#0000F6", "#00FF00", "#00C800", "#009000", "#FFFF00", \
                         "#E7C000", "#FF9000", "#FF0000", "#D60000", "#C00000", "#FF00FF", "#9955C9")
 
-           plotBase = {}
+           plotBase = self.config.copy()
            plotBase['grid_interval'] = self.config['vitals_plot'].get('grid_interval', 5)
            plotBase['left_labels'] = 'True'
            plotBase['right_labels'] = 'None'
 
-           ax = background_map(self.config['vitals_plot'].get('projection', 'PlateCarree'), lon1, lon2, lat1, lat2, plotBase)
+           ax = background_map(self.config.get('projection', 'PlateCarree'), lon1, lon2, lat1, lat2, plotBase)
 
            #  Add the ensemble-mean precipitation in shading
            mpcp = [0.0, 0.25, 0.50, 1., 1.5, 2., 4., 6., 8., 12., 16., 24., 32., 64., 96., 97.]
            norm = matplotlib.colors.BoundaryNorm(mpcp,len(mpcp))
-           pltf = plt.contourf(ensmat.longitude.values,ensmat.latitude.values,e_mean,mpcp, \
+           pltf = plt.contourf(ensmat.longitude.values,ensmat.latitude.values,e_mean,mpcp, transform=ccrs.PlateCarree(), \
                                 cmap=matplotlib.colors.ListedColormap(colorlist), norm=norm, extend='max')
 
            #  Add contours of the precipitation EOF
            pcpfac = np.ceil(np.max(abs(dpcp)) / 5.0)
            cntrs = np.array([-5., -4., -3., -2., -1., 1., 2., 3., 4., 5]) * pcpfac
-           pltm = plt.contour(ensmat.longitude.values,ensmat.latitude.values,dpcp,cntrs,linewidths=1.5, colors='k', zorder=10)
+           pltm = plt.contour(ensmat.longitude.values,ensmat.latitude.values,dpcp,cntrs,linewidths=1.5, \
+                                colors='k', zorder=10, transform=ccrs.PlateCarree())
 
            #  Add colorbar to the plot
            cbar = plt.colorbar(pltf, fraction=0.15, aspect=45., pad=0.04, orientation='horizontal', ticks=mpcp)
@@ -935,9 +947,9 @@ class ComputeForecastMetrics:
 
            self.metlist.append('f{0}_{1}eof'.format(fff2,metname))
 
+
     def __precip_basin_eof(self):
 
- 
         #wget --no-check-certificate https://cw3e.ucsd.edu/Projects/QPF/data/eps_watershed_precip8.nc
 
         db = pd.read_csv(filepath_or_buffer=self.config['metric'].get('basin_huc_file'), \
@@ -1135,17 +1147,26 @@ class ComputeForecastMetrics:
 
            #  Read the ensemble SLP fields, compute the mean
            for n in range(g1.nens):
-              ensmat[n,:,:] = g1.read_grib_field('sea_level_pressure', n, vDict) * 0.01
+              ensmat[n,:,:] = g1.read_grib_field('sea_level_pressure', n, vDict)
+
+           if g1.read_grib_field('sea_level_pressure', 0, vDict).units != 'hPa':
+              ensmat[:,:,:] = ensmat[:,:,:] * 0.01
 
            e_mean = np.mean(ensmat, axis=0)
            for n in range(g1.nens):
               ensmat[n,:,:] = ensmat[n,:,:] - e_mean[:,:]
 
            #  Compute the EOF of the precipitation pattern and then the PCs
-           coslat = np.cos(np.deg2rad(ensmat.latitude.values)).clip(0., 1.)
-           wgts = np.sqrt(coslat)[..., np.newaxis]
+           if self.config.get('grid_type','LatLon') == 'LatLon':
 
-           solver = Eof_xarray(ensmat.rename({'ensemble': 'time'}), weights=wgts)
+              coslat = np.cos(np.deg2rad(ensmat.latitude.values)).clip(0., 1.)
+              wgts = np.sqrt(coslat)[..., np.newaxis]
+              solver = Eof_xarray(ensmat.rename({'ensemble': 'time'}), weights=wgts)
+
+           else:
+
+              solver = Eof_xarray(ensmat.rename({'ensemble': 'time'}))
+
            pcout  = np.squeeze(solver.pcs(npcs=3, pcscaling=1))
            pc1 = np.squeeze(pcout[:,eofn-1])
            pc1[:] = pc1[:] / np.std(pc1)
@@ -1163,18 +1184,23 @@ class ComputeForecastMetrics:
 
            colorlist = ("#9A32CD","#00008B","#3A5FCD","#00BFFF","#B0E2FF","#FFFFFF","#FFEC8B","#FFA500","#FF4500","#B22222","#FF82AB")
 
-           ax = plt.axes(projection=ccrs.PlateCarree())
-           ax = self.__background_map(ax, lat1, lon1, lat2, lon2)
+           plotBase = self.config.copy()
+           plotBase['grid_interval'] = self.config['vitals_plot'].get('grid_interval', 5)
+           plotBase['left_labels'] = 'True'
+           plotBase['right_labels'] = 'None'
+
+           ax = background_map(self.config.get('projection', 'PlateCarree'), lon1, lon2, lat1, lat2, plotBase)
 
            #  Plot the SLP EOF pattern in shading
            slpfac = np.ceil(np.max(np.abs(dslp)) / 5.0)
            cntrs = np.array([-5., -4., -3., -2., -1., 1., 2., 3., 4., 5]) * slpfac
-           pltf = plt.contourf(ensmat.longitude.values,ensmat.latitude.values,dslp,cntrs, \
+           pltf = plt.contourf(ensmat.longitude.values,ensmat.latitude.values,dslp,cntrs,transform=ccrs.PlateCarree(), \
                                 cmap=matplotlib.colors.ListedColormap(colorlist), extend='both')
 
            #  Plot the ensemble-mean SLP field in contours
            mslp = [976, 980, 984, 988, 992, 996, 1000, 1004, 1008, 1012, 1016, 1020, 1024, 1028, 1032, 1036, 1040]
-           pltm = plt.contour(ensmat.longitude.values,ensmat.latitude.values,e_mean,mslp,linewidths=1.5, colors='k', zorder=10)
+           pltm = plt.contour(ensmat.longitude.values,ensmat.latitude.values,e_mean,mslp, \
+                               linewidths=1.5,colors='k',zorder=10,transform=ccrs.PlateCarree())
 
            #  Add colorbar to the plot
            cbar = plt.colorbar(pltf, fraction=0.15, aspect=45., pad=0.04, orientation='horizontal', ticks=cntrs)
