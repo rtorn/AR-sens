@@ -772,7 +772,6 @@ class ComputeForecastMetrics:
            if eval(self.config.get('flip_lon','False')):
               lon1 = (lon1 + 360.) % 360.
               lon2 = (lon2 + 360.) % 360.
-              lonc = (lonc + 360.) % 360.
 
            fff2 = '%0.3i' % fhr2
            fint      = int(self.config.get('fcst_hour_int'))
@@ -881,23 +880,25 @@ class ComputeForecastMetrics:
            colorlist = ("#FFFFFF", "#00ECEC", "#01A0F6", "#0000F6", "#00FF00", "#00C800", "#009000", "#FFFF00", \
                         "#E7C000", "#FF9000", "#FF0000", "#D60000", "#C00000", "#FF00FF", "#9955C9")
 
-           plotBase = {}
+           plotBase = self.config.copy()
+#           plotBase = {}
            plotBase['grid_interval'] = self.config['vitals_plot'].get('grid_interval', 5)
            plotBase['left_labels'] = 'True'
            plotBase['right_labels'] = 'None'
 
-           ax = background_map(self.config['vitals_plot'].get('projection', 'PlateCarree'), lon1, lon2, lat1, lat2, plotBase)
+           ax = background_map(self.config.get('projection', 'PlateCarree'), lon1, lon2, lat1, lat2, plotBase)
 
            #  Add the ensemble-mean precipitation in shading
            mpcp = [0.0, 0.25, 0.50, 1., 1.5, 2., 4., 6., 8., 12., 16., 24., 32., 64., 96., 97.]
            norm = matplotlib.colors.BoundaryNorm(mpcp,len(mpcp))
-           pltf = plt.contourf(ensmat.longitude.values,ensmat.latitude.values,e_mean,mpcp, \
+           pltf = plt.contourf(ensmat.longitude.values,ensmat.latitude.values,e_mean,mpcp, transform=ccrs.PlateCarree(), \
                                 cmap=matplotlib.colors.ListedColormap(colorlist), norm=norm, extend='max')
 
            #  Add contours of the precipitation EOF
            pcpfac = np.ceil(np.max(abs(dpcp)) / 5.0)
            cntrs = np.array([-5., -4., -3., -2., -1., 1., 2., 3., 4., 5]) * pcpfac
-           pltm = plt.contour(ensmat.longitude.values,ensmat.latitude.values,dpcp,cntrs,linewidths=1.5, colors='k', zorder=10)
+           pltm = plt.contour(ensmat.longitude.values,ensmat.latitude.values,dpcp,cntrs,linewidths=1.5, \
+                                colors='k', zorder=10, transform=ccrs.PlateCarree())
 
            #  Add colorbar to the plot
            cbar = plt.colorbar(pltf, fraction=0.15, aspect=45., pad=0.04, orientation='horizontal', ticks=mpcp)
