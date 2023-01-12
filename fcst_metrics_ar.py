@@ -1057,7 +1057,7 @@ class ComputeForecastMetrics:
            plt.title("{0} {1}-{2} hour Precipitation, {3} of variance".format(str(self.datea_str),fhr1,fhr2,\
                                   fracvar))
 
-           outdir = '{0}/f{1}_{2}eof'.format(self.config['figure_dir'],'%0.3i' % fhr2,metname)
+           outdir = '{0}/f{1}_{2}'.format(self.config['figure_dir'],'%0.3i' % fhr2,metname)
            if not os.path.isdir(outdir):
               try:
                  os.makedirs(outdir)
