@@ -106,6 +106,9 @@ class ComputeForecastMetrics:
         if self.config['metric'].get('hght_eof_metric', 'False') == 'True':
            self.__hght_eof()
 
+        if self.config['metric'].get('temp_eof_metric', 'False') == 'True':
+           self.__temp_eof()
+
 
     def get_metlist(self):
         '''
@@ -269,7 +272,7 @@ class ComputeForecastMetrics:
            pltf = plt.contourf(ensmat.longitude.values,ensmat.latitude.values,e_mean,mivt,transform=ccrs.PlateCarree(), \
                                 cmap=matplotlib.colors.ListedColormap(colorlist), norm=norm, extend='max')
 
-           ivtfac = np.floor(np.log10(np.max(divt)))
+           ivtfac = np.floor(np.log10(np.max(np.abs(divt))))
            cntrs = np.array([-9., -8., -7., -6., -5., -4., -3., -2., -1.5, -1., -0.8, -0.6, 0.6, 0.8, 1., 1.5, 2., 3., 4., 5., 6., 7., 8., 9.]) * (10**ivtfac)
            pltm = plt.contour(ensmat.longitude.values,ensmat.latitude.values,divt,cntrs,linewidths=1.5, \
                                 transform=ccrs.PlateCarree(),colors='k',zorder=10)
@@ -1048,18 +1051,33 @@ class ComputeForecastMetrics:
 
            #  Create plots of MSLP and maximum wind for each member, mean and EOF perturbation
            fig = plt.figure(figsize=(10, 6))
+           ax  = fig.add_axes([0.1, 0.1, 0.8, 0.8])
+#           plt.rcParams.update({'font.size': 15})
 
            for n in range(ensmat.shape[0]):
-              plt.plot(ensmat.hour, ensmat[n,:]+e_mean[:], color='lightgray')
+              ax.plot(ensmat.hour, ensmat[n,:]+e_mean[:], color='lightgray')
 
-           plt.plot(ensmat.hour, e_mean, color='black', linewidth=3)
-           plt.plot(ensmat.hour, e_mean[:]+dpcp[:], '--', color='black', linewidth=3)
+           ax.plot(ensmat.hour, e_mean, color='black', linewidth=3)
+           ax.plot(ensmat.hour, e_mean[:]+dpcp[:], '--', color='black', linewidth=3)
 
-           plt.xlabel("Forecast Hour", fontsize=15)
-           plt.xlim((fhr1, fhr2))
-           plt.xticks(np.arange(np.ceil(float(fhr1)/12.)*12., np.floor(float(fhr2)/12.)*12., step=12.))
-           plt.ylabel(ylabel, fontsize=15)
-           plt.ylim(bottom=0.)
+           ax.set_xlim((fhr1, fhr2))
+
+           init   = dt.datetime.strptime(self.datea_str, '%Y%m%d%H')
+           ticklist = []
+           for fhr in np.arange(np.ceil(float(fhr1)/12.)*12., np.floor(float(fhr2)/12.)*12., step=12.):
+
+              datef  = init + dt.timedelta(hours=fhr)
+              ticklist.append(datef.strftime("%HZ\n%m/\n%d"))
+
+           ax.set_xticks(np.arange(np.ceil(float(fhr1)/12.)*12., np.floor(float(fhr2)/12.)*12., step=12.))
+           ax.set_xticklabels(ticklist, fontsize=15)           
+
+           ax.set_ylabel(ylabel, fontsize=15)
+           ax.set_ylim(bottom=0.)
+
+           for label in ax.get_yticklabels():
+              label.set_fontsize(15)
+
            if eofn == 1:
               fracvar = '%4.3f' % solver.varianceFraction(neigs=1)
            else:
@@ -1067,7 +1085,16 @@ class ComputeForecastMetrics:
 #           plt.title("{0} {1}-{2} hour {3} Precipitation, {4} of variance".format(str(self.datea_str),fhr1,fhr2,\
 #                                  basin_name,fracvar))
            plt.title("{0} {1}-{2} hour Precipitation, {3} of variance".format(str(self.datea_str),fhr1,fhr2,\
-                                  fracvar))
+                                  fracvar), fontsize=15)
+
+           init   = dt.datetime.strptime(self.datea_str, '%Y%m%d%H')
+           ticklist = []
+           for fhr in np.arange(np.ceil(float(fhr1)/12.)*12., np.floor(float(fhr2)/12.)*12., step=12.):
+
+              datef  = init + dt.timedelta(hours=fhr)
+              ticklist.append(datef.strftime("%HZ\n%m/\n%d"))
+
+           print(ticklist)
 
            outdir = '{0}/f{1}_{2}'.format(self.config['figure_dir'],'%0.3i' % fhr2,metname)
            if not os.path.isdir(outdir):
@@ -1094,7 +1121,6 @@ class ComputeForecastMetrics:
                "{0}/{1}_f{2}_{3}.nc".format(self.config['work_dir'], str(self.datea_str), fff2, metname), encoding={'fore_met_init': {'dtype': 'float32'}})
 
            self.metlist.append('f{0}_{1}'.format(fff2,metname))
-
 
 
     def __slp_eof(self):
@@ -1213,6 +1239,7 @@ class ComputeForecastMetrics:
               fracvar = '%4.3f' % solver.varianceFraction(neigs=eofn)[-1]
            plt.title("{0} {1} hour Precipitation, {2} of variance".format(str(self.datea_str),fhr,fracvar))
 
+           #  Create a output directory with the metric file
            outdir = '{0}/f{1}_{2}eof'.format(self.config['figure_dir'],fff,metname)
            if not os.path.isdir(outdir):
               try:
@@ -1289,11 +1316,17 @@ class ComputeForecastMetrics:
               ensmat[n,:,:] = ensmat[n,:,:] - e_mean[:,:]
 
            #  Compute the EOF of the precipitation pattern and then the PCs
-           coslat = np.cos(np.deg2rad(ensmat.latitude.values)).clip(0., 1.)
-           wgts = np.sqrt(coslat)[..., np.newaxis]
+           if self.config.get('grid_type','LatLon') == 'LatLon':
 
-           solver = Eof_xarray(ensmat.rename({'ensemble': 'time'}), weights=wgts)
-           pcout  = np.squeeze(solver.pcs(npcs=eofn, pcscaling=1))
+              coslat = np.cos(np.deg2rad(ensmat.latitude.values)).clip(0., 1.)
+              wgts = np.sqrt(coslat)[..., np.newaxis]
+              solver = Eof_xarray(ensmat.rename({'ensemble': 'time'}), weights=wgts)
+
+           else:
+
+              solver = Eof_xarray(ensmat.rename({'ensemble': 'time'}))
+
+           pcout  = np.squeeze(solver.pcs(npcs=3, pcscaling=1))
            pc1 = np.squeeze(pcout[:,eofn-1])
            pc1[:] = pc1[:] / np.std(pc1)
 
@@ -1320,7 +1353,7 @@ class ComputeForecastMetrics:
            #  Plot the SLP EOF pattern in shading
            hfac = np.ceil(np.max(dhght) / 5.0)
            cntrs = np.array([-5., -4., -3., -2., -1., 1., 2., 3., 4., 5]) * hfac
-           pltf = plt.contourf(ensmat.longitude.values,ensmat.latitude.values,dhght,cntrs, \
+           pltf = plt.contourf(ensmat.longitude.values,ensmat.latitude.values,dhght,cntrs,transform=ccrs.PlateCarree(), \
                                 cmap=matplotlib.colors.ListedColormap(colorlist), extend='both')
 
            #  Plot the ensemble-mean SLP field in contours
@@ -1328,7 +1361,8 @@ class ComputeForecastMetrics:
               mhght = np.arange(2400, 3300, 20)
            elif level == 500:
               mhght = np.arange(4800, 6000, 30)
-           pltm = plt.contour(ensmat.longitude.values,ensmat.latitude.values,e_mean,mhght,linewidths=1.5, colors='k', zorder=10)
+           pltm = plt.contour(ensmat.longitude.values,ensmat.latitude.values,e_mean,mhght,\
+                               transform=ccrs.PlateCarree(),linewidths=1.5,colors='k',zorder=10)
 
            #  Add colorbar to the plot
            cbar = plt.colorbar(pltf, fraction=0.15, aspect=45., pad=0.04, orientation='horizontal', ticks=cntrs)
@@ -1367,7 +1401,144 @@ class ComputeForecastMetrics:
            self.metlist.append('f{0}_{1}eof'.format(fff,metname))
 
 
+    def __temp_eof(self):
+        '''
+        Function that computes SLP EOF metric, which is calculated by taking the EOF of 
+        the ensemble SLP forecast over a domain defined by the user in a text file.  
+        The resulting forecast metric is the principal component of the
+        EOF.  The function also plots a figure showing the ensemble-mean SLP pattern 
+        along with the SLP perturbation that is consistent with the first EOF. 
+        '''
 
+        for infull in glob.glob('{0}/{1}_*'.format(self.config['metric'].get('temp_metric_loc'),self.datea_str)):
+
+           print(infull)
+
+           try:
+              conf = configparser.ConfigParser()
+              conf.read(infull)
+              fhr   = int(conf['definition'].get('forecast_hour'))
+              lat1  = float(conf['definition'].get('latitude_min'))
+              lat2  = float(conf['definition'].get('latitude_max'))
+              lon1  = float(conf['definition'].get('longitude_min'))
+              lon2  = float(conf['definition'].get('longitude_max'))
+              eofn  = int(conf['definition'].get('eof_number',1))
+              level = float(conf['definition'].get('pressure', 850))
+           except IOError:
+              logging.warning('{0} does not exist.  Cannot compute temperature EOF'.format(infull))
+              return None
+
+           if eval(self.config.get('flip_lon','False')):
+              lon1 = (lon1 + 360.) % 360.
+              lon2 = (lon2 + 360.) % 360.
+
+           inpath, infile = infull.rsplit('/', 1)
+           infile1, metname = infile.split('_', 1)
+           fff = '%0.3i' % fhr
+
+           g1 = self.dpp.ReadGribFiles(self.datea_str, fhr, self.config)
+
+           vDict = {'latitude': (lat1, lat2), 'longitude': (lon1, lon2), 'isobaricInhPa': (level, level),
+                    'description': 'Temperature', 'units': 'K', '_FillValue': -9999.}
+           vDict = g1.set_var_bounds('temperature', vDict)
+
+           ensmat = g1.create_ens_array('temperature', g1.nens, vDict)
+
+           #  Read the ensemble SLP fields, compute the mean
+           for n in range(g1.nens):
+              ensmat[n,:,:] = np.squeeze(g1.read_grib_field('temperature', n, vDict))
+
+           e_mean = np.mean(ensmat, axis=0)
+           for n in range(g1.nens):
+              ensmat[n,:,:] = ensmat[n,:,:] - e_mean[:,:]
+
+           #  Compute the EOF of the precipitation pattern and then the PCs
+           if self.config.get('grid_type','LatLon') == 'LatLon':
+
+              coslat = np.cos(np.deg2rad(ensmat.latitude.values)).clip(0., 1.)
+              wgts = np.sqrt(coslat)[..., np.newaxis]
+              solver = Eof_xarray(ensmat.rename({'ensemble': 'time'}), weights=wgts)
+
+           else:
+
+              solver = Eof_xarray(ensmat.rename({'ensemble': 'time'}))
+
+           pcout  = np.squeeze(solver.pcs(npcs=np.maximum(eofn,2), pcscaling=1))
+           pc1 = np.squeeze(pcout[:,eofn-1])
+           pc1[:] = pc1[:] / np.std(pc1)
+
+           #  Compute the SLP pattern associated with a 1 PC perturbation
+           dtemp = np.zeros(e_mean.shape)
+
+           for n in range(g1.nens):
+              dtemp[:,:] = dtemp[:,:] + ensmat[n,:,:] * pc1[n]
+
+           dtemp[:,:] = dtemp[:,:] / float(g1.nens)
+
+           if np.sum(dtemp) < 0.:
+              pc1[:]     = -pc1[:]
+              dtemp[:,:] = -dtemp[:,:]
+
+           #  Create basic figure, including political boundaries and grid lines
+           fig = plt.figure(figsize=(8.5,11))
+
+           colorlist = ("#9A32CD","#00008B","#3A5FCD","#00BFFF","#B0E2FF","#FFFFFF","#FFEC8B","#FFA500","#FF4500","#B22222","#FF82AB")
+ 
+           plotBase = self.config.copy()
+           plotBase['grid_interval'] = self.config['vitals_plot'].get('grid_interval', 5)
+           plotBase['left_labels'] = 'True'
+           plotBase['right_labels'] = 'None'
+
+           ax = background_map(self.config.get('projection', 'PlateCarree'), lon1, lon2, lat1, lat2, plotBase)
+
+           #  Plot the temperature EOF pattern in shading
+           tfac = np.ceil(np.max(dtemp) / 2.5)
+           cntrs = np.array([-2.5, -2.0, -1.5, -1.0, -0.5, 0.5, 1.0, 1.5, 2.0, 2.5]) * tfac
+           pltf = plt.contourf(ensmat.longitude.values,ensmat.latitude.values,dtemp,cntrs,transform=ccrs.PlateCarree(), \
+                                cmap=matplotlib.colors.ListedColormap(colorlist), extend='both')
+
+           #  Plot the ensemble-mean temperature field in contours
+           if level == 850:
+              mtemp = np.arange(-16, 12, 2)
+           pltm = plt.contour(ensmat.longitude.values,ensmat.latitude.values,e_mean - 273.15, \
+                              mtemp,linewidths=1.5,colors='k',zorder=10,transform=ccrs.PlateCarree())
+
+           #  Add colorbar to the plot
+           cbar = plt.colorbar(pltf, fraction=0.15, aspect=45., pad=0.04, orientation='horizontal', ticks=cntrs)
+           cbar.set_ticks(cntrs[1:(len(cntrs)-1)])
+           cb = plt.clabel(pltm, inline_spacing=0.0, fontsize=12, fmt="%1.0f")
+
+           if eofn == 1:
+              fracvar = '%4.3f' % solver.varianceFraction(neigs=1)
+           else:
+              fracvar = '%4.3f' % solver.varianceFraction(neigs=eofn)[-1]
+           plt.title("{0} {1} hour temperature, {2} of variance".format(str(self.datea_str),fhr,fracvar))
+
+           #  Create metric directory, save image file with metric
+           outdir = '{0}/f{1}_{2}eof'.format(self.config['figure_dir'],fff,metname)
+           if not os.path.isdir(outdir):
+              try:
+                 os.makedirs(outdir)
+              except OSError as e:
+                 raise e
+
+           plt.savefig('{0}/metric.png'.format(outdir), format='png', dpi=120, bbox_inches='tight')
+           plt.close(fig)
+
+           f_met_tmpeof_nc = {'coords': {},
+                              'attrs': {'FORECAST_METRIC_LEVEL': '',
+                                        'FORECAST_METRIC_NAME': 'Temperature PC',
+                                        'FORECAST_METRIC_SHORT_NAME': 'tempeof'},
+                                'dims': {'num_ens': g1.nens},
+                                'data_vars': {'fore_met_init': {'dims': ('num_ens',),
+                                                               'attrs': {'units': '',
+                                                                         'description': 'temperature PC'},
+                                                               'data': pc1.data}}}
+
+           xr.Dataset.from_dict(f_met_tmpeof_nc).to_netcdf(
+               "{0}/{1}_f{2}_{3}eof.nc".format(self.config['work_dir'], str(self.datea_str), fff, metname), encoding={'fore_met_init': {'dtype': 'float32'}})
+
+           self.metlist.append('f{0}_{1}eof'.format(fff,metname))
 
 
 if __name__ == "__main__":
