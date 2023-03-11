@@ -143,7 +143,6 @@ def main():
     met = fmet.ComputeForecastMetrics(datea, config)
     metlist = met.get_metlist()
 
-
     #  Compute forecast fields at each desired time to use in sensitivity calculation
     fmaxfld = int(config['fields'].get('fields_hour_max',config['fcst_hour_max']))
     for fhr in range(0,fmaxfld+int(config['fcst_hour_int']),int(config['fcst_hour_int'])):
@@ -233,7 +232,7 @@ def precipitation_ens_maps(datea, fhr1, fhr2, config):
 
        g1 = dpp.ReadGribFiles(datea, fhr1, config)
 
-       vDict = {'latitude': (lat1, lat2), 'longitude': (lon1, lon2),
+       vDict = {'latitude': (lat1-0.00001, lat2), 'longitude': (lon1-0.00001, lon2),
                 'description': 'precipitation', 'units': 'mm', '_FillValue': -9999.}
        vDict = g1.set_var_bounds('precipitation', vDict)
 
@@ -258,7 +257,7 @@ def precipitation_ens_maps(datea, fhr1, fhr2, config):
 
        g1 = dpp.ReadGribFiles(datea, fhr1+fint, config)
 
-       vDict = {'latitude': (lat1, lat2), 'longitude': (lon1, lon2),
+       vDict = {'latitude': (lat1-0.00001, lat2), 'longitude': (lon1-0.00001, lon2),
                 'description': 'precipitation', 'units': 'mm', '_FillValue': -9999.}
        vDict = g1.set_var_bounds('precipitation', vDict)
 
