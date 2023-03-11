@@ -457,7 +457,7 @@ class ComputeSensitivity:
          outdir = '{0}/{1}/sens/summ'.format(config['figure_dir'],metname)
          if not os.path.isdir(outdir):
             os.makedirs(outdir)
-         self.plotSummarySens(lat, lon, mivt, mpv, esens, pvsens, '{0}/{1}_f{2}_summ_sens.png'.format(outdir,datea,fhrt), plotDict)
+         self.plotSummarySens(lat, lon, mivt, mpv, sivt, esens, pvsens, '{0}/{1}_f{2}_summ_sens.png'.format(outdir,datea,fhrt), plotDict)
 
 
       #  Read 300 hPa divergence, compute sensitivity to that field, if the file exists
@@ -644,7 +644,7 @@ class ComputeSensitivity:
          plotScalarSens(lat, lon, sens, emea, sigv, '{0}/{1}_f{2}_ref200hPa_sens.png'.format(outdir,datea,fhrt), plotDict)
 
 
-    def plotSummarySens(self, lat, lon, ivt, pvort, tesens, pvsens, fileout, plotDict):
+    def plotSummarySens(self, lat, lon, ivt, pvort, ivsens, tesens, pvsens, fileout, plotDict):
        '''
        Function that plots the sensitivity of a forecast metric to a scalar field, along
        with the ensemble mean field in contours, and the statistical significance in 
@@ -682,16 +682,24 @@ class ComputeSensitivity:
 
        pltpc = plt.contour(lon,lat,pvort,[2.0], linewidths=4.0, colors='k',transform=ccrs.PlateCarree())
 
+       pltis = plt.contour(lon,lat,ivsens,[-0.3, 0.3], linewidths=2.0, colors='g',transform=ccrs.PlateCarree()) 
+       pltp = plt.contourf(lon,lat,ivsens,[-0.3, 0.3], hatches=['/', None, '/'], colors='none', \
+                           extend='both',transform=ccrs.PlateCarree())
+       for i, collection in enumerate(pltp.collections):
+          collection.set_edgecolor('g')
+
        pltc1 = plt.contour(lon,lat,pvsens,[-0.3, 0.3], linewidths=2.0, colors='m',transform=ccrs.PlateCarree())
        pltp = plt.contourf(lon,lat,pvsens,[-0.3, 0.3], hatches=['/', None, '/'], colors='none', \
                            extend='both',transform=ccrs.PlateCarree())
        for i, collection in enumerate(pltp.collections):
           collection.set_edgecolor('m')
-       pltc2 = plt.contour(lon,lat,tesens,[-0.3, 0.3], linewidths=2.0, colors='b',transform=ccrs.PlateCarree())
-       pltt = plt.contourf(lon,lat,tesens,[-0.3, 0.3], hatches=['\\', None, '\\'], colors='none', \
-                           extend='both',transform=ccrs.PlateCarree())
-       for i, collection in enumerate(pltt.collections):
-          collection.set_edgecolor('b')
+
+       pltc2 = plt.contour(lon,lat,tesens,[-0.3, 0.3], linewidths=2.0, colors='b', \
+                                   zorder=10, transform=ccrs.PlateCarree())
+#       pltt = plt.contourf(lon,lat,tesens,[-0.3, 0.3], hatches=['\\', None, '\\'], colors='none', \
+#                           extend='both',transform=ccrs.PlateCarree())
+#       for i, collection in enumerate(pltt.collections):
+#          collection.set_edgecolor('b')
 
        if 'plotTitle' in plotDict:
           plt.title(plotDict['plotTitle'])
