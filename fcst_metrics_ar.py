@@ -254,6 +254,10 @@ class ComputeForecastMetrics:
 
            divt[:,:] = divt[:,:] / float(g1.nens)
 
+           if np.sum(divt) < 0.0:
+              divt[:,:] = -divt[:,:]
+              pc1[:]    = -pc1[:]
+
            #  Create basic figure, including political boundaries and grid lines
            fig = plt.figure(figsize=(8.5,11))
 
@@ -797,7 +801,7 @@ class ComputeForecastMetrics:
 
               g1 = self.dpp.ReadGribFiles(self.datea_str, fhr1, self.config)
 
-              vDict = {'latitude': (lat1, lat2), 'longitude': (lon1, lon2),
+              vDict = {'latitude': (lat1-0.00001, lat2), 'longitude': (lon1-0.00001, lon2),
                        'description': 'precipitation', 'units': 'mm', '_FillValue': -9999.}
               vDict = g1.set_var_bounds('precipitation', vDict)
 
@@ -825,7 +829,7 @@ class ComputeForecastMetrics:
 
               g1 = self.dpp.ReadGribFiles(self.datea_str, fhr1+fint, self.config)
 
-              vDict = {'latitude': (lat1, lat2), 'longitude': (lon1, lon2),
+              vDict = {'latitude': (lat1-0.00001, lat2), 'longitude': (lon1-0.00001, lon2),
                        'description': 'precipitation', 'units': 'mm', '_FillValue': -9999.}
               vDict = g1.set_var_bounds('precipitation', vDict)
 
