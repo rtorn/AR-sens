@@ -4,7 +4,7 @@ model_src=ECMWF
 num_ens=50
 io_module=ecmwf_teton
 fcst_hour_int=12
-fcst_hour_max=156
+fcst_hour_max=168
 tigge_forecast_time=0/12/24/36/48/60/72/84/96/108/120/132/144/156
 
 [locations]
@@ -21,13 +21,13 @@ log_dir=/rt11/torn/ar_sens/log_ecmwf
 save_work_dir=True
 
 [vitals_plot]
-precip_hour_1=[36, 48, 60, 72,  84,  96, 108, 120, 132]
-precip_hour_2=[60, 72, 84, 96, 108, 120, 132, 144, 156]
+precip_hour_1=[36, 48, 60, 72,  84,  96, 108, 120, 132, 144]
+precip_hour_2=[60, 72, 84, 96, 108, 120, 132, 144, 156, 168]
 min_lat_precip=25
 #min_lon_precip=-90
 #max_lon_precip=-65
-min_lon_precip=-100
-max_lon_precip=-75
+min_lon_precip=-94
+max_lon_precip=-67
 
 [metric]
 precipitation_mean_metric=False
@@ -37,6 +37,8 @@ ivt_eof_metric=True
 ivt_metric_loc=/rt11/torn/ar_sens/metrics_ivt
 slp_eof_metric=True
 slp_metric_loc=/rt11/torn/ar_sens/metrics_eslp
+temp_eof_metric=True
+temp_metric_loc=/rt11/torn/ar_sens/metrics_temp
 ivt_landfall_metric=True
 ivt_land_metric_loc=/rt11/torn/ar_sens/metrics_ivtl
 coast_points_file=/home11/staff/torn/JHT-python/latlon_coast_1p0.txt
@@ -54,7 +56,7 @@ calc_height=True
 thetae_levels=[1000, 925, 850, 700]
 #wind_levels=[1000, 925, 850, 700, 500, 300, 250, 200]
 #qvapor_levels=[1000, 925, 850, 700, 500, 300, 250, 200]
-pv_levels=[500, 300, 250, 200]
+pv_levels=[850, 700, 500, 300, 250, 200]
 calc_pv_pres=True
 calc_theta-e=True
 calc_qvapor=True
