@@ -9,6 +9,7 @@ import numpy as np
 import datetime as dt
 import configparser
 import logging
+from multiprocessing import Pool
 
 import matplotlib
 from IPython.core.pylabtools import figsize, getfigs
@@ -78,6 +79,12 @@ def read_config(datea, filename):
     return(config)
 
 
+def ComputeFieldsParallel(args):
+
+    datea, fhr, config = args
+    ComputeFields(datea, fhr, config)
+
+
 def main():
     '''
     This is the main routine that calls all of the steps needed to compute ensemble-based
@@ -145,9 +152,16 @@ def main():
 
     #  Compute forecast fields at each desired time to use in sensitivity calculation
     fmaxfld = int(config['fields'].get('fields_hour_max',config['fcst_hour_max']))
-    for fhr in range(0,fmaxfld+int(config['fcst_hour_int']),int(config['fcst_hour_int'])):
+    if eval(config['fields'].get('multiprocessor','False')):
 
-       ComputeFields(datea, fhr, config)
+       arglist = [(datea, fhr, config) for fhr in range(0,fmaxfld+int(config['fcst_hour_int']),int(config['fcst_hour_int']))]
+       with Pool() as pool:       
+          results = pool.map(ComputeFieldsParallel, arglist)
+
+    else:
+
+       for fhr in range(0,fmaxfld+int(config['fcst_hour_int']),int(config['fcst_hour_int'])):
+          ComputeFields(datea, fhr, config)
 
 
     #  Compute sensitivity of each metric to forecast fields at earlier times, as specified by the user
