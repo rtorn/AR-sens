@@ -24,7 +24,7 @@ from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 sys.path.append('../esens-util')
 import fcst_metrics_ar as fmet
 from compute_precip_fields import ComputeFields
-import precip_sens as sens
+from precip_sens import ComputeSensitivity
 from SensPlotRoutines import background_map
 
 #  Routine to read configuration file
@@ -77,12 +77,6 @@ def read_config(datea, filename):
         raise e
 
     return(config)
-
-
-def ComputeFieldsParallel(args):
-
-    datea, fhr, config = args
-    ComputeFields(datea, fhr, config)
 
 
 def main():
@@ -141,9 +135,16 @@ def main():
     #  Plot the precipitation forecast
     fhr1 = json.loads(config['vitals_plot'].get('precip_hour_1'))
     fhr2 = json.loads(config['vitals_plot'].get('precip_hour_2'))
+    if eval(config['vitals_plot'].get('multiprocessor','False')):
 
-    for h in range(len(fhr1)):
-       precipitation_ens_maps(datea, int(fhr1[h]), int(fhr2[h]), config)
+       arglist = [(datea, int(fhr1[h]), int(fhr2[h]), config) for h in range(len(fhr1))]
+       with Pool() as pool:
+          results = pool.map(precipitation_ens_maps_parallel, arglist)
+
+    else:
+
+       for h in range(len(fhr1)):
+          precipitation_ens_maps(datea, int(fhr1[h]), int(fhr2[h]), config)
 
 
     #  Compute precipitation-related forecast metrics
@@ -164,18 +165,40 @@ def main():
           ComputeFields(datea, fhr, config)
 
 
-    #  Compute sensitivity of each metric to forecast fields at earlier times, as specified by the user
-    for i in range(len(metlist)):
+    #  Compute sensitivity of each metric to forecast fields at earlier times
+    if eval(config['sens'].get('multiprocessor','False')):    #  Use parallel processing
 
-       #  Limit loop over time to forecast metric lead time (i.e., for a 72 h forecast, do not compute 
-       #  the sensitivity to fields beyond 72 h
-       a = metlist[i].split('_')
-       fhrstr = a[0]
-       fhrmax = int(np.min([float(fhrstr[1:4]),float(config['fcst_hour_max']),float(fmaxfld)]))
+       fhrarg = []
+       metarg = []
+       for i in range(len(metlist)):
 
-       for fhr in range(0,fhrmax+int(config['fcst_hour_int']),int(config['fcst_hour_int'])):
+          #  Limit loop over time to forecast metric lead time
+          a = metlist[i].split('_')
+          fhrstr = a[0]
+          fhrmax = int(np.min([float(fhrstr[1:4]),float(config['fcst_hour_max']),float(fmaxfld)]))
 
-          sens.ComputeSensitivity(datea, fhr, metlist[i], config)
+          for fhr in range(0,fhrmax+int(config['fcst_hour_int']),int(config['fcst_hour_int'])):
+
+             fhrarg.append(fhr)
+             metarg.append(metlist[i])
+
+       arglist = [(datea, fhrarg[i], metarg[i], config) for i in range(len(fhrarg))]
+       with Pool() as pool:
+          results = pool.map(ComputeSensitivityParallel, arglist)
+
+    else:  #  Use serial processing
+
+       for i in range(len(metlist)):
+
+          #  Limit loop over time to forecast metric lead time
+          a = metlist[i].split('_')
+          fhrstr = a[0]
+          fhrmax = int(np.min([float(fhrstr[1:4]),float(config['fcst_hour_max']),float(fmaxfld)]))
+
+          for fhr in range(0,fhrmax+int(config['fcst_hour_int']),int(config['fcst_hour_int'])):
+
+             ComputeSensitivity(datea, fhr, metlist[i], config)
+
 
     with open('{0}/metric_list'.format(config['work_dir']), 'w') as f:
        for item in metlist:
@@ -356,6 +379,24 @@ def precipitation_ens_maps(datea, fhr1, fhr2, config):
 
     plt.savefig('{0}/{1}_f{2}_pcp24h_std.png'.format(outdir,datea,fff2),format='png',dpi=120,bbox_inches='tight')
     plt.close(fig)
+
+
+def precipitation_ens_maps_parallel(args):
+
+    datea, fhri, fhrf, config = args
+    precipitation_ens_maps(datea, fhri, fhrf, config)
+
+
+def ComputeFieldsParallel(args):
+
+    datea, fhr, config = args
+    ComputeFields(datea, fhr, config)
+
+
+def ComputeSensitivityParallel(args):
+
+    datea, fhr, metname, config = args
+    ComputeSensitivity(datea, fhr, metname, config)
 
 
 if __name__ == '__main__':

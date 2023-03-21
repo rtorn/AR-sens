@@ -44,7 +44,7 @@ max_lat_precip=52
 #max_lon_precip=-110
 min_lon_precip=228
 max_lon_precip=250
-
+multiprocessor=True
 
 [metric]
 precipitation_mean_metric=False
@@ -68,6 +68,7 @@ min_lat=16
 #min_lon=-163
 min_lon=200
 max_lon=250
+multiprocessor=True
 calc_ivt=True
 calc_height=True
 #height_levels=[1000, 925, 850, 700, 500, 300, 250, 200]
@@ -82,6 +83,7 @@ calc_winds=False
 calc_refractivity=True
 
 [sens]
+multiprocessor=True
 zero_non_sig_sens=True
 grid_interval=10.
 barb_interval=6
