@@ -393,6 +393,8 @@ def ComputeSensitivity(datea, fhr, metname, config):
 
             efile = nc.Dataset(sensfile)
             senslev.append(np.squeeze(efile.variables['sensitivity'][:]))
+            if pres[k] == 250:
+               mpv = np.squeeze(efile.variables['ensemble_mean'][:])
 
          else:
 
@@ -400,6 +402,9 @@ def ComputeSensitivity(datea, fhr, metname, config):
             ens   = np.squeeze(efile.variables['ensemble_data'][:])
             emea  = np.mean(ens, axis=0)
             evar = np.var(ens, axis=0)
+
+            if pres[k] == 250:
+               mpv = emea[:,:]
 
             sens, sigv = computeSens(ens, emea, evar, metric)
             sens[:,:] = sens[:,:] * np.sqrt(evar[:,:])
@@ -412,11 +417,6 @@ def ComputeSensitivity(datea, fhr, metname, config):
          pvsens[:,:] = pvsens[:,:] + 0.5 * (senslev[k][:,:]+senslev[k+1][:,:]) * abs(pres[k+1]-pres[k])
 
       pvsens[:,:] = pvsens[:,:] / abs(pres[-1]-pres[0])
-
-
-      efile = nc.Dataset('{0}/{1}/{2}_f{3}_pv250hPa_sens.nc'.format(config['figure_dir'],metname,datea,fhrt))
-      eVar = efile.variables
-      mpv  = np.squeeze(eVar['ensemble_mean'][:])
 
 
       pres = [1000, 925, 850, 700]
