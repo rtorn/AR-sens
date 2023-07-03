@@ -327,6 +327,9 @@ def ComputeFields(datea, fhr, config):
 
       refc1 = 77.6e-6 * units('K/hPa')
       refc2 = 3.73e-1 * units('K^2/hPa')
+#      refc1 = 77.6890* units('K/hPa')
+#      refc2 = 3.75463e5 * units('K^2/hPa')
+      refc3 = 6.3938 * units('K/hPa')
       rdorv = 287.0 / 461.6
 
       if 'refrac_levels' in config['fields']:
@@ -363,6 +366,8 @@ def ComputeFields(datea, fhr, config):
 
                ew   = qvap[:,:] * pres / (rdorv + (1.0-rdorv)*qvap[:,:])
                ensmat[n,:,:] = (refc1 * pres / tmpk[:,:] + refc2 * ew[:,:] / (tmpk[:,:]**2)) * 1.0e6
+#               ensmat[n,:,:] = (refc1 * pres / tmpk[:,:] + refc2 * ew[:,:] / (tmpk[:,:]**2)) - \
+#                                refc3 * ew[:,:] / tmpk[:,:]
 
                del tmpk,pres,qvap,ew
 
