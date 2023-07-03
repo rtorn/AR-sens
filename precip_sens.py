@@ -11,7 +11,7 @@ import matplotlib.ticker as mticker
 from matplotlib import colors
 import cartopy.crs as ccrs
 
-from SensPlotRoutines import plotVecSens, plotScalarSens, computeSens, writeSensFile, set_projection, background_map
+from SensPlotRoutines import plotVecSens, plotScalarSens, computeSens, writeSensFile, set_projection, background_map, addDrop
 
 def ComputeSensitivity(datea, fhr, metname, config):
    '''
@@ -708,7 +708,7 @@ def plotSummarySens(lat, lon, ivt, pvort, ivsens, tesens, pvsens, fileout, plotD
 #      'ring_center_lat' in plotDict and 'ring_center_lon' in plotDict:
 #      addRangeRings(plotDict['ring_center_lat'], plotDict['ring_center_lon'], lat, lon, plt, plotDict)
 
-#   addDrop(plotDict.get("dropsonde_file","null"), plt, plotDict)
+   addDrop(plotDict.get("dropsonde_file","null"), plt, plotDict)
 
    #  Add colorbar to the plot
    cbar = plt.colorbar(plti, fraction=0.15, aspect=45., pad=0.04, orientation='horizontal', ticks=cnt_ivt)
