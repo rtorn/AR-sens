@@ -82,3 +82,4 @@ rawin_mark_size=6
 rawin_mark_color=gray
 range_rings=False
 output_sens=True
+multiprocessor=True
