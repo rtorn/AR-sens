@@ -2,6 +2,7 @@ import os, sys
 import logging
 import json
 import netCDF4 as nc
+import xarray as xr
 import numpy as np
 import datetime as dt
 import matplotlib
@@ -398,8 +399,10 @@ def ComputeSensitivity(datea, fhr, metname, config):
 
          else:
 
-            efile = nc.Dataset('{0}/{1}_f{2}_pv{3}hPa_ens.nc'.format(config['work_dir'],datea,fhrt,pres[k]))
-            ens   = np.squeeze(efile.variables['ensemble_data'][:])
+            ds = xr.open_dataset('{0}/{1}_f{2}_pv{3}hPa_ens.nc'.format(config['work_dir'],datea,fhrt,pres[k]))
+            ens = ds.ensemble_data.values
+#            efile = nc.Dataset('{0}/{1}_f{2}_pv{3}hPa_ens.nc'.format(config['work_dir'],datea,fhrt,pres[k]))
+#            ens   = np.squeeze(efile.variables['ensemble_data'][:])
             emea  = np.mean(ens, axis=0)
             evar = np.var(ens, axis=0)
 
@@ -434,6 +437,8 @@ def ComputeSensitivity(datea, fhr, metname, config):
 
          else:
 
+#            ds = xr.open_dataset('{0}/{1}_f{2}_e{3}hPa_ens.nc'.format(config['work_dir'],datea,fhrt,pres[k]))
+#            ens = ds.ensemble_data.values
             efile = nc.Dataset('{0}/{1}_f{2}_e{3}hPa_ens.nc'.format(config['work_dir'],datea,fhrt,pres[k]))
             ens   = np.squeeze(efile.variables['ensemble_data'][:])
             emea  = np.mean(ens, axis=0)
