@@ -1426,6 +1426,8 @@ class ComputeForecastMetrics:
               lat2  = float(conf['definition'].get('latitude_max'))
               lon1  = float(conf['definition'].get('longitude_min'))
               lon2  = float(conf['definition'].get('longitude_max'))
+              tmin  = float(conf['definition'].get('temperature_min','0'))
+              tmax  = float(conf['definition'].get('temperature_max','400'))
               eofn  = int(conf['definition'].get('eof_number',1))
               level = float(conf['definition'].get('pressure', 850))
            except IOError:
@@ -1460,13 +1462,34 @@ class ComputeForecastMetrics:
            if self.config.get('grid_type','LatLon') == 'LatLon':
 
               coslat = np.cos(np.deg2rad(ensmat.latitude.values)).clip(0., 1.)
-              wgts = np.sqrt(coslat)[..., np.newaxis]
-              solver = Eof_xarray(ensmat.rename({'ensemble': 'time'}), weights=wgts)
+              nlat = len(ensmat[0,:,0])
+              nlon = len(ensmat[0,0,:])
+              ngrid = -1
+              ensarr = xr.DataArray(name='ensemble_data', data=np.zeros([g1.nens, nlat*nlon]), \
+                                    dims=['time', 'state'])
+
+              for i in range(nlon):
+                 for j in range(nlat):
+                    if e_mean[j,i] > tmin and e_mean[j,i] < tmax:
+                       ngrid = ngrid + 1
+                       ensarr[:,ngrid] = ensmat[:,j,i] * np.sqrt(coslat[j])
 
            else:
 
-              solver = Eof_xarray(ensmat.rename({'ensemble': 'time'}))
+              nlat = len(ensmat[0,:,0])
+              nlon = len(ensmat[0,0,:])
+              ngrid = -1
+              ensarr = xr.DataArray(name='ensemble_data', data=np.zeros([g1.nens, nlat*nlon]), \
+                                    dims=['time', 'state'])
 
+              for i in range(nlon):
+                 for j in range(nlat):
+                    if e_mean[j,i] > tmin and e_mean[j,i] < tmax:
+                       ngrid = ngrid + 1
+                       ensarr[:,ngrid] = ensmat[:,j,i]
+
+
+           solver = Eof_xarray(ensarr[:,0:ngrid])
            pcout  = np.squeeze(solver.pcs(npcs=np.maximum(eofn,2), pcscaling=1))
            pc1 = np.squeeze(pcout[:,eofn-1])
            pc1[:] = pc1[:] / np.std(pc1)
