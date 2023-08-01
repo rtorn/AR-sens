@@ -1039,8 +1039,6 @@ class ComputeForecastMetrics:
               plt.savefig('{0}/domain.png'.format(outdir), format='png', dpi=120, bbox_inches='tight')
               plt.close(fig)
 
-              sys.exit(2)
-
            else:
 
               if hucid_input:
