@@ -46,6 +46,7 @@ coast_points_file=/home11/staff/torn/JHT-python/latlon_coast_1p0.txt
 basin_metric=True
 basin_metric_loc=/rt11/torn/ar_sens/metrics_rbasin
 basin_huc_file=/home11/staff/torn/ens-sens/AR-sens/watershedinfo.csv
+basin_shape_file=/rt11/torn/ar_sens/template/HUC8_West_simplify22.shp
 #min_lat_precip=30
 #max_lat_precip=45
 #min_lon_precip=-115

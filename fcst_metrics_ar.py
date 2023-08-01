@@ -7,6 +7,7 @@ import numpy as np
 import datetime as dt
 import logging
 import configparser
+import geopandas as gpd
 
 import matplotlib
 from IPython.core.pylabtools import figsize, getfigs
@@ -982,6 +983,8 @@ class ComputeForecastMetrics:
               eofn = int(conf['definition'].get('eof_number',1))
               basin_input = conf['definition'].get('basin_name')
               hucid_input = conf['definition'].get('hucid')
+              auto_domain = eval(conf['definition'].get('automated','False'))
+              auto_sdmin  = float(conf['definition'].get('automated_sd_min',0.75))
               accumulated = eval(conf['definition'].get('accumulation','False'))
            except IOError:
               logging.warning('{0} does not exist.  Cannot compute precip EOF'.format(infull))
@@ -989,24 +992,75 @@ class ComputeForecastMetrics:
 
            ds = xr.open_dataset('watershed_precip.nc', decode_times=False).rename({'time': 'hour'})
 
-           if hucid_input:
+           if auto_domain:
 
-              hucid_list = [e.strip() for e in hucid_input.split(',')]
+              bstd = np.std(np.sum(ds.precip.sel(hour=slice(fhr1, fhr2)).squeeze().load(), axis=0), axis=0)
+              imax = np.argmax(bstd.values)
 
+#              print('max point',bstd[imax].values)
+
+              hucid_list = []
               basin_list = []
-              for hucid in hucid_list:
-                  basin_list.append(db[db['ID'] == int(hucid)]['Name'].values)
+              index_list = []
+              for basin in range(len(bstd)):
+                 if bstd[basin] >= auto_sdmin * bstd[imax]:
+                    hucid = ds.HUCID[basin]
+                    hucid_list.append(hucid)
+                    basin_list.append(db[db['ID'] == int(hucid)]['Name'].values)
+                    index_list.append(basin)
+#                    print('  adding basin',basin_list[-1],bstd[basin].values)
+
+              gdf = gpd.read_file(self.config['metric'].get('basin_shape_file'))
+
+              fig = plt.figure(figsize=(8.5,11))
+
+              plotBase = self.config.copy()
+              plotBase['grid_interval'] = self.config['vitals_plot'].get('grid_interval', 180)
+              plotBase['left_labels'] = 'None'
+              plotBase['right_labels'] = 'None'
+
+              ax = background_map(self.config.get('projection', 'PlateCarree'), -126, -105, 30, 53, plotBase)
+
+              gdf.plot(ax=ax, color='white', edgecolor='silver', linewidth=0.5)
+              for basin in index_list:
+                 gdf.iloc[[basin]].plot(ax=ax, facecolor='gold')
+
+              gdf.iloc[[imax]].plot(ax=ax, facecolor='red') 
+
+              plt.title("{0} {1}-{2} hour Precipitation".format(str(self.datea_str),fhr1,fhr2))
+
+              outdir = '{0}/f{1}_{2}'.format(self.config['figure_dir'],'%0.3i' % fhr2,metname)
+              if not os.path.isdir(outdir):
+                 try:
+                    os.makedirs(outdir)
+                 except OSError as e:
+                    raise e
+
+              plt.savefig('{0}/domain.png'.format(outdir), format='png', dpi=120, bbox_inches='tight')
+              plt.close(fig)
+
+              sys.exit(2)
 
            else:
 
-              basin_list = [e.strip() for e in basin_input.split(',')]
+              if hucid_input:
 
-              hucid_list = []
-              for basin in basin_list:
-                  hucid_list.append(db[db['Name'] == basin]['ID'].values)
+                 hucid_list = [e.strip() for e in hucid_input.split(',')]
+
+                 basin_list = []
+                 for hucid in hucid_list:
+                    basin_list.append(db[db['ID'] == int(hucid)]['Name'].values)
+
+              else:
+
+                 basin_list = [e.strip() for e in basin_input.split(',')]
+
+                 hucid_list = []
+                 for basin in basin_list:
+                    hucid_list.append(db[db['Name'] == basin]['ID'].values)
 
            basinsum = 0.
-
+ 
            ensmat = ((ds.precip.sel(hour=slice(fhr1, fhr2), HUCID=int(hucid_list[0])).squeeze()).transpose()).load()
 
            for hucid in hucid_list:
