@@ -1010,35 +1010,6 @@ class ComputeForecastMetrics:
                     index_list.append(basin)
 #                    print('  adding basin',basin_list[-1],bstd[basin].values)
 
-              gdf = gpd.read_file(self.config['metric'].get('basin_shape_file'))
-
-              fig = plt.figure(figsize=(8.5,11))
-
-              plotBase = self.config.copy()
-              plotBase['grid_interval'] = self.config['vitals_plot'].get('grid_interval', 180)
-              plotBase['left_labels'] = 'None'
-              plotBase['right_labels'] = 'None'
-
-              ax = background_map(self.config.get('projection', 'PlateCarree'), -126, -105, 30, 53, plotBase)
-
-              gdf.plot(ax=ax, color='white', edgecolor='silver', linewidth=0.5)
-              for basin in index_list:
-                 gdf.iloc[[basin]].plot(ax=ax, facecolor='gold')
-
-              gdf.iloc[[imax]].plot(ax=ax, facecolor='red') 
-
-              plt.title("{0} {1}-{2} hour Precipitation".format(str(self.datea_str),fhr1,fhr2))
-
-              outdir = '{0}/f{1}_{2}'.format(self.config['figure_dir'],'%0.3i' % fhr2,metname)
-              if not os.path.isdir(outdir):
-                 try:
-                    os.makedirs(outdir)
-                 except OSError as e:
-                    raise e
-
-              plt.savefig('{0}/domain.png'.format(outdir), format='png', dpi=120, bbox_inches='tight')
-              plt.close(fig)
-
            else:
 
               if hucid_input:
@@ -1057,6 +1028,11 @@ class ComputeForecastMetrics:
                  for basin in basin_list:
                     hucid_list.append(db[db['Name'] == basin]['ID'].values)
 
+              index_list = []
+              for hucid in hucid_list:
+                 index_list.append(db[db['ID'] == int(hucid)].index.values[0])
+
+
            basinsum = 0.
  
            ensmat = ((ds.precip.sel(hour=slice(fhr1, fhr2), HUCID=int(hucid_list[0])).squeeze()).transpose()).load()
@@ -1064,7 +1040,7 @@ class ComputeForecastMetrics:
            for hucid in hucid_list:
 
               bmask = db['ID'] == int(hucid)
-              print('{0} ({1}), {2} Acres'.format(db[bmask]['Name'].values,db[bmask]['ID'].values,np.round(db[bmask]['Size'].values)))
+              logging.debug('{0} ({1}), {2} Acres'.format(db[bmask]['Name'].values[0],db[bmask]['ID'].values[0],np.round(db[bmask]['Size'].values[0])))
 
               prate = ((ds.precip.sel(hour=slice(fhr1, fhr2), HUCID=int(hucid)).squeeze()).transpose()).load()
               prate[:,:] = prate[:,:] * db[bmask]['Size'].values
@@ -1106,42 +1082,58 @@ class ComputeForecastMetrics:
               pc1[:]    = -pc1[:]
 
            #  Create plots of MSLP and maximum wind for each member, mean and EOF perturbation
-           fig = plt.figure(figsize=(10, 6))
-           ax  = fig.add_axes([0.1, 0.1, 0.8, 0.8])
-#           plt.rcParams.update({'font.size': 15})
+           fig = plt.figure(figsize=(13, 7.5))
+
+           gdf = gpd.read_file(self.config['metric'].get('basin_shape_file'))
+
+           plotBase = self.config.copy()
+           plotBase['subplot']       = 'True'
+           plotBase['subrows']       = 1
+           plotBase['subcols']       = 2
+           plotBase['subnumber']     = 1
+           plotBase['grid_interval'] = 180
+           plotBase['left_labels'] = 'None'
+           plotBase['right_labels'] = 'None'
+           plotBase['bottom_labels'] = 'None'
+           ax0 = background_map('PlateCarree', -126, -105, 30, 53, plotBase)
+
+           gdf.plot(ax=ax0, color='white', edgecolor='silver', linewidth=0.5)
+           for basin in index_list:
+              gdf.iloc[[basin]].plot(ax=ax0, facecolor='gold')
+
+           if auto_domain:
+              gdf.iloc[[imax]].plot(ax=ax0, facecolor='red')
+
+           ax1  = fig.add_axes([0.54, 0.16, 0.42, 0.67])
 
            for n in range(ensmat.shape[0]):
-              ax.plot(ensmat.hour, ensmat[n,:]+e_mean[:], color='lightgray')
+              ax1.plot(ensmat.hour, ensmat[n,:]+e_mean[:], color='lightgray')
 
-           ax.plot(ensmat.hour, e_mean, color='black', linewidth=3)
-           ax.plot(ensmat.hour, e_mean[:]+dpcp[:], '--', color='black', linewidth=3)
+           ax1.plot(ensmat.hour, e_mean, color='black', linewidth=3)
+           ax1.plot(ensmat.hour, e_mean[:]+dpcp[:], '--', color='black', linewidth=3)
 
-           ax.set_xlim((fhr1, fhr2))
+           ax1.set_xlim((fhr1, fhr2))
 
            init   = dt.datetime.strptime(self.datea_str, '%Y%m%d%H')
            ticklist = []
            for fhr in np.arange(np.ceil(float(fhr1)/12.)*12., np.floor(float(fhr2)/12.)*12., step=12.):
 
               datef  = init + dt.timedelta(hours=fhr)
-              ticklist.append(datef.strftime("%HZ\n%m/\n%d"))
+              ticklist.append(datef.strftime("%HZ\n%m/%d"))
 
-           ax.set_xticks(np.arange(np.ceil(float(fhr1)/12.)*12., np.floor(float(fhr2)/12.)*12., step=12.))
-           ax.set_xticklabels(ticklist, fontsize=15)           
+           ax1.set_xticks(np.arange(np.ceil(float(fhr1)/12.)*12., np.floor(float(fhr2)/12.)*12., step=12.))
+           ax1.set_xticklabels(ticklist, fontsize=12)           
 
-           ax.set_ylabel(ylabel, fontsize=15)
-           ax.set_ylim(bottom=0.)
-
-           for label in ax.get_yticklabels():
-              label.set_fontsize(15)
+           ax1.set_ylabel(ylabel, fontsize=15)
+           ax1.set_ylim(bottom=0.)
+           ax1.tick_params(axis='y', labelsize=12)
 
            if eofn == 1:
               fracvar = '%4.3f' % solver.varianceFraction(neigs=1)
            else:
               fracvar = '%4.3f' % solver.varianceFraction(neigs=eofn)[-1]
-#           plt.title("{0} {1}-{2} hour {3} Precipitation, {4} of variance".format(str(self.datea_str),fhr1,fhr2,\
-#                                  basin_name,fracvar))
-           plt.title("{0} {1}-{2} hour Precipitation, {3} of variance".format(str(self.datea_str),fhr1,fhr2,\
-                                  fracvar), fontsize=15)
+           plt.suptitle("{0} {1}-{2} hour Precipitation, {3} of variance".format(str(self.datea_str),fhr1,fhr2,\
+                                  fracvar), x=0.5, y=0.86, fontsize=15)
 
            init   = dt.datetime.strptime(self.datea_str, '%Y%m%d%H')
            ticklist = []
@@ -1149,8 +1141,6 @@ class ComputeForecastMetrics:
 
               datef  = init + dt.timedelta(hours=fhr)
               ticklist.append(datef.strftime("%HZ\n%m/\n%d"))
-
-           print(ticklist)
 
            outdir = '{0}/f{1}_{2}'.format(self.config['figure_dir'],'%0.3i' % fhr2,metname)
            if not os.path.isdir(outdir):
