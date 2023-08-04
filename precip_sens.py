@@ -101,7 +101,7 @@ def ComputeSensitivity(datea, fhr, metname, config):
 
       outdir = '{0}/{1}/sens/ivt'.format(config['figure_dir'],metname)
       if not os.path.isdir(outdir):
-         os.makedirs(outdir)
+         os.makedirs(outdir, exist_ok=True)
 
       if plotDict.get('output_sens', 'False')=='True':
          writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_ivt_sens.nc'.format(config['figure_dir'],metname,datea,fhrt), plotDict)
@@ -155,7 +155,7 @@ def ComputeSensitivity(datea, fhr, metname, config):
 
          outdir = '{0}/{1}/sens/a{2}hPa'.format(config['figure_dir'],metname,pres)
          if not os.path.isdir(outdir):
-            os.makedirs(outdir)
+            os.makedirs(outdir, exist_ok=True)
 
          if plotDict.get('output_sens', 'False')=='True':
             writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_a{4}hPa_sens.nc'.format(config['figure_dir'],metname,datea,fhrt,pres), plotDict) 
@@ -173,7 +173,7 @@ def ComputeSensitivity(datea, fhr, metname, config):
 
          outdir = '{0}/{1}/sens/x{2}hPa'.format(config['figure_dir'],metname,pres)
          if not os.path.isdir(outdir):
-            os.makedirs(outdir)
+            os.makedirs(outdir, exist_ok=True)
 
          if plotDict.get('output_sens', 'False')=='True':
             writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_x{4}hPa_sens.nc'.format(config['figure_dir'],metname,datea,fhrt,pres), plotDict)
@@ -186,7 +186,7 @@ def ComputeSensitivity(datea, fhr, metname, config):
 
          outdir = '{0}/{1}/sens/u{2}hPa'.format(config['figure_dir'],metname,pres)
          if not os.path.isdir(outdir):
-            os.makedirs(outdir)
+            os.makedirs(outdir, exist_ok=True)
 
          if plotDict.get('output_sens', 'False')=='True':
             writeSensFile(lat, lon, fhr, umea, sens, sigv, '{0}/{1}/{2}_f{3}_u{4}hPa_sens.nc'.format(config['figure_dir'],metname,datea,fhrt,pres), plotDict)
@@ -197,7 +197,7 @@ def ComputeSensitivity(datea, fhr, metname, config):
 
          outdir = '{0}/{1}/sens/v{2}hPa'.format(config['figure_dir'],metname,pres)
          if not os.path.isdir(outdir):
-            os.makedirs(outdir)
+            os.makedirs(outdir, exist_ok=True)
 
          if plotDict.get('output_sens', 'False')=='True':
             writeSensFile(lat, lon, fhr, vmea, sens, sigv, '{0}/{1}/{2}_f{3}_v{4}hPa_sens.nc'.format(config['figure_dir'],metname,datea,fhrt,pres), plotDict)
@@ -227,7 +227,7 @@ def ComputeSensitivity(datea, fhr, metname, config):
 
          outdir = '{0}/{1}/sens/e{2}hPa'.format(config['figure_dir'],metname,pres)
          if not os.path.isdir(outdir):
-            os.makedirs(outdir)
+            os.makedirs(outdir, exist_ok=True)
 
          if plotDict.get('output_sens', 'False')=='True':
             writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_e{4}hPa_sens.nc'.format(config['figure_dir'],metname,datea,fhrt,pres), plotDict)
@@ -255,7 +255,7 @@ def ComputeSensitivity(datea, fhr, metname, config):
 
          outdir = '{0}/{1}/sens/qvap{2}hPa'.format(config['figure_dir'],metname,pres)
          if not os.path.isdir(outdir):
-            os.makedirs(outdir)
+            os.makedirs(outdir, exist_ok=True)
 
          if plotDict.get('output_sens', 'False')=='True':
             writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_qvap{4}hPa_sens.nc'.format(config['figure_dir'],metname,datea,fhrt,pres), plotDict)
@@ -287,7 +287,7 @@ def ComputeSensitivity(datea, fhr, metname, config):
 
          outdir = '{0}/{1}/sens/pv{2}hPa'.format(config['figure_dir'],metname,pres)
          if not os.path.isdir(outdir):
-            os.makedirs(outdir)
+            os.makedirs(outdir, exist_ok=True)
 
          if plotDict.get('output_sens', 'False')=='True':
             writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_pv{4}hPa_sens.nc'.format(config['figure_dir'],metname,datea,fhrt,pres), plotDict)
@@ -313,7 +313,7 @@ def ComputeSensitivity(datea, fhr, metname, config):
 
       outdir = '{0}/{1}/sens/pv500hPa'.format(config['figure_dir'],metname)
       if not os.path.isdir(outdir):
-         os.makedirs(outdir)
+         os.makedirs(outdir, exist_ok=True)
 
       if plotDict.get('output_sens', 'False')=='True':
          writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_pv500hPa_sens.nc'.format(config['figure_dir'],metname,datea,fhrt), plotDict)
@@ -341,7 +341,7 @@ def ComputeSensitivity(datea, fhr, metname, config):
 
       outdir = '{0}/{1}/sens/pv700hPa'.format(config['figure_dir'],metname)
       if not os.path.isdir(outdir):
-         os.makedirs(outdir)
+         os.makedirs(outdir, exist_ok=True)
 
       if plotDict.get('output_sens', 'False')=='True':
          writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_pv700hPa_sens.nc'.format(config['figure_dir'],metname,datea,fhrt), plotDict)
@@ -369,7 +369,7 @@ def ComputeSensitivity(datea, fhr, metname, config):
 
       outdir = '{0}/{1}/sens/pv850hPa'.format(config['figure_dir'],metname)
       if not os.path.isdir(outdir):
-         os.makedirs(outdir)
+         os.makedirs(outdir, exist_ok=True)
 
       if plotDict.get('output_sens', 'False')=='True':
          writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_pv850hPa_sens.nc'.format(config['figure_dir'],metname,datea,fhrt), plotDict)
@@ -459,7 +459,7 @@ def ComputeSensitivity(datea, fhr, metname, config):
 
       outdir = '{0}/{1}/sens/summ'.format(config['figure_dir'],metname)
       if not os.path.isdir(outdir):
-         os.makedirs(outdir)
+         os.makedirs(outdir, exist_ok=True)
 
       plotSummarySens(lat, lon, mivt, mpv, sivt, esens, pvsens, '{0}/{1}_f{2}_summ_sens.png'.format(outdir,datea,fhrt), plotDict)
 
@@ -481,7 +481,7 @@ def ComputeSensitivity(datea, fhr, metname, config):
 
       outdir = '{0}/{1}/sens/div300hPa'.format(config['figure_dir'],metname)
       if not os.path.isdir(outdir):
-         os.makedirs(outdir)
+         os.makedirs(outdir, exist_ok=True)
 
 #      if plotDict.get('output_sens', 'False')=='True':
 #         writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_div300hPa_sens.nc'.format(config['figure_dir'],metname,datea,fhrt), plotDict)
@@ -509,7 +509,7 @@ def ComputeSensitivity(datea, fhr, metname, config):
 
       outdir = '{0}/{1}/sens/h500hPa'.format(config['figure_dir'],metname)
       if not os.path.isdir(outdir):
-         os.makedirs(outdir)
+         os.makedirs(outdir, exist_ok=True)
 
       if plotDict.get('output_sens', 'False')=='True':
          writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_h500hPa_sens.nc'.format(config['figure_dir'],metname,datea,fhrt), plotDict)
@@ -535,7 +535,7 @@ def ComputeSensitivity(datea, fhr, metname, config):
 
       outdir = '{0}/{1}/sens/h700hPa'.format(config['figure_dir'],metname)
       if not os.path.isdir(outdir):
-         os.makedirs(outdir)
+         os.makedirs(outdir, exist_ok=True)
 
       if plotDict.get('output_sens', 'False')=='True':
          writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_h700hPa_sens.nc'.format(config['figure_dir'],metname,datea,fhrt), plotDict)
@@ -561,7 +561,7 @@ def ComputeSensitivity(datea, fhr, metname, config):
 
       outdir = '{0}/{1}/sens/h850hPa'.format(config['figure_dir'],metname)
       if not os.path.isdir(outdir):
-         os.makedirs(outdir)
+         os.makedirs(outdir, exist_ok=True)
 
       if plotDict.get('output_sens', 'False')=='True':
          writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_h850hPa_sens.nc'.format(config['figure_dir'],metname,datea,fhrt), plotDict)
@@ -587,7 +587,7 @@ def ComputeSensitivity(datea, fhr, metname, config):
 
       outdir = '{0}/{1}/sens/ref850hPa'.format(config['figure_dir'],metname)
       if not os.path.isdir(outdir):
-         os.makedirs(outdir)
+         os.makedirs(outdir, exist_ok=True)
 
       if plotDict.get('output_sens', 'False')=='True':
          writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_ref850hPa_sens.nc'.format(config['figure_dir'],metname,datea,fhrt), plotDict)
@@ -613,7 +613,7 @@ def ComputeSensitivity(datea, fhr, metname, config):
 
       outdir = '{0}/{1}/sens/ref500hPa'.format(config['figure_dir'],metname)
       if not os.path.isdir(outdir):
-         os.makedirs(outdir)
+         os.makedirs(outdir, exist_ok=True)
 
       if plotDict.get('output_sens', 'False')=='True':
          writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_ref500hPa_sens.nc'.format(config['figure_dir'],metname,datea,fhrt), plotDict)
@@ -639,7 +639,7 @@ def ComputeSensitivity(datea, fhr, metname, config):
 
       outdir = '{0}/{1}/sens/ref200hPa'.format(config['figure_dir'],metname)
       if not os.path.isdir(outdir):
-         os.makedirs(outdir)
+         os.makedirs(outdir, exist_ok=True)
 
       if plotDict.get('output_sens', 'False')=='True':
          writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_ref200hPa_sens.nc'.format(config['figure_dir'],metname,datea,fhrt), plotDict)
