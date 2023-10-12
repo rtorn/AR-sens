@@ -5,6 +5,7 @@ num_ens=50
 io_module=ecmwf_teton
 fcst_hour_int=12
 fcst_hour_max=168
+input_hour_int=12
 tigge_forecast_time=0/12/24/36/48/60/72/84/96/108/120/132/144/156
 
 [locations]
@@ -29,9 +30,12 @@ precip_hour_2=[60, 72, 84, 96, 108, 120, 132, 144, 156, 168]
 #max_lon_precip=-80
 
 [metric]
+fcst_int=12
+static_fields_file=/rt11/torn/JHT/landmask_ecmwf_0p2.grb2
 precipitation_mean_metric=False
 precipitation_eof_metric=True
 precip_metric_loc=/rt11/torn/ar_sens/metrics_pcp
+precip_eof_time_adapt_freq=12
 ivt_eof_metric=True
 ivt_metric_loc=/rt11/torn/ar_sens/metrics_ivt
 slp_eof_metric=True
