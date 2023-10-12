@@ -1147,6 +1147,11 @@ class ComputeForecastMetrics:
                            sep = ',', header=None, skipinitialspace=True, quotechar="\"")
         db.columns = ['ID','Name','Size']
 
+        ds = xr.open_dataset('watershed_precip.nc', decode_times=False).rename({'time': 'hour'}) 
+        if ds.attrs['init'] != self.datea_str:
+           logging.warning('  {0} init date ({1}) does not match the forecast.  Exiting'.format('watershed_precip.nc',ds.attrs['init']))
+           return None
+
         for infull in glob.glob('{0}/{1}_*'.format(self.config['metric'].get('basin_metric_loc'),self.datea_str)):
 
            try:
@@ -1172,8 +1177,6 @@ class ComputeForecastMetrics:
            except IOError:
               logging.warning('{0} does not exist.  Cannot compute precip EOF'.format(infull))
               return None
-
-           ds = xr.open_dataset('watershed_precip.nc', decode_times=False).rename({'time': 'hour'})
 
            if auto_domain:
 
