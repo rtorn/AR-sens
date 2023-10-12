@@ -772,107 +772,237 @@ class ComputeForecastMetrics:
         along with the precipitation perturbation that is consistent with the first EOF. 
         '''
 
-        for infull in glob.glob('{0}/{1}_*'.format(self.config['metric'].get('precip_metric_loc'),self.datea_str)):
+        logging.warning('  Precipitation EOF Metrics:')
+
+        for infile in glob.glob('{0}/{1}_*'.format(self.config['metric'].get('precip_metric_loc'),self.datea_str)):
+
+           fhr1 = int(self.config['metric'].get('precip_eof_forecast_hour1','48'))
+           fhr2 = int(self.config['metric'].get('precip_eof_forecast_hour2','120'))
+           fint = int(self.config['metric'].get('fcst_int',self.config['fcst_hour_int']))
+           lmaskmin = float(self.config['metric'].get('land_mask_minimum','0.2'))
+           mask_land = eval(self.config['metric'].get('precip_eof_land_mask','True'))
+           adapt = eval(self.config['metric'].get('precip_eof_adapt','False'))
+           time_adapt = eval(self.config['metric'].get('precip_eof_time_adapt','False'))
+           time_dbuff = float(self.config['metric'].get('precip_eof_time_adapt_domain',2.0))
+           time_freq  = int(self.config['metric'].get('precip_eof_time_adapt_freq',6))
+           pcpmin = float(self.config['metric'].get('precip_eof_adapt_pcp_min','12.7'))
+           metname = 'pcpeof'
+           eofn = 1
 
            try:
               conf = configparser.ConfigParser()
-              conf.read(infull)
-              fhr1 = int(conf['definition'].get('forecast_hour1',0))
-              fhr2 = int(conf['definition'].get('forecast_hour2',120))
-              metname = conf['definition'].get('metric_name','pcp')
-              eofn = int(conf['definition'].get('eof_number',1))
-              lat1 = float(conf['definition'].get('latitude_min'))
-              lat2 = float(conf['definition'].get('latitude_max'))
-              lon1 = float(conf['definition'].get('longitude_min'))
-              lon2 = float(conf['definition'].get('longitude_max'))
-           except IOError:
-              logging.warning('{0} does not exist.  Cannot compute precip EOF'.format(infull))
-              return None
+              conf.read(infile)
+              fhr1 = int(conf['definition'].get('forecast_hour1',fhr1))
+              fhr2 = int(conf['definition'].get('forecast_hour2',fhr2))
+              lat1 = float(conf['definition'].get('latitude_min',32))
+              lat2 = float(conf['definition'].get('latitude_max',50))
+              lon1 = float(conf['definition'].get('longitude_min',-125))
+              lon2 = float(conf['definition'].get('longitude_max',-115))
+              adapt = eval(conf['definition'].get('adapt',str(adapt)))
+              time_adapt = eval(conf['definition'].get('time_adapt',str(time_adapt)))
+              time_dbuff = float(conf['definition'].get('time_adapt_domain',time_dbuff))
+              time_freq = int(conf['definition'].get('time_adapt_freq',time_freq))
+              pcpmin = float(conf['definition'].get('adapt_pcp_min',pcpmin))
+              lmaskmin = float(conf['definition'].get('land_mask_minimum',lmaskmin))
+              mask_land = eval(conf['definition'].get('land_mask',str(mask_land)))
+              metname = conf['definition'].get('metric_name',metname)
+              eofn = int(conf['definition'].get('eof_number',eofn))
+           except:
+              logging.warning('  {0} does not exist.  Using parameter and/or default values'.format(infile))
 
            if eval(self.config.get('flip_lon','False')):
               lon1 = (lon1 + 360.) % 360.
               lon2 = (lon2 + 360.) % 360.
 
-           fff2 = '%0.3i' % fhr2
-           fint      = int(self.config.get('fcst_hour_int'))
-           g1        = self.dpp.ReadGribFiles(self.datea_str, fhr1, self.config)
+           g1 = self.dpp.ReadGribFiles(self.datea_str, fhr2, self.config)
 
-           #  Read the total precipitation for the beginning of the window
-           if g1.has_total_precip:
-
-              g1 = self.dpp.ReadGribFiles(self.datea_str, fhr1, self.config)
+           #  Now figure out the 24 h after landfall, so we can set the appropriate 24 h period.
+           if time_adapt:
 
               vDict = {'latitude': (lat1-0.00001, lat2), 'longitude': (lon1-0.00001, lon2),
                        'description': 'precipitation', 'units': 'mm', '_FillValue': -9999.}
               vDict = g1.set_var_bounds('precipitation', vDict)
+              lmask = g1.read_static_field(self.config['metric'].get('static_fields_file'), 'landmask', vDict)
 
-              g2 = self.dpp.ReadGribFiles(self.datea_str, fhr2, self.config)
+              #  Read precipitation over the default window, calculate SD, search for maximum value
+              ensmat = self.__read_precip(fhr1, fhr2, self.config, vDict)
+              e_std = np.std(ensmat, axis=0)
+              estd_mask = e_std.values[:,:] * lmask.values[:,:]
 
-              ensmat = g2.create_ens_array('precipitation', g2.nens, vDict)
+              maxloc = np.where(estd_mask == estd_mask.max())
+              lonc   = ensmat.longitude.values[int(maxloc[1])]
+              latc   = ensmat.latitude.values[int(maxloc[0])]
 
-              for n in range(g2.nens):
-                 ens1 = np.squeeze(g1.read_grib_field('precipitation', n, vDict))
-                 ens2 = np.squeeze(g2.read_grib_field('precipitation', n, vDict))
-                 ensmat[n,:,:] = ens2[:,:] - ens1[:,:]
+              print(latc,lonc)
+              logging.info('    Precip. Time Adapt: Lat/Lon center: {0}, {1}'.format(latc,lonc))
 
-              if hasattr(ens2, 'units'):
-                 if ens2.units == "m":
-                    vscale = 1000.
-                 else:
-                    vscale = 1.
-              else:
-                 vscale = 1.
+              pmax = -1.0
+              for fhr in range(fhr1, fhr2-24+time_freq, time_freq):
 
-              g1.close_files()
-              g2.close_files()
+                 psum = np.sum(np.mean(self.__read_precip(fhr, fhr+24, self.config, vDict), axis=0))
+                 print(fhr,fhr+24,psum.values)
+                 logging.info('    Precip. Time Adapt: {0}-{1} h, area precip: {2}'.format(fhr,fhr+24,psum.values))
+                 if psum > pmax:
+                    fhr1 = fhr
+                    fhr2 = fhr+24
+                    pmax = psum
 
-           else:
+           logging.warning('  Precipitation Metric Bounds, Hours: {0}-{1}, Lat: {2}-{3}, Lon: {4}-{5}'.format(fhr1,fhr2,lat1,lat2,lon1,lon2))
 
-              g1 = self.dpp.ReadGribFiles(self.datea_str, fhr1+fint, self.config)
 
-              vDict = {'latitude': (lat1-0.00001, lat2), 'longitude': (lon1-0.00001, lon2),
+           #  Read the total precipitation, scale to a 24 h value 
+           vDict = {'latitude': (lat1-0.00001, lat2), 'longitude': (lon1-0.00001, lon2),
                        'description': 'precipitation', 'units': 'mm', '_FillValue': -9999.}
-              vDict = g1.set_var_bounds('precipitation', vDict)
-
-              ensmat = g1.create_ens_array('precipitation', g1.nens, vDict)
-
-              for n in range(g1.nens):
-                 ensmat[n,:,:] = np.squeeze(g1.read_grib_field('precipitation', n, vDict))
-
-              for fhr in range(fhr1+2*fint, fhr2+fint, fint):
-
-                 g1 = self.dpp.ReadGribFiles(self.datea_str, fhr, self.config)
-
-                 for n in range(g1.nens):
-                    ensmat[n,:,:] = ensmat[n,:,:] + np.squeeze(g1.read_grib_field('precipitation', n, vDict))
-
-              if hasattr(g1.read_grib_field('precipitation', 0, vDict), 'units'):
-                 if g1.read_grib_field('precipitation', 0, vDict).units == "m":
-                    vscale = 1000.
-                 else:
-                    vscale = 1.
-              else:
-                 vscale = 1.
-
-              g1.close_files()
-
-           #  Scale all of the rainfall to mm and to a 24 h precipitation
-           ensmat[:,:,:] = ensmat[:,:,:] * vscale * 24. / float(fhr2-fhr1)
+           ensmat = self.__read_precip(fhr1, fhr2, self.config, vDict)
+           ensmat[:,:,:] = ensmat[:,:,:] * 24. / float(fhr2-fhr1)
 
            e_mean = np.mean(ensmat, axis=0)
-           for n in range(g1.nens):
-              ensmat[n,:,:] = ensmat[n,:,:] - e_mean[:,:]
+           e_std  = np.std(ensmat, axis=0)
+           ensmat = ensmat - e_mean
+           nens   = len(ensmat[:,0,0])
+
+           if mask_land:
+              g1 = self.dpp.ReadGribFiles(self.datea_str, fhr2, self.config)
+              lmask = g1.read_static_field(self.config['metric'].get('static_fields_file'), 'landmask', vDict)
+           else:
+              lmask      = np.ones(e_mean.shape)
+              lmask[:,:] = 1.0
 
            #  Compute the EOF of the precipitation pattern and then the PCs
            if self.config.get('grid_type','LatLon') == 'LatLon':
-
-              coslat = np.cos(np.deg2rad(ensmat.latitude.values)).clip(0., 1.)
+              coslat = np.cos(np.deg2rad(ensmat.latitude.values)).clip(0., 1.)       
               wgts = np.sqrt(coslat)[..., np.newaxis]
-              solver = Eof_xarray(ensmat.rename({'ensemble': 'time'}), weights=wgts)
+
+           #  Find the location of precipitation max. and then the area over which this exceeds a certain threshold
+           if adapt:
+
+              nlon  = len(e_mean.longitude.values)
+              nlat  = len(e_mean.latitude.values)
+
+              # Search for maximum in ensemble precipitation SD 
+              if np.amax(lmask.values) < lmaskmin:
+                 logging.error('  TC precipitation metric does not have any land points.  Skipping metric.')
+                 return None
+
+              estd_mask = e_std.values[:,:] * lmask.values[:,:]
+
+              stdmax = estd_mask.max()
+              maxloc = np.where(estd_mask == stdmax)
+              icen   = int(maxloc[1])
+              jcen   = int(maxloc[0])
+              lonc   = e_mean.longitude.values[icen]
+              latc   = e_mean.latitude.values[jcen]
+
+              fmgrid = e_mean.copy()
+              fmgrid[:,:] = 0.0
+              fmgrid[jcen,icen] = 1.0
+
+              iloc       = np.zeros(nlon*nlat, dtype=int)
+              jloc       = np.zeros(nlon*nlat, dtype=int)
+              nloc       = 0
+              iloc[nloc] = icen
+              jloc[nloc] = jcen
+
+              k = 0 
+              while k <= nloc: 
+
+                 for i in range(max(iloc[k]-1,0), min(iloc[k]+2,nlon)):
+                    for j in range(max(jloc[k]-1,0), min(jloc[k]+2,nlat)):
+                       if e_mean[j,i] >= pcpmin and lmask[j,i] >= lmaskmin and fmgrid[j,i] < 1.0:
+                          nloc = nloc + 1
+                          iloc[nloc] = i
+                          jloc[nloc] = j
+                          fmgrid[j,i] = 1.0     
+
+                 k = k + 1
+
+              #  Evaluate whether the forecast metric grid has enough land points
+              if np.sum(fmgrid) <= 1.0:
+                 logging.error('  TC precipitation metric does not have any land points after doing search.  Skipping metric.')
+                 break
+
+              #  Find the grid bounds for the precipitation domain (for plotting purposes)
+              i1 = nlon-1
+              i2 = 0
+              j1 = nlat-1
+              j2 = 0
+              for i in range(nlon):
+                 for j in range(nlat):
+                    if fmgrid[j,i] > 0.0:
+                       i1 = np.minimum(i,i1)
+                       i2 = np.maximum(i,i2)
+                       j1 = np.minimum(j,j1)
+                       j2 = np.maximum(j,j2)
+
+              i1 = np.maximum(i1-5,0)
+              i2 = np.minimum(i2+5,nlon-1)
+              j1 = np.maximum(j1-5,0)
+              j2 = np.minimum(j2+5,nlat-1)
+
+              ngrid = -1
+              ensarr = xr.DataArray(name='ensemble_data', data=np.zeros([nens, nlat*nlon]), \
+                                      dims=['time', 'state'])
+
+              for i in range(nlon):
+                 for j in range(nlat):
+                    if fmgrid[j,i] > 0.0:
+                       ngrid = ngrid + 1
+                       ensarr[:,ngrid] = ensmat[:,j,i] * np.sqrt(coslat[j])
+
+              solver = Eof_xarray(ensarr[:,0:ngrid])
+
+              #  Restrict domain for plotting purposes
+              lon1 = ensmat.longitude.values[i1]
+              lon2 = ensmat.longitude.values[i2]
+              lat1 = ensmat.latitude.values[j1]
+              lat2 = ensmat.latitude.values[j2]
+
+              ensmat = ensmat.sel(latitude=slice(lat1, lat2), longitude=slice(lon1, lon2))
+              fmgrid = fmgrid.sel(latitude=slice(lat1, lat2), longitude=slice(lon1, lon2))
+              e_mean = e_mean.sel(latitude=slice(lat1, lat2), longitude=slice(lon1, lon2))
 
            else:
 
-              solver = Eof_xarray(ensmat.rename({'ensemble': 'time'}))
+              if mask_land:
+
+                 nlat = len(ensmat[0,:,0])
+                 nlon = len(ensmat[0,0,:])
+                 ngrid = -1
+                 ensarr = xr.DataArray(name='ensemble_data', data=np.zeros([nens, nlat*nlon]), \
+                                         dims=['time', 'state'])
+
+                 if self.config.get('grid_type','LatLon') == 'LatLon':
+
+                    for i in range(nlon):
+                       for j in range(nlat):
+                          if lmask[j,i] > 0.0:
+                             ngrid = ngrid + 1
+                             ensarr[:,ngrid] = ensmat[:,j,i] * np.sqrt(coslat[j]) * lmask[j,i]
+
+                 else:
+
+                    for i in range(nlon):
+                       for j in range(nlat):
+                          if lmask[j,i] > 0.0:
+                             ngrid = ngrid + 1
+                             ensarr[:,ngrid] = ensmat[:,j,i] * lmask[j,i]
+           
+                 solver = Eof_xarray(ensarr[:,0:ngrid])
+
+
+              else:
+
+                 #  Compute the EOF of the precipitation pattern and then the PCs
+                 if self.config.get('grid_type','LatLon') == 'LatLon':
+
+                    coslat = np.cos(np.deg2rad(ensmat.latitude.values)).clip(0., 1.)
+                    wgts = np.sqrt(coslat)[..., np.newaxis]
+                    solver = Eof_xarray(ensmat.rename({'ensemble': 'time'}), weights=wgts)
+
+                 else:
+
+                    solver = Eof_xarray(ensmat.rename({'ensemble': 'time'}))
+
 
            pcout  = solver.pcs(npcs=3, pcscaling=1)
            pc1 = np.squeeze(pcout[:,eofn-1])
@@ -881,10 +1011,10 @@ class ComputeForecastMetrics:
            #  Compute the precipitation pattern associated with a 1 PC perturbation
            dpcp = np.zeros(e_mean.shape)
 
-           for n in range(g1.nens):
+           for n in range(nens):
               dpcp[:,:] = dpcp[:,:] + ensmat[n,:,:] * pc1[n]
 
-           dpcp[:,:] = dpcp[:,:] / float(g1.nens)
+           dpcp[:,:] = dpcp[:,:] / float(nens)
 
            if np.sum(dpcp) < 0.0:
               dpcp[:,:] = -dpcp[:,:]
@@ -919,6 +1049,11 @@ class ComputeForecastMetrics:
            pltm = plt.contour(ensmat.longitude.values,ensmat.latitude.values,dpcp,cntrs,linewidths=1.5, \
                                 colors='k', zorder=10, transform=ccrs.PlateCarree())
 
+           if adapt:
+              pltb = plt.contour(ensmat.longitude.values,ensmat.latitude.values,fmgrid,[0.5],linewidths=2.5, colors='0.4', zorder=10)
+              if 'lonc' in locals():
+                 plt.plot(lonc, latc, '+', color='k', markersize=12, markeredgewidth=3, transform=ccrs.PlateCarree())
+
            #  Add colorbar to the plot
            cbar = plt.colorbar(pltf, fraction=0.15, aspect=45., pad=0.04, orientation='horizontal', ticks=mpcp)
            cbar.set_ticks(mpcp[1:(len(mpcp)-1)])
@@ -930,7 +1065,7 @@ class ComputeForecastMetrics:
               fracvar = '%4.3f' % solver.varianceFraction(neigs=eofn)[-1]
            plt.title("{0} {1}-{2} hour Precipitation, {3} of variance".format(str(self.datea_str),fhr1,fhr2,fracvar))
 
-           outdir = '{0}/f{1}_{2}eof'.format(self.config['figure_dir'],fff2,metname)
+           outdir = '{0}/f{1}_{2}'.format(self.config['figure_dir'],'%0.3i' % fhr2,metname)
            if not os.path.isdir(outdir):
               try:
                  os.makedirs(outdir)
@@ -940,20 +1075,68 @@ class ComputeForecastMetrics:
            plt.savefig('{0}/metric.png'.format(outdir), format='png', dpi=120, bbox_inches='tight')
            plt.close(fig)
 
-           f_met_pcpeof_nc = {'coords': {},
-                              'attrs': {'FORECAST_METRIC_LEVEL': '',
-                                        'FORECAST_METRIC_NAME': 'precipitation PC',
-                                        'FORECAST_METRIC_SHORT_NAME': 'pcpeof'},
-                                'dims': {'num_ens': g1.nens},
-                                'data_vars': {'fore_met_init': {'dims': ('num_ens',),
-                                                               'attrs': {'units': '',
-                                                                         'description': 'precipitation PC'},
-                                                               'data': pc1.data}}}
+           fmetatt = {'FORECAST_METRIC_LEVEL': '', 'FORECAST_METRIC_NAME': 'precipitation PC', 'FORECAST_METRIC_SHORT_NAME': 'pcpeof', \
+                      'FORECAST_HOUR1': int(fhr1), 'FORECAST_HOUR2': int(fhr2), 'LATITUDE1': lat1, 'LATITUDE2': lat2, 'LONGITUDE1': lon1, \
+                      'LONGITUDE2': lon2, 'LAND_MASK_MINIMUM': lmaskmin, 'ADAPT': str(adapt), 'TIME_ADAPT': str(time_adapt), \
+                      'TIME_ADAPT_DOMAIN': time_dbuff, 'TIME_ADAPT_FREQ': time_freq, 'ADAPT_PCP_MIN': pcpmin, 'EOF_NUMBER': int(eofn)}
 
-           xr.Dataset.from_dict(f_met_pcpeof_nc).to_netcdf(
-               "{0}/{1}_f{2}_{3}eof.nc".format(self.config['work_dir'], str(self.datea_str), fff2, metname), encoding={'fore_met_init': {'dtype': 'float32'}})
+           f_met = {'coords': {}, 'attrs': fmetatt, 'dims': {'num_ens': nens}, \
+                    'data_vars': {'fore_met_init': {'dims': ('num_ens',), 'attrs': {'units': '', \
+                                                    'description': 'precipitation PC'}, 'data': pc1.data}}}
 
-           self.metlist.append('f{0}_{1}eof'.format(fff2,metname))
+           xr.Dataset.from_dict(f_met).to_netcdf(
+               "{0}/{1}_f{2}_{3}.nc".format(self.config['work_dir'],str(self.datea_str),'%0.3i' % fhr2,metname), encoding={'fore_met_init': {'dtype': 'float32'}})
+
+           self.metlist.append('f{0}_{1}'.format('%0.3i' % fhr2, metname))
+
+           del f_met
+
+
+    def __read_precip(self, fhr1, fhr2, confgrib, vDict):
+
+        g2 = self.dpp.ReadGribFiles(self.datea_str, fhr2, confgrib)
+        vDict = g2.set_var_bounds('precipitation', vDict)
+        ensmat = g2.create_ens_array('precipitation', g2.nens, vDict)
+
+        #  Calculate total precipitation for models that provide total precipitation over model run
+        if g2.has_total_precip:
+
+           if fhr1 > 0:
+              g1 = self.dpp.ReadGribFiles(self.datea_str, fhr1, confgrib)
+              for n in range(g2.nens):
+                 ens1 = np.squeeze(g1.read_grib_field('precipitation', n, vDict))
+                 ens2 = np.squeeze(g2.read_grib_field('precipitation', n, vDict))
+                 ensmat[n,:,:] = ens2[:,:] - ens1[:,:]
+           else:
+              for n in range(g2.nens):
+                 ensmat[n,:,:] = np.squeeze(g2.read_grib_field('precipitation', n, vDict))
+
+           if hasattr(ens2, 'units'):
+              if ens2.units == "m":
+                 vscale = 1000.
+              else:
+                 vscale = 1.
+           else:
+              vscale = 1.
+
+        #  Calculate total precipitaiton for models that output precipitation in time periods
+        else:
+
+           fint = int(self.config['metric'].get('fcst_int',6))
+           for fhr in range(fhr1+fint, fhr2+fint, fint):
+              g1 = self.dpp.ReadGribFiles(self.datea_str, fhr, confgrib)
+              for n in range(g1.nens):
+                 ensmat[n,:,:] = ensmat[n,:,:] + np.squeeze(g1.read_grib_field('precipitation', n, vDict))
+
+           if hasattr(g1.read_grib_field('precipitation', 0, vDict), 'units'):
+              if g1.read_grib_field('precipitation', 0, vDict).units == "m":
+                 vscale = 1000.
+              else:
+                 vscale = 1.
+           else:
+              vscale = 1.
+
+        return ensmat[:,:,:] * vscale
 
 
     def __precip_basin_eof(self):
@@ -984,7 +1167,7 @@ class ComputeForecastMetrics:
               basin_input = conf['definition'].get('basin_name')
               hucid_input = conf['definition'].get('hucid')
               auto_domain = eval(conf['definition'].get('automated','False'))
-              auto_sdmin  = float(conf['definition'].get('automated_sd_min',0.75))
+              auto_sdmin  = float(conf['definition'].get('automated_sd_min',0.80))
               accumulated = eval(conf['definition'].get('accumulation','False'))
            except IOError:
               logging.warning('{0} does not exist.  Cannot compute precip EOF'.format(infull))
