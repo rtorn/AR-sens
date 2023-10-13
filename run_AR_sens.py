@@ -151,6 +151,12 @@ def main():
     met = fmet.ComputeForecastMetrics(datea, config)
     metlist = met.get_metlist()
 
+    #  Exit if there are no metrics
+    if len(metlist) < 1:
+       logging.error('No metrics have been calculated.  Exiting the program.')
+       sys.exit()
+
+
     #  Compute forecast fields at each desired time to use in sensitivity calculation
     fmaxfld = int(config['fields'].get('fields_hour_max',config['fcst_hour_max']))
     if eval(config['fields'].get('multiprocessor','False')):
