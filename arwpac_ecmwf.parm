@@ -1,0 +1,91 @@
+
+[model]
+model_src=ECMWF
+num_ens=50
+io_module=ecmwf_teton
+fcst_hour_int=12
+fcst_hour_max=144
+tigge_forecast_time=0/12/24/36/48/60/72/84/96/108/120/132/144/156/168
+tigge_surface_time=0/6/12/18/24/30/36/42/48/54/60/66/72/78/84/90/96/102/108/114/120/126/132/138/144/150/156/162/168
+tigge_surface_grid_space=0.2/0.2
+tigge_surface_area=55/-165/5/-15
+flip_lon=True
+
+[locations]
+atcf_dir=/ct12/abrammer/graphics/ecmf_tc_data/data
+model_dir=/tornlab_rit/torn/ecmwf
+
+work_dir=/rt11/torn/ar_sens/work_ecwpac
+output_dir=/rt11/torn/ar_sens/output_ecwpac
+script_dir=/home11/staff/torn/JHT-python
+figure_dir=/rt11/torn/html/AR-wpac/ECMWF
+outgrid_dir=/rt11/torn/html/AR-wpac/ECMWF
+log_dir=/rt11/torn/ar_sens/log_ecmwf
+
+save_work_dir=True
+
+[vitals_plot]
+precip_hour_1=[36, 48, 60, 72,  84,  96, 108, 120]
+precip_hour_2=[60, 72, 84, 96, 108, 120, 132, 144]
+min_lon_precip=230
+max_lon_precip=252
+
+[metric]
+fcst_int=12
+static_fields_file=/rt11/torn/JHT/landmask_ecmwf_0p2.grb2
+precipitation_mean_metric=False
+precipitation_eof_metric=True
+precip_metric_loc=/rt11/torn/ar_sens/metrics_long/pcp
+ivt_eof_metric=False
+ivt_metric_loc=/rt11/torn/ar_sens/metrics_ivt
+slp_eof_metric=False
+slp_metric_loc=/rt11/torn/ar_sens/metrics_slp
+ivt_landfall_metric=True
+ivt_land_metric_loc=/rt11/torn/ar_sens/metrics_long/ivtl
+coast_points_file=/home11/staff/torn/JHT-python/latlon_coast_1p0.txt
+basin_metric=True
+basin_metric_loc=/rt11/torn/ar_sens/metrics_rbasin
+basin_huc_file=/home11/staff/torn/ens-sens/AR-sens/watershedinfo.csv
+basin_shape_file=/rt11/torn/ar_sens/template/HUC8_West_simplify22.shp
+min_lon_precip=230
+max_lon_precip=252
+
+[fields]
+fields_hour_max=144
+calc_ivt=True
+calc_height=True
+#height_levels=[1000, 925, 850, 700, 500, 300, 250, 200]
+thetae_levels=[1000, 925, 850, 700]
+#thetae_levels=[1000, 925, 850, 700, 500, 300, 250, 200]
+#wind_levels=[1000, 925, 850, 700, 500, 300, 250, 200]
+#qvapor_levels=[1000, 925, 850, 700, 500, 300, 250, 200]
+pv_levels=[850, 700, 500, 300, 250]
+calc_pv_pres=True
+calc_theta-e=True
+calc_qvapor=True
+calc_winds=False
+calc_refractivity=True
+calc_divergence=True
+min_lat=10
+max_lat=70
+min_lon=120
+max_lon=250
+multiprocessor=True
+
+[sens]
+zero_non_sig_sens=True
+grid_interval=10.
+barb_interval=6
+drop_file_type=cw3e
+dropsonde_file=/rt11/torn/ar_sens/dropsondes/{0}_drops.tx
+drop_mark_size=6
+drop_mark_color=black
+drop_mark_type=+
+rawinsonde_file=/free/torn/SHOUT/pynew/rawindsondes.tx
+rawin_mark_size=6
+rawin_mark_color=gray
+range_rings=False
+output_sens=False
+output_list=ivt, e850hPa, pv250hPa, pv500hPa
+plot_summary=False
+multiprocessor=True
