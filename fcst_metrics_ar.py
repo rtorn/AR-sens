@@ -1149,7 +1149,8 @@ class ComputeForecastMetrics:
 
         ds = xr.open_dataset('watershed_precip.nc', decode_times=False).rename({'time': 'hour'}) 
         if ds.attrs['init'] != self.datea_str:
-           logging.warning('  {0} init date ({1}) does not match the forecast.  Exiting'.format('watershed_precip.nc',ds.attrs['init']))
+           logging.warning('  {0} init date ({1}) does not match the forecast.  Exiting and deleting file'.format('watershed_precip.nc',ds.attrs['init']))
+           os.remove('watershed_precip.nc')
            return None
 
         for infull in glob.glob('{0}/{1}_*'.format(self.config['metric'].get('basin_metric_loc'),self.datea_str)):
