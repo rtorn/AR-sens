@@ -49,6 +49,10 @@ def ComputeSensitivity(datea, fhr, metname, config):
    plotDict['left_labels']  = 'True'
    plotDict['right_labels'] = 'None'      
 
+   if 'ring_center_lat' in config['sens'] and 'ring_center_lon' in config['sens']:
+      plotDict['ring_center_lat'] = float(config['sens']['ring_center_lat'])
+      plotDict['ring_center_lon'] = float(config['sens']['ring_center_lon'])
+
    #  Obtain the metric information (here read from file)
    try:
       mfile = nc.Dataset('{0}/{1}_{2}.nc'.format(config['work_dir'],datea,metname))
