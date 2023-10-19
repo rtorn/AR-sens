@@ -386,10 +386,6 @@ class ComputeForecastMetrics:
 
            ensmat = g1.create_ens_array('temperature', g1.nens, vDict)
 
-           fDict = {'latitude': (lat1, lat2), 'longitude': (lon1, lon2), 'isobaricInhPa': (300, 1000),
-                    'description': 'Integrated Water Vapor Transport', 'units': 'hPa', '_FillValue': -9999.}
-           fDict = g1.set_var_bounds('temperature', vDict)
-
            fhrvec = np.arange(fhr1, fhr2+int(self.config['fcst_hour_int']), int(self.config['fcst_hour_int']))
            ntime  = len(fhrvec)
 
@@ -413,33 +409,7 @@ class ComputeForecastMetrics:
 
            for t in range(ntime):
 
-              g1 = self.dpp.ReadGribFiles(self.datea_str, int(fhrvec[t]), self.config)
-
-              if 'ivt' in g1.var_dict:
-
-                 for n in range(g1.nens):
-                    ensmat[n,:,:] = g1.read_grib_field('ivt', n, vDict)
-
-              else:
-
-                 for n in range(g1.nens):
-
-                    uwnd = g1.read_grib_field('zonal_wind', n, fDict) * units('m / sec')
-                    vwnd = g1.read_grib_field('meridional_wind', n, fDict) * units('m / sec')
-
-                    tmpk = np.squeeze(g1.read_grib_field('temperature', n, fDict)) * units('K')
-                    pres = (tmpk.isobaricInhPa.values * units.hPa).to(units.Pa)
-
-                    if g1.has_specific_humidity:
-                       qvap = np.squeeze(g1.read_grib_field('specific_humidity', n, fDict)) * units('dimensionless')
-                    else:
-                       relh = np.minimum(np.maximum(g1.read_grib_field('relative_humidity', n, fDict), 0.01), 100.0) * units('percent')
-                       qvap = mpcalc.mixing_ratio_from_relative_humidity(pres[:,None,None], tmpk, relh)
-
-                    #  Integrate water vapor over the pressure levels
-                    usum = np.abs(np.trapz(uwnd[:,:,:]*qvap[:,:,:], pres, axis=0)) / mpcon.earth_gravity
-                    vsum = np.abs(np.trapz(vwnd[:,:,:]*qvap[:,:,:], pres, axis=0)) / mpcon.earth_gravity
-                    ensmat[n,:,:] = np.sqrt(usum[:,:]**2 + vsum[:,:]**2)
+              ensmat = self.__read_ivt(int(fhrvec[t]), vDict)
 
               if vecloc:
 
@@ -457,9 +427,6 @@ class ComputeForecastMetrics:
               ivtarr[n,:,:] = ivtarr[n,:,:] - e_mean[:,:]
 
            #  Compute the EOF of the precipitation pattern and then the PCs
-           coslat = np.cos(np.deg2rad(ensmat.latitude.values)).clip(0., 1.)
-           wgts = np.sqrt(coslat)[..., np.newaxis]
-
            solver = Eof_xarray(ivtarr.rename({'ensemble': 'time'}))
            pcout  = solver.pcs(npcs=eofn, pcscaling=1)
            pc1 = np.squeeze(pcout[:,eofn-1])
@@ -549,6 +516,44 @@ class ComputeForecastMetrics:
                "{0}/{1}_f{2}_{3}.nc".format(self.config['work_dir'], str(self.datea_str), fff, metname), encoding={'fore_met_init': {'dtype': 'float32'}})
 
            self.metlist.append('f{0}_{1}'.format(fff,metname))
+
+
+    def __read_ivt(self, fhr, vDict):
+
+        gf = self.dpp.ReadGribFiles(self.datea_str, fhr, self.config)
+        ivtout = gf.create_ens_array('temperature', gf.nens, vDict)
+
+        if 'ivt' in gf.var_dict:
+
+           for n in range(gf.nens):
+              ensmat[n,:,:] = gf.read_grib_field('ivt', n, vDict)
+
+        else:
+
+           fDict = vDict.copy()
+           fDict['isobaricInhPa'] = (300, 1000)
+           fDict = gf.set_var_bounds('temperature', fDict)
+
+           for n in range(gf.nens):
+
+              uwnd = gf.read_grib_field('zonal_wind', n, fDict) * units('m / sec')
+              vwnd = gf.read_grib_field('meridional_wind', n, fDict) * units('m / sec')
+
+              tmpk = np.squeeze(gf.read_grib_field('temperature', n, fDict)) * units('K')
+              pres = (tmpk.isobaricInhPa.values * units.hPa).to(units.Pa)
+
+              if gf.has_specific_humidity:
+                 qvap = np.squeeze(gf.read_grib_field('specific_humidity', n, fDict)) * units('dimensionless')
+              else:
+                 relh = np.minimum(np.maximum(gf.read_grib_field('relative_humidity', n, fDict), 0.01), 100.0) * units('percent')
+                 qvap = mpcalc.mixing_ratio_from_relative_humidity(pres[:,None,None], tmpk, relh)
+
+              #  Integrate water vapor over the pressure levels
+              usum = np.abs(np.trapz(uwnd[:,:,:]*qvap[:,:,:], pres, axis=0)) / mpcon.earth_gravity
+              vsum = np.abs(np.trapz(vwnd[:,:,:]*qvap[:,:,:], pres, axis=0)) / mpcon.earth_gravity
+              ivtout[n,:,:] = np.sqrt(usum[:,:]**2 + vsum[:,:]**2)
+
+        return(ivtout)
 
 
     def __precipitation_mean(self):
