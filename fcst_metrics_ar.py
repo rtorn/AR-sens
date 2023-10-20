@@ -196,37 +196,7 @@ class ComputeForecastMetrics:
                     'description': 'Integrated Water Vapor Transport', 'units': 'kg s-1', '_FillValue': -9999.}
            vDict = g1.set_var_bounds('temperature', vDict)
 
-           ensmat = g1.create_ens_array('temperature', g1.nens, vDict)
-
-           fDict = {'latitude': (lat1, lat2), 'longitude': (lon1, lon2), 'isobaricInhPa': (300, 1000),
-                    'description': 'Integrated Water Vapor Transport', 'units': 'hPa', '_FillValue': -9999.}
-           fDict = g1.set_var_bounds('temperature', vDict)
-
-           if 'ivt' in g1.var_dict:
-
-              for n in range(g1.nens):
-                 ensmat[n,:,:] = g1.read_grib_field('ivt', n, vDict)
-
-           else:
-
-              for n in range(g1.nens):
-
-                 uwnd = g1.read_grib_field('zonal_wind', n, fDict) * units('m / sec')
-                 vwnd = g1.read_grib_field('meridional_wind', n, fDict) * units('m / sec')
-
-                 tmpk = np.squeeze(g1.read_grib_field('temperature', n, fDict)) * units('K')
-                 pres = (tmpk.isobaricInhPa.values * units.hPa).to(units.Pa)
-
-                 if g1.has_specific_humidity:
-                    qvap = np.squeeze(g1.read_grib_field('specific_humidity', n, fDict)) * units('dimensionless')
-                 else:
-                    relh = np.minimum(np.maximum(g1.read_grib_field('relative_humidity', n, fDict), 0.01), 100.0) * units('percent')
-                    qvap = mpcalc.mixing_ratio_from_relative_humidity(pres[:,None,None], tmpk, relh)
-
-                 #  Integrate water vapor over the pressure levels
-                 usum = np.abs(np.trapz(uwnd[:,:,:]*qvap[:,:,:], pres, axis=0)) / mpcon.earth_gravity
-                 vsum = np.abs(np.trapz(vwnd[:,:,:]*qvap[:,:,:], pres, axis=0)) / mpcon.earth_gravity
-                 ensmat[n,:,:] = np.sqrt(usum[:,:]**2 + vsum[:,:]**2)
+           ensmat = self.__read_ivt(fhr, vDict)
 
            e_mean = np.mean(ensmat, axis=0)
            for n in range(g1.nens):
