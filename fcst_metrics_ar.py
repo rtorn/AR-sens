@@ -299,14 +299,13 @@ class ComputeForecastMetrics:
                      "#FF4B00", "#FF1900", "#E60015", "#B3003E", "#80007B", "#570088")
 
         try:
+           dcoa = pd.read_csv(self.config['metric'].get('coast_points_file'), sep = '\s+', header=None, names=['latitude', 'longitude'])
+           latcoa = dcoa['latitude'].values
+           loncoa = dcoa['longitude'].values
            f = open(self.config['metric'].get('coast_points_file'), 'r')
         except IOError:
            logging.warning('{0} does not exist.  Cannot compute IVT Landfall EOF'.format(self.config['metric'].get('coast_points_file')))
            return None
-
-        incoast = np.array(f.readlines())
-
-        f.close()
 
         for infull in glob.glob('{0}/{1}_*'.format(self.config['metric'].get('ivt_land_metric_loc'),self.datea_str)):
 
@@ -323,17 +322,12 @@ class ComputeForecastMetrics:
               logging.warning('{0} does not exist.  Cannot compute IVT Landfall EOF'.format(infull))
               return None
 
-           latcoa = []
-           loncoa = []
            latlist = []
            lonlist = []
-
-           for i in range(incoast.shape[0]):
-              latcoa.append(float(incoast[i][0:4]))
-              loncoa.append(float(incoast[i][5:11]))
-              if float(incoast[i][0:4]) >= latcoa1 and float(incoast[i][0:4]) <= latcoa2:
-                 latlist.append(float(incoast[i][0:4]))
-                 lonlist.append(float(incoast[i][5:11]))
+           for i in range(len(latcoa)):
+              if latcoa[i] >= latcoa1 and latcoa[i] <= latcoa2:
+                 latlist.append(latcoa[i])
+                 lonlist.append(loncoa[i])
 
            if eval(self.config.get('flip_lon','False')):
               for i in range(len(loncoa)):
@@ -524,6 +518,49 @@ class ComputeForecastMetrics:
               ivtout[n,:,:] = np.sqrt(usum[:,:]**2 + vsum[:,:]**2)
 
         return(ivtout)
+
+
+    def __ivt_landfall(self, fhr1, fhr2, latlist, lonlist, vDict, gf):
+
+
+        ensmat = gf.create_ens_array('temperature', gf.nens, vDict)
+
+        fhrvec = np.arange(fhr1, fhr2+int(self.config['fcst_hour_int']), int(self.config['fcst_hour_int']))
+
+        ivtarr = xr.DataArray(name='ensemble_data', data=np.zeros([gf.nens, len(latlist), len(fhrvec)]), dims=['ensemble', 'latitude', 'ftime'], \
+                              coords={'ensemble': [i for i in range(gf.nens)], 'ftime': fhrvec, 'latitude': latlist})
+
+        vecloc = len(np.shape(ensmat.latitude)) == 1
+
+        if not vecloc:
+
+           xloc = np.zeros(len(latlist), dtype=int)
+           yloc = np.zeros(len(latlist), dtype=int)
+
+           for i in range(len(latlist)):
+
+              abslat = np.abs(ensmat.latitude-latlist[i])
+              abslon = np.abs(ensmat.longitude-lonlist[i])
+              c = np.maximum(abslon, abslat)
+
+              ([yloc[i]], [xloc[i]]) = np.where(c == np.min(c))
+
+        for t in range(len(fhrvec)):
+
+           ensmat = self.__read_ivt(int(fhrvec[t]), vDict)
+
+           if vecloc:
+
+              for i in range(len(latlist)):
+                 ivtarr[:,i,t] = ensmat.sel(latitude=slice(latlist[i], latlist[i]), \
+                                            longitude=slice(lonlist[i], lonlist[i])).squeeze()
+
+           else:
+
+              for i in range(len(latlist)):
+                 ivtarr[:,i,t] = ensmat.sel(lat=yloc[i], lon=xloc[i]).squeeze().data
+
+        return(ivtarr)
 
 
     def __precipitation_mean(self):
