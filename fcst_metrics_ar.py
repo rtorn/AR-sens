@@ -312,12 +312,14 @@ class ComputeForecastMetrics:
            try:
               conf = configparser.ConfigParser()
               conf.read(infull)
-              fhr1 = int(conf['definition'].get('forecast_hour1',0))
-              fhr2 = int(conf['definition'].get('forecast_hour2',120))
+              fhr1 = int(conf['definition'].get('forecast_hour1',self.config['metric'].get('ivt_land_forecast_hour1',0)))
+              fhr2 = int(conf['definition'].get('forecast_hour2',self.config['metric'].get('ivt_land_forecast_hour2',120)))
               metname = conf['definition'].get('metric_name','ivtland')
               eofn = int(conf['definition'].get('eof_number',1))
-              latcoa1 = float(conf['definition'].get('latitude_min', 25.0))
-              latcoa2 = float(conf['definition'].get('latitude_max', 55.0))
+              latcoa1 = float(conf['definition'].get('latitude_min',self.config['metric'].get('ivt_land_latitude_min',25.)))
+              latcoa2 = float(conf['definition'].get('latitude_max',self.config['metric'].get('ivt_land_latitude_max',55.)))
+              adapt = eval(conf['definition'].get('adapt',self.config['metric'].get('ivt_land_adapt','False')))
+              ivtmin = float(conf['definition'].get('adapt_ivt_min',self.config['metric'].get('ivt_land_adapt_min',175.)))
            except IOError:
               logging.warning('{0} does not exist.  Cannot compute IVT Landfall EOF'.format(infull))
               return None
@@ -348,43 +350,7 @@ class ComputeForecastMetrics:
                     'description': 'Integrated Water Vapor Transport', 'units': 'kg s-1', '_FillValue': -9999.}
            vDict = g1.set_var_bounds('temperature', vDict)
 
-           ensmat = g1.create_ens_array('temperature', g1.nens, vDict)
-
-           fhrvec = np.arange(fhr1, fhr2+int(self.config['fcst_hour_int']), int(self.config['fcst_hour_int']))
-           ntime  = len(fhrvec)
-
-           ivtarr = xr.DataArray(name='ensemble_data', data=np.zeros([g1.nens, len(latlist), len(fhrvec)]), dims=['ensemble', 'latitude', 'ftime'], \
-                                 coords={'ensemble': [i for i in range(g1.nens)], 'ftime': fhrvec, 'latitude': latlist})
-
-           vecloc = len(np.shape(ensmat.latitude)) == 1
-
-           if not vecloc:
-
-              xloc = np.zeros(len(latlist), dtype=int)
-              yloc = np.zeros(len(latlist), dtype=int)
-
-              for i in range(len(latlist)):
-
-                 abslat = np.abs(ensmat.latitude-latlist[i])
-                 abslon = np.abs(ensmat.longitude-lonlist[i])
-                 c = np.maximum(abslon, abslat)
-
-                 ([yloc[i]], [xloc[i]]) = np.where(c == np.min(c))
-
-           for t in range(ntime):
-
-              ensmat = self.__read_ivt(int(fhrvec[t]), vDict)
-
-              if vecloc:
-
-                 for i in range(len(latlist)):
-                    ivtarr[:,i,t] = ensmat.sel(latitude=slice(latlist[i], latlist[i]), \
-                                               longitude=slice(lonlist[i], lonlist[i])).squeeze()
-
-              else:
-
-                 for i in range(len(latlist)):
-                    ivtarr[:,i,t] = ensmat.sel(lat=yloc[i], lon=xloc[i]).squeeze().data
+           ivtarr = self.__ivt_landfall(fhr1, fhr2, latlist, lonlist, vDict, g1)
 
            e_mean = np.mean(ivtarr, axis=0)
            for n in range(g1.nens):
@@ -412,7 +378,7 @@ class ComputeForecastMetrics:
 
            mivt = [0.0, 250., 300., 400., 500., 600., 700., 800., 1000., 1200., 1400., 1600., 2000.]
            norm = matplotlib.colors.BoundaryNorm(mivt,len(mivt))
-           pltf = ax0.contourf(fhrvec,latlist,e_mean,mivt, \
+           pltf = ax0.contourf(ivtarr.fcst_hour.values,latlist,e_mean,mivt, \
                                 cmap=matplotlib.colors.ListedColormap(colorlist), norm=norm, extend='max')
 
            ivtfac = np.max(abs(divt))
@@ -423,9 +389,9 @@ class ComputeForecastMetrics:
            else:
              cntrs = np.array([-500, -400, -300, -200, -100, 100, 200, 300, 400, 500])
 
-           pltm = ax0.contour(fhrvec,latlist,divt,cntrs,linewidths=1.5, colors='k', zorder=10)
+           pltm = ax0.contour(ivtarr.fcst_hour.values,latlist,divt,cntrs,linewidths=1.5, colors='k', zorder=10)
 
-           ax0.set_xlim([np.min(fhrvec), np.max(fhrvec)])
+           ax0.set_xlim([np.min(ivtarr.fcst_hour.values), np.max(ivtarr.fcst_hour.values)])
            ax0.set_ylim([np.min(latcoa), np.max(latcoa)])
 
            #  Add colorbar to the plot
@@ -527,8 +493,8 @@ class ComputeForecastMetrics:
 
         fhrvec = np.arange(fhr1, fhr2+int(self.config['fcst_hour_int']), int(self.config['fcst_hour_int']))
 
-        ivtarr = xr.DataArray(name='ensemble_data', data=np.zeros([gf.nens, len(latlist), len(fhrvec)]), dims=['ensemble', 'latitude', 'ftime'], \
-                              coords={'ensemble': [i for i in range(gf.nens)], 'ftime': fhrvec, 'latitude': latlist})
+        ivtarr = xr.DataArray(name='ensemble_data', data=np.zeros([gf.nens, len(latlist), len(fhrvec)]), dims=['ensemble', 'latitude', 'fcst_hour'], \
+                              coords={'ensemble': [i for i in range(gf.nens)], 'fcst_hour': fhrvec, 'latitude': latlist})
 
         vecloc = len(np.shape(ensmat.latitude)) == 1
 
