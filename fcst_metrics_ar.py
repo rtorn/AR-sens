@@ -319,7 +319,7 @@ class ComputeForecastMetrics:
               latcoa1 = float(conf['definition'].get('latitude_min',self.config['metric'].get('ivt_land_latitude_min',25.)))
               latcoa2 = float(conf['definition'].get('latitude_max',self.config['metric'].get('ivt_land_latitude_max',55.)))
               adapt = eval(conf['definition'].get('adapt',self.config['metric'].get('ivt_land_adapt','False')))
-              ivtmin = float(conf['definition'].get('adapt_ivt_min',self.config['metric'].get('ivt_land_adapt_min',175.)))
+              ivtmin = float(conf['definition'].get('adapt_ivt_min',self.config['metric'].get('ivt_land_adapt_min',225.)))
            except IOError:
               logging.warning('{0} does not exist.  Cannot compute IVT Landfall EOF'.format(infull))
               return None
@@ -351,8 +351,66 @@ class ComputeForecastMetrics:
            vDict = g1.set_var_bounds('temperature', vDict)
 
            ivtarr = self.__ivt_landfall(fhr1, fhr2, latlist, lonlist, vDict, g1)
-
            e_mean = np.mean(ivtarr, axis=0)
+
+           if adapt:
+
+              ntime = len(e_mean.fcst_hour.values)
+              nlat  = len(e_mean.latitude.values)
+
+              estd   = np.std(ivtarr, axis=0)
+              stdmax = estd.max()
+              maxloc = np.where(estd == stdmax)
+              icen   = int(maxloc[1])
+              jcen   = int(maxloc[0])
+              timec  = e_mean.fcst_hour.values[icen]
+              latc   = e_mean.latitude.values[jcen]
+
+              if e_mean[jcen,icen] < ivtmin: 
+                 logging.error('  IVT landfall metric center point is below minimum.  Skipping metric.')
+                 break
+
+              fmgrid = e_mean.copy()
+              fmgrid[:,:] = 0.0
+              fmgrid[jcen,icen] = 1.0
+
+              iloc       = np.zeros(ntime*nlat, dtype=int)
+              jloc       = np.zeros(ntime*nlat, dtype=int)
+              nloc       = 0
+              iloc[nloc] = icen
+              jloc[nloc] = jcen
+
+              fhr1       = timec
+              fhr2       = timec
+              lat1       = latc
+              lat2       = latc
+
+              k = 0
+              while k <= nloc:
+
+                 fhr1 = min(fhr1,e_mean.fcst_hour.values[iloc[k]])
+                 fhr2 = max(fhr2,e_mean.fcst_hour.values[iloc[k]])
+                 lat1 = min(lat1,e_mean.latitude.values[jloc[k]])
+                 lat2 = max(lat2,e_mean.latitude.values[jloc[k]])
+
+                 for i in range(max(iloc[k]-1,0), min(iloc[k]+2,ntime)):
+                    for j in range(max(jloc[k]-1,0), min(jloc[k]+2,nlat)):
+                       if e_mean[j,i] >= ivtmin and fmgrid[j,i] < 1.0:
+                          nloc = nloc + 1
+                          iloc[nloc] = i
+                          jloc[nloc] = j
+                          fmgrid[j,i] = 1.0
+
+                 k = k + 1
+
+              #  Evaluate whether the forecast metric grid has enough land points
+              if k == 0:
+                 logging.error('  IVT landfall metric does not have any points above minimum.  Skipping metric.')
+                 break
+
+              ivtarr = ivtarr.sel(latitude=slice(lat2,lat1), fcst_hour=slice(fhr1,fhr2))
+              e_mean = e_mean.sel(latitude=slice(lat2,lat1), fcst_hour=slice(fhr1,fhr2))
+
            for n in range(g1.nens):
               ivtarr[n,:,:] = ivtarr[n,:,:] - e_mean[:,:]
 
@@ -369,7 +427,9 @@ class ComputeForecastMetrics:
               divt[:,:] = divt[:,:] + ivtarr[n,:,:] * pc1[n]
 
            divt[:,:] = divt[:,:] / float(g1.nens)
-
+           if np.sum(divt) < 0.0:
+              divt[:,:] = -divt[:,:]
+              pc1[:]    = -pc1[:]
 
            fig = plt.figure(figsize=(10, 6))
 
@@ -378,7 +438,7 @@ class ComputeForecastMetrics:
 
            mivt = [0.0, 250., 300., 400., 500., 600., 700., 800., 1000., 1200., 1400., 1600., 2000.]
            norm = matplotlib.colors.BoundaryNorm(mivt,len(mivt))
-           pltf = ax0.contourf(ivtarr.fcst_hour.values,latlist,e_mean,mivt, \
+           pltf = ax0.contourf(ivtarr.fcst_hour.values,ivtarr.latitude.values,e_mean,mivt, \
                                 cmap=matplotlib.colors.ListedColormap(colorlist), norm=norm, extend='max')
 
            ivtfac = np.max(abs(divt))
@@ -389,7 +449,7 @@ class ComputeForecastMetrics:
            else:
              cntrs = np.array([-500, -400, -300, -200, -100, 100, 200, 300, 400, 500])
 
-           pltm = ax0.contour(ivtarr.fcst_hour.values,latlist,divt,cntrs,linewidths=1.5, colors='k', zorder=10)
+           pltm = ax0.contour(ivtarr.fcst_hour.values,ivtarr.latitude.values,divt,cntrs,linewidths=1.5, colors='k', zorder=10)
 
            ax0.set_xlim([np.min(ivtarr.fcst_hour.values), np.max(ivtarr.fcst_hour.values)])
            ax0.set_ylim([np.min(latcoa), np.max(latcoa)])
