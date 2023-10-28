@@ -196,37 +196,7 @@ class ComputeForecastMetrics:
                     'description': 'Integrated Water Vapor Transport', 'units': 'kg s-1', '_FillValue': -9999.}
            vDict = g1.set_var_bounds('temperature', vDict)
 
-           ensmat = g1.create_ens_array('temperature', g1.nens, vDict)
-
-           fDict = {'latitude': (lat1, lat2), 'longitude': (lon1, lon2), 'isobaricInhPa': (300, 1000),
-                    'description': 'Integrated Water Vapor Transport', 'units': 'hPa', '_FillValue': -9999.}
-           fDict = g1.set_var_bounds('temperature', vDict)
-
-           if 'ivt' in g1.var_dict:
-
-              for n in range(g1.nens):
-                 ensmat[n,:,:] = g1.read_grib_field('ivt', n, vDict)
-
-           else:
-
-              for n in range(g1.nens):
-
-                 uwnd = g1.read_grib_field('zonal_wind', n, fDict) * units('m / sec')
-                 vwnd = g1.read_grib_field('meridional_wind', n, fDict) * units('m / sec')
-
-                 tmpk = np.squeeze(g1.read_grib_field('temperature', n, fDict)) * units('K')
-                 pres = (tmpk.isobaricInhPa.values * units.hPa).to(units.Pa)
-
-                 if g1.has_specific_humidity:
-                    qvap = np.squeeze(g1.read_grib_field('specific_humidity', n, fDict)) * units('dimensionless')
-                 else:
-                    relh = np.minimum(np.maximum(g1.read_grib_field('relative_humidity', n, fDict), 0.01), 100.0) * units('percent')
-                    qvap = mpcalc.mixing_ratio_from_relative_humidity(pres[:,None,None], tmpk, relh)
-
-                 #  Integrate water vapor over the pressure levels
-                 usum = np.abs(np.trapz(uwnd[:,:,:]*qvap[:,:,:], pres, axis=0)) / mpcon.earth_gravity
-                 vsum = np.abs(np.trapz(vwnd[:,:,:]*qvap[:,:,:], pres, axis=0)) / mpcon.earth_gravity
-                 ensmat[n,:,:] = np.sqrt(usum[:,:]**2 + vsum[:,:]**2)
+           ensmat = self.__read_ivt(fhr, vDict)
 
            e_mean = np.mean(ensmat, axis=0)
            for n in range(g1.nens):
@@ -329,41 +299,37 @@ class ComputeForecastMetrics:
                      "#FF4B00", "#FF1900", "#E60015", "#B3003E", "#80007B", "#570088")
 
         try:
+           dcoa = pd.read_csv(self.config['metric'].get('coast_points_file'), sep = '\s+', header=None, names=['latitude', 'longitude'])
+           latcoa = dcoa['latitude'].values
+           loncoa = dcoa['longitude'].values
            f = open(self.config['metric'].get('coast_points_file'), 'r')
         except IOError:
            logging.warning('{0} does not exist.  Cannot compute IVT Landfall EOF'.format(self.config['metric'].get('coast_points_file')))
            return None
-
-        incoast = np.array(f.readlines())
-
-        f.close()
 
         for infull in glob.glob('{0}/{1}_*'.format(self.config['metric'].get('ivt_land_metric_loc'),self.datea_str)):
 
            try:
               conf = configparser.ConfigParser()
               conf.read(infull)
-              fhr1 = int(conf['definition'].get('forecast_hour1',0))
-              fhr2 = int(conf['definition'].get('forecast_hour2',120))
+              fhr1 = int(conf['definition'].get('forecast_hour1',self.config['metric'].get('ivt_land_forecast_hour1',0)))
+              fhr2 = int(conf['definition'].get('forecast_hour2',self.config['metric'].get('ivt_land_forecast_hour2',120)))
               metname = conf['definition'].get('metric_name','ivtland')
               eofn = int(conf['definition'].get('eof_number',1))
-              latcoa1 = float(conf['definition'].get('latitude_min', 25.0))
-              latcoa2 = float(conf['definition'].get('latitude_max', 55.0))
+              latcoa1 = float(conf['definition'].get('latitude_min',self.config['metric'].get('ivt_land_latitude_min',25.)))
+              latcoa2 = float(conf['definition'].get('latitude_max',self.config['metric'].get('ivt_land_latitude_max',55.)))
+              adapt = eval(conf['definition'].get('adapt',self.config['metric'].get('ivt_land_adapt','False')))
+              ivtmin = float(conf['definition'].get('adapt_ivt_min',self.config['metric'].get('ivt_land_adapt_min',225.)))
            except IOError:
               logging.warning('{0} does not exist.  Cannot compute IVT Landfall EOF'.format(infull))
               return None
 
-           latcoa = []
-           loncoa = []
            latlist = []
            lonlist = []
-
-           for i in range(incoast.shape[0]):
-              latcoa.append(float(incoast[i][0:4]))
-              loncoa.append(float(incoast[i][5:11]))
-              if float(incoast[i][0:4]) >= latcoa1 and float(incoast[i][0:4]) <= latcoa2:
-                 latlist.append(float(incoast[i][0:4]))
-                 lonlist.append(float(incoast[i][5:11]))
+           for i in range(len(latcoa)):
+              if latcoa[i] >= latcoa1 and latcoa[i] <= latcoa2:
+                 latlist.append(latcoa[i])
+                 lonlist.append(loncoa[i])
 
            if eval(self.config.get('flip_lon','False')):
               for i in range(len(loncoa)):
@@ -384,82 +350,71 @@ class ComputeForecastMetrics:
                     'description': 'Integrated Water Vapor Transport', 'units': 'kg s-1', '_FillValue': -9999.}
            vDict = g1.set_var_bounds('temperature', vDict)
 
-           ensmat = g1.create_ens_array('temperature', g1.nens, vDict)
-
-           fDict = {'latitude': (lat1, lat2), 'longitude': (lon1, lon2), 'isobaricInhPa': (300, 1000),
-                    'description': 'Integrated Water Vapor Transport', 'units': 'hPa', '_FillValue': -9999.}
-           fDict = g1.set_var_bounds('temperature', vDict)
-
-           fhrvec = np.arange(fhr1, fhr2+int(self.config['fcst_hour_int']), int(self.config['fcst_hour_int']))
-           ntime  = len(fhrvec)
-
-           ivtarr = xr.DataArray(name='ensemble_data', data=np.zeros([g1.nens, len(latlist), len(fhrvec)]), dims=['ensemble', 'latitude', 'ftime'], \
-                                 coords={'ensemble': [i for i in range(g1.nens)], 'ftime': fhrvec, 'latitude': latlist})
-
-           vecloc = len(np.shape(ensmat.latitude)) == 1
-
-           if not vecloc:
-
-              xloc = np.zeros(len(latlist), dtype=int)
-              yloc = np.zeros(len(latlist), dtype=int)
-
-              for i in range(len(latlist)):
-
-                 abslat = np.abs(ensmat.latitude-latlist[i])
-                 abslon = np.abs(ensmat.longitude-lonlist[i])
-                 c = np.maximum(abslon, abslat)
-
-                 ([yloc[i]], [xloc[i]]) = np.where(c == np.min(c))
-
-           for t in range(ntime):
-
-              g1 = self.dpp.ReadGribFiles(self.datea_str, int(fhrvec[t]), self.config)
-
-              if 'ivt' in g1.var_dict:
-
-                 for n in range(g1.nens):
-                    ensmat[n,:,:] = g1.read_grib_field('ivt', n, vDict)
-
-              else:
-
-                 for n in range(g1.nens):
-
-                    uwnd = g1.read_grib_field('zonal_wind', n, fDict) * units('m / sec')
-                    vwnd = g1.read_grib_field('meridional_wind', n, fDict) * units('m / sec')
-
-                    tmpk = np.squeeze(g1.read_grib_field('temperature', n, fDict)) * units('K')
-                    pres = (tmpk.isobaricInhPa.values * units.hPa).to(units.Pa)
-
-                    if g1.has_specific_humidity:
-                       qvap = np.squeeze(g1.read_grib_field('specific_humidity', n, fDict)) * units('dimensionless')
-                    else:
-                       relh = np.minimum(np.maximum(g1.read_grib_field('relative_humidity', n, fDict), 0.01), 100.0) * units('percent')
-                       qvap = mpcalc.mixing_ratio_from_relative_humidity(pres[:,None,None], tmpk, relh)
-
-                    #  Integrate water vapor over the pressure levels
-                    usum = np.abs(np.trapz(uwnd[:,:,:]*qvap[:,:,:], pres, axis=0)) / mpcon.earth_gravity
-                    vsum = np.abs(np.trapz(vwnd[:,:,:]*qvap[:,:,:], pres, axis=0)) / mpcon.earth_gravity
-                    ensmat[n,:,:] = np.sqrt(usum[:,:]**2 + vsum[:,:]**2)
-
-              if vecloc:
-
-                 for i in range(len(latlist)):
-                    ivtarr[:,i,t] = ensmat.sel(latitude=slice(latlist[i], latlist[i]), \
-                                               longitude=slice(lonlist[i], lonlist[i])).squeeze()
-
-              else:
-
-                 for i in range(len(latlist)):
-                    ivtarr[:,i,t] = ensmat.sel(lat=yloc[i], lon=xloc[i]).squeeze().data
-
+           ivtarr = self.__ivt_landfall(fhr1, fhr2, latlist, lonlist, vDict, g1)
            e_mean = np.mean(ivtarr, axis=0)
+
+           if adapt:
+
+              ntime = len(e_mean.fcst_hour.values)
+              nlat  = len(e_mean.latitude.values)
+
+              estd   = np.std(ivtarr, axis=0)
+              stdmax = estd.max()
+              maxloc = np.where(estd == stdmax)
+              icen   = int(maxloc[1])
+              jcen   = int(maxloc[0])
+              timec  = e_mean.fcst_hour.values[icen]
+              latc   = e_mean.latitude.values[jcen]
+
+              if e_mean[jcen,icen] < ivtmin: 
+                 logging.error('  IVT landfall metric center point is below minimum.  Skipping metric.')
+                 break
+
+              fmgrid = e_mean.copy()
+              fmgrid[:,:] = 0.0
+              fmgrid[jcen,icen] = 1.0
+
+              iloc       = np.zeros(ntime*nlat, dtype=int)
+              jloc       = np.zeros(ntime*nlat, dtype=int)
+              nloc       = 0
+              iloc[nloc] = icen
+              jloc[nloc] = jcen
+
+              fhr1       = timec
+              fhr2       = timec
+              lat1       = latc
+              lat2       = latc
+
+              k = 0
+              while k <= nloc:
+
+                 fhr1 = min(fhr1,e_mean.fcst_hour.values[iloc[k]])
+                 fhr2 = max(fhr2,e_mean.fcst_hour.values[iloc[k]])
+                 lat1 = min(lat1,e_mean.latitude.values[jloc[k]])
+                 lat2 = max(lat2,e_mean.latitude.values[jloc[k]])
+
+                 for i in range(max(iloc[k]-1,0), min(iloc[k]+2,ntime)):
+                    for j in range(max(jloc[k]-1,0), min(jloc[k]+2,nlat)):
+                       if e_mean[j,i] >= ivtmin and fmgrid[j,i] < 1.0:
+                          nloc = nloc + 1
+                          iloc[nloc] = i
+                          jloc[nloc] = j
+                          fmgrid[j,i] = 1.0
+
+                 k = k + 1
+
+              #  Evaluate whether the forecast metric grid has enough land points
+              if k == 0:
+                 logging.error('  IVT landfall metric does not have any points above minimum.  Skipping metric.')
+                 break
+
+              ivtarr = ivtarr.sel(latitude=slice(lat2,lat1), fcst_hour=slice(fhr1,fhr2))
+              e_mean = e_mean.sel(latitude=slice(lat2,lat1), fcst_hour=slice(fhr1,fhr2))
+
            for n in range(g1.nens):
               ivtarr[n,:,:] = ivtarr[n,:,:] - e_mean[:,:]
 
            #  Compute the EOF of the precipitation pattern and then the PCs
-           coslat = np.cos(np.deg2rad(ensmat.latitude.values)).clip(0., 1.)
-           wgts = np.sqrt(coslat)[..., np.newaxis]
-
            solver = Eof_xarray(ivtarr.rename({'ensemble': 'time'}))
            pcout  = solver.pcs(npcs=eofn, pcscaling=1)
            pc1 = np.squeeze(pcout[:,eofn-1])
@@ -472,7 +427,9 @@ class ComputeForecastMetrics:
               divt[:,:] = divt[:,:] + ivtarr[n,:,:] * pc1[n]
 
            divt[:,:] = divt[:,:] / float(g1.nens)
-
+           if np.sum(divt) < 0.0:
+              divt[:,:] = -divt[:,:]
+              pc1[:]    = -pc1[:]
 
            fig = plt.figure(figsize=(10, 6))
 
@@ -481,7 +438,7 @@ class ComputeForecastMetrics:
 
            mivt = [0.0, 250., 300., 400., 500., 600., 700., 800., 1000., 1200., 1400., 1600., 2000.]
            norm = matplotlib.colors.BoundaryNorm(mivt,len(mivt))
-           pltf = ax0.contourf(fhrvec,latlist,e_mean,mivt, \
+           pltf = ax0.contourf(ivtarr.fcst_hour.values,ivtarr.latitude.values,e_mean,mivt, \
                                 cmap=matplotlib.colors.ListedColormap(colorlist), norm=norm, extend='max')
 
            ivtfac = np.max(abs(divt))
@@ -492,9 +449,9 @@ class ComputeForecastMetrics:
            else:
              cntrs = np.array([-500, -400, -300, -200, -100, 100, 200, 300, 400, 500])
 
-           pltm = ax0.contour(fhrvec,latlist,divt,cntrs,linewidths=1.5, colors='k', zorder=10)
+           pltm = ax0.contour(ivtarr.fcst_hour.values,ivtarr.latitude.values,divt,cntrs,linewidths=1.5, colors='k', zorder=10)
 
-           ax0.set_xlim([np.min(fhrvec), np.max(fhrvec)])
+           ax0.set_xlim([np.min(ivtarr.fcst_hour.values), np.max(ivtarr.fcst_hour.values)])
            ax0.set_ylim([np.min(latcoa), np.max(latcoa)])
 
            #  Add colorbar to the plot
@@ -549,6 +506,87 @@ class ComputeForecastMetrics:
                "{0}/{1}_f{2}_{3}.nc".format(self.config['work_dir'], str(self.datea_str), fff, metname), encoding={'fore_met_init': {'dtype': 'float32'}})
 
            self.metlist.append('f{0}_{1}'.format(fff,metname))
+
+
+    def __read_ivt(self, fhr, vDict):
+
+        gf = self.dpp.ReadGribFiles(self.datea_str, fhr, self.config)
+        ivtout = gf.create_ens_array('temperature', gf.nens, vDict)
+
+        if 'ivt' in gf.var_dict:
+
+           for n in range(gf.nens):
+              ensmat[n,:,:] = gf.read_grib_field('ivt', n, vDict)
+
+        else:
+
+           fDict = vDict.copy()
+           fDict['isobaricInhPa'] = (300, 1000)
+           fDict = gf.set_var_bounds('temperature', fDict)
+
+           for n in range(gf.nens):
+
+              uwnd = gf.read_grib_field('zonal_wind', n, fDict) * units('m / sec')
+              vwnd = gf.read_grib_field('meridional_wind', n, fDict) * units('m / sec')
+
+              tmpk = np.squeeze(gf.read_grib_field('temperature', n, fDict)) * units('K')
+              pres = (tmpk.isobaricInhPa.values * units.hPa).to(units.Pa)
+
+              if gf.has_specific_humidity:
+                 qvap = np.squeeze(gf.read_grib_field('specific_humidity', n, fDict)) * units('dimensionless')
+              else:
+                 relh = np.minimum(np.maximum(gf.read_grib_field('relative_humidity', n, fDict), 0.01), 100.0) * units('percent')
+                 qvap = mpcalc.mixing_ratio_from_relative_humidity(pres[:,None,None], tmpk, relh)
+
+              #  Integrate water vapor over the pressure levels
+              usum = np.abs(np.trapz(uwnd[:,:,:]*qvap[:,:,:], pres, axis=0)) / mpcon.earth_gravity
+              vsum = np.abs(np.trapz(vwnd[:,:,:]*qvap[:,:,:], pres, axis=0)) / mpcon.earth_gravity
+              ivtout[n,:,:] = np.sqrt(usum[:,:]**2 + vsum[:,:]**2)
+
+        return(ivtout)
+
+
+    def __ivt_landfall(self, fhr1, fhr2, latlist, lonlist, vDict, gf):
+
+
+        ensmat = gf.create_ens_array('temperature', gf.nens, vDict)
+
+        fhrvec = np.arange(fhr1, fhr2+int(self.config['fcst_hour_int']), int(self.config['fcst_hour_int']))
+
+        ivtarr = xr.DataArray(name='ensemble_data', data=np.zeros([gf.nens, len(latlist), len(fhrvec)]), dims=['ensemble', 'latitude', 'fcst_hour'], \
+                              coords={'ensemble': [i for i in range(gf.nens)], 'fcst_hour': fhrvec, 'latitude': latlist})
+
+        vecloc = len(np.shape(ensmat.latitude)) == 1
+
+        if not vecloc:
+
+           xloc = np.zeros(len(latlist), dtype=int)
+           yloc = np.zeros(len(latlist), dtype=int)
+
+           for i in range(len(latlist)):
+
+              abslat = np.abs(ensmat.latitude-latlist[i])
+              abslon = np.abs(ensmat.longitude-lonlist[i])
+              c = np.maximum(abslon, abslat)
+
+              ([yloc[i]], [xloc[i]]) = np.where(c == np.min(c))
+
+        for t in range(len(fhrvec)):
+
+           ensmat = self.__read_ivt(int(fhrvec[t]), vDict)
+
+           if vecloc:
+
+              for i in range(len(latlist)):
+                 ivtarr[:,i,t] = ensmat.sel(latitude=slice(latlist[i], latlist[i]), \
+                                            longitude=slice(lonlist[i], lonlist[i])).squeeze()
+
+           else:
+
+              for i in range(len(latlist)):
+                 ivtarr[:,i,t] = ensmat.sel(lat=yloc[i], lon=xloc[i]).squeeze().data
+
+        return(ivtarr)
 
 
     def __precipitation_mean(self):
