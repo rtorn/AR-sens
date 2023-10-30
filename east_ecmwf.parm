@@ -30,23 +30,20 @@ min_lon_precip=-94
 max_lon_precip=-67
 
 [metric]
+static_fields_file=/rt11/torn/JHT/landmask_ecmwf_0p2.grb2
+fcst_int=6
 precipitation_mean_metric=False
 precipitation_eof_metric=True
-precip_metric_loc=/rt11/torn/ar_sens/metrics_east
+precip_metric_loc=/rt11/torn/ar_sens/metrics_east/pcp
 ivt_eof_metric=True
-ivt_metric_loc=/rt11/torn/ar_sens/metrics_ivt
+ivt_metric_loc=/rt11/torn/ar_sens/metrics_east/ivt
 slp_eof_metric=True
-slp_metric_loc=/rt11/torn/ar_sens/metrics_eslp
+slp_metric_loc=/rt11/torn/ar_sens/metrics_east/slp
 temp_eof_metric=True
-temp_metric_loc=/rt11/torn/ar_sens/metrics_temp
-ivt_landfall_metric=True
-ivt_land_metric_loc=/rt11/torn/ar_sens/metrics_ivtl
+temp_metric_loc=/rt11/torn/ar_sens/metrics_east/temp
+ivt_landfall_metric=False
+ivt_land_metric_loc=/rt11/torn/ar_sens/metrics_east/ivtl
 coast_points_file=/home11/staff/torn/JHT-python/latlon_coast_1p0.txt
-min_lat_precip=25
-#min_lon_precip=-90
-#max_lon_precip=-65
-min_lon_precip=-100
-max_lon_precip=-75
 
 [fields]
 fields_hour_max=120
@@ -84,4 +81,5 @@ rawin_mark_size=6
 rawin_mark_color=gray
 range_rings=False
 output_sens=True
+output_list=ivt, e850hPa, pv250hPa, pv500hPa
 multiprocessor=True

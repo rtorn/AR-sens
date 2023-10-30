@@ -814,37 +814,27 @@ class ComputeForecastMetrics:
 
         for infile in glob.glob('{0}/{1}_*'.format(self.config['metric'].get('precip_metric_loc'),self.datea_str)):
 
-           fhr1 = int(self.config['metric'].get('precip_eof_forecast_hour1','48'))
-           fhr2 = int(self.config['metric'].get('precip_eof_forecast_hour2','120'))
            fint = int(self.config['metric'].get('fcst_int',self.config['fcst_hour_int']))
-           lmaskmin = float(self.config['metric'].get('land_mask_minimum','0.2'))
-           mask_land = eval(self.config['metric'].get('precip_eof_land_mask','True'))
-           adapt = eval(self.config['metric'].get('precip_eof_adapt','False'))
-           time_adapt = eval(self.config['metric'].get('precip_eof_time_adapt','False'))
-           time_dbuff = float(self.config['metric'].get('precip_eof_time_adapt_domain',2.0))
-           time_freq  = int(self.config['metric'].get('precip_eof_time_adapt_freq',6))
-           pcpmin = float(self.config['metric'].get('precip_eof_adapt_pcp_min','12.7'))
-           metname = 'pcpeof'
-           eofn = 1
 
            try:
               conf = configparser.ConfigParser()
               conf.read(infile)
-              fhr1 = int(conf['definition'].get('forecast_hour1',fhr1))
-              fhr2 = int(conf['definition'].get('forecast_hour2',fhr2))
+              fhr1 = int(conf['definition'].get('forecast_hour1',self.config['metric'].get('precip_eof_forecast_hour1','48')))
+              fhr2 = int(conf['definition'].get('forecast_hour2',self.config['metric'].get('precip_eof_forecast_hour2','120')))
               lat1 = float(conf['definition'].get('latitude_min',32))
               lat2 = float(conf['definition'].get('latitude_max',50))
               lon1 = float(conf['definition'].get('longitude_min',-125))
               lon2 = float(conf['definition'].get('longitude_max',-115))
-              adapt = eval(conf['definition'].get('adapt',str(adapt)))
-              time_adapt = eval(conf['definition'].get('time_adapt',str(time_adapt)))
-              time_dbuff = float(conf['definition'].get('time_adapt_domain',time_dbuff))
-              time_freq = int(conf['definition'].get('time_adapt_freq',time_freq))
-              pcpmin = float(conf['definition'].get('adapt_pcp_min',pcpmin))
-              lmaskmin = float(conf['definition'].get('land_mask_minimum',lmaskmin))
-              mask_land = eval(conf['definition'].get('land_mask',str(mask_land)))
-              metname = conf['definition'].get('metric_name',metname)
-              eofn = int(conf['definition'].get('eof_number',eofn))
+              adapt = eval(conf['definition'].get('adapt',self.config['metric'].get('precip_eof_adapt','False')))
+              time_adapt = eval(conf['definition'].get('time_adapt',self.config['metric'].get('precip_eof_time_adapt','False')))
+              time_dbuff = float(conf['definition'].get('time_adapt_domain',self.config['metric'].get('precip_eof_time_adapt_domain',2.0)))
+              time_freq = int(conf['definition'].get('time_adapt_freq',self.config['metric'].get('precip_eof_time_adapt_freq',6)))
+              pcpmin = float(conf['definition'].get('adapt_pcp_min',self.config['metric'].get('precip_eof_adapt_pcp_min','12.7')))
+              lmaskmin = float(conf['definition'].get('land_mask_minimum',self.config['metric'].get('land_mask_minimum','0.2')))
+              mask_land = eval(conf['definition'].get('land_mask',self.config['metric'].get('precip_eof_land_mask','False')))
+              frozen = eval(conf['definition'].get('frozen_mask',self.config['metric'].get('precip_eof_frozen_mask','False')))
+              metname = conf['definition'].get('metric_name','pcpeof')
+              eofn = int(conf['definition'].get('eof_number',1))
            except:
               logging.warning('  {0} does not exist.  Using parameter and/or default values'.format(infile))
 
@@ -893,6 +883,17 @@ class ComputeForecastMetrics:
                        'description': 'precipitation', 'units': 'mm', '_FillValue': -9999.}
            ensmat = self.__read_precip(fhr1, fhr2, self.config, vDict)
            ensmat[:,:,:] = ensmat[:,:,:] * 24. / float(fhr2-fhr1)
+
+           if frozen:
+
+              fmask = np.zeros(ensmat.shape)
+              fint = int(self.config['metric'].get('fcst_int',6))
+              for fhr in range(fhr1, fhr2+fint, fint):
+                 g1 = self.dpp.ReadGribFiles(self.datea_str, fhr, self.config)
+                 for n in range(g1.nens):
+                    fmask[n,:,:] = np.maximum(fmask[n,:,:],np.where(np.squeeze(g1.read_grib_field('precip_type', n, vDict)) >= 2.0, 1.0, 0.0))
+
+              ensmat[:,:,:] = ensmat[:,:,:] * fmask[:,:,:]
 
            e_mean = np.mean(ensmat, axis=0)
            e_std  = np.std(ensmat, axis=0)
