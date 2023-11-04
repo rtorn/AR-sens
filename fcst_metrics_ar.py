@@ -342,8 +342,6 @@ class ComputeForecastMetrics:
            lon1 = np.min(lonlist)
            lon2 = np.max(lonlist)
 
-           fff = '%0.3i' % fhr2
-
            g1 = self.dpp.ReadGribFiles(self.datea_str, fhr1, self.config)
 
            vDict = {'latitude': (lat1, lat2), 'longitude': (lon1, lon2),
@@ -482,7 +480,7 @@ class ComputeForecastMetrics:
            cbar = plt.colorbar(pltf, fraction=0.15, aspect=45., pad=0.13, orientation='horizontal', cax=fig.add_axes([0.15, 0.01, 0.7, 0.025]))
            cbar.set_ticks(mivt[1:(len(mivt)-1)])
 
-           outdir = '{0}/f{1}_{2}'.format(self.config['figure_dir'],fff,metname)
+           outdir = '{0}/f{1}_{2}'.format(self.config['figure_dir'],'%0.3i' % fhr2,metname)
            if not os.path.isdir(outdir):
               try:
                  os.makedirs(outdir)
@@ -503,9 +501,9 @@ class ComputeForecastMetrics:
                                                                'data': pc1.data}}}
 
            xr.Dataset.from_dict(f_met_pcpeof_nc).to_netcdf(
-               "{0}/{1}_f{2}_{3}.nc".format(self.config['work_dir'], str(self.datea_str), fff, metname), encoding={'fore_met_init': {'dtype': 'float32'}})
+               "{0}/{1}_f{2}_{3}.nc".format(self.config['work_dir'], str(self.datea_str), '%0.3i' % fhr2, metname), encoding={'fore_met_init': {'dtype': 'float32'}})
 
-           self.metlist.append('f{0}_{1}'.format(fff,metname))
+           self.metlist.append('f{0}_{1}'.format('%0.3i' % fhr2,metname))
 
 
     def __read_ivt(self, fhr, vDict):
@@ -1181,6 +1179,10 @@ class ComputeForecastMetrics:
     def __precip_basin_eof(self):
 
         #wget --no-check-certificate https://cw3e.ucsd.edu/Projects/QPF/data/eps_watershed_precip8.nc
+
+        if not os.path.isfile('watershed_precip.nc'):
+           logging.warning('  {0} is not present.  Exiting.'.format('watershed_precip.nc'))
+           return None
 
         db = pd.read_csv(filepath_or_buffer=self.config['metric'].get('basin_huc_file'), \
                            sep = ',', header=None, skipinitialspace=True, quotechar="\"")
