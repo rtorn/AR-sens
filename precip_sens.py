@@ -491,6 +491,31 @@ def ComputeSensitivity(datea, fhr, metname, config):
          plotScalarSens(lat, lon, sens, emea, sigv, '{0}/{1}_f{2}_ref{3}hPa_sens.png'.format(outdir,datea,fhrt,pres), plotDict)
 
 
+   ensfile = '{0}/{1}_f{2}_mslp_ens.nc'.format(config['work_dir'],datea,fhrt)
+   if os.path.isfile(ensfile):
+
+      ds = xr.open_dataset(ensfile)
+      ens = ds.ensemble_data.squeeze()
+      lat = ens.latitude.values
+      lon = ens.longitude.values
+      emea  = np.mean(ens, axis=0)
+      emea.attrs['units'] = ds.ensemble_data.attrs['units']
+      evar = np.var(ens, axis=0)
+
+      sens, sigv = computeSens(ens, emea, evar, metric)
+      sens[:,:] = sens[:,:] * np.sqrt(evar[:,:])
+
+      outdir = '{0}/{1}/sens/mslp'.format(config['figure_dir'],metname)
+      if not os.path.isdir(outdir):
+         os.makedirs(outdir, exist_ok=True)
+
+      if eval(config['sens'].get('output_sens', 'False')) and 'mslp' in flist:
+         writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_mslp_sens.nc'.format(config['figure_dir'],metname,datea,fhrt), plotDict)
+
+      plotDict['meanCntrs'] = np.array([960, 968, 976, 980, 984, 988, 992, 996, 1000, 1004, 1008, 1012, 1016, 1020, 1024, 1028, 1032, 1036, 1040, 1044])
+      plotScalarSens(lat, lon, sens, emea, sigv, '{0}/{1}_f{2}_mslp_sens.png'.format(outdir,datea,fhrt), plotDict)
+
+
 def plotSummarySens(lat, lon, ivt, pvort, ivsens, tesens, pvsens, fileout, plotDict):
    '''
    Function that plots the sensitivity of a forecast metric to a scalar field, along

@@ -132,6 +132,32 @@ def ComputeFields(datea, fhr, config):
             logging.warning("  Obtaining {0} hPa height data from {1}".format(levstr,outfile))
 
 
+   #  Read geopotential height from file, if ensemble file is not present
+   if eval(config['fields'].get('calc_mslp','True')):
+
+      outfile='{0}/{1}_f{2}_mslp_ens.nc'.format(config['work_dir'],datea,fff)
+
+      if not os.path.isfile(outfile):
+
+         logging.warning('  Computing MSLP')
+
+         vDict = {'latitude': (lat1, lat2), 'longitude': (lon1, lon2),
+                  'description': 'MSLP', 'units': 'hPa', '_FillValue': -9999.}
+         vDict = g1.set_var_bounds('sea_level_pressure', vDict)
+         ensmat = g1.create_ens_array('sea_level_pressure', g1.nens, vDict)
+
+         for n in range(g1.nens):
+            ensmat[n,:,:] = np.squeeze(g1.read_grib_field('sea_level_pressure', n, vDict))*0.01
+
+         ensmat.to_netcdf(outfile, encoding=dencode)
+         del ensmat
+         gc.collect()
+
+      elif os.path.isfile(outfile):
+
+         logging.warning("  Obtaining MSLP data from {0}".format(outfile))
+
+
    #  Compute the water vapor mixing ratio (if desired and file is missing)
    if config['fields'].get('calc_qvapor','True') == 'True':
 
