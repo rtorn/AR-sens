@@ -39,6 +39,10 @@ def ComputeSensitivity(datea, fhr, metname, config):
    for key in config['sens']:
       plotDict[key] = config['sens'][key]
 
+   for key in ['buoy1_file', 'buoy2_file']:
+      if key in plotDict:
+         plotDict.pop(key)
+
    fhrt = '%0.3i' % fhr
 
    logging.warning('Sensitivity of {0} to F{1}'.format(metname,fhrt))
@@ -512,8 +516,16 @@ def ComputeSensitivity(datea, fhr, metname, config):
       if eval(config['sens'].get('output_sens', 'False')) and 'mslp' in flist:
          writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_mslp_sens.nc'.format(config['figure_dir'],metname,datea,fhrt), plotDict)
 
+      for key in ['buoy1_file', 'buoy2_file']:
+         if key in config['sens']:
+            plotDict[key] = config['sens'][key]
+
       plotDict['meanCntrs'] = np.array([960, 968, 976, 980, 984, 988, 992, 996, 1000, 1004, 1008, 1012, 1016, 1020, 1024, 1028, 1032, 1036, 1040, 1044])
       plotScalarSens(lat, lon, sens, emea, sigv, '{0}/{1}_f{2}_mslp_sens.png'.format(outdir,datea,fhrt), plotDict)
+
+      for key in ['buoy1_file', 'buoy2_file']:
+         if key in plotDict:
+            plotDict.pop(key)
 
 
 def plotSummarySens(lat, lon, ivt, pvort, ivsens, tesens, pvsens, fileout, plotDict):
