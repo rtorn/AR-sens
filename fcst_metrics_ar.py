@@ -260,7 +260,7 @@ class ComputeForecastMetrics:
            fracvar = '%4.3f' % solver.varianceFraction(neigs=1)
            plt.title("{0} {1} hour IVT, {2} of variance".format(str(self.datea_str),fhr,fracvar))
 
-           outdir = '{0}/f{1}_{2}eof'.format(self.config['figure_dir'],fff,metname)
+           outdir = '{0}/f{1}_{2}'.format(self.config['figure_dir'],fff,metname)
            if not os.path.isdir(outdir):
               try:
                  os.makedirs(outdir)
@@ -281,9 +281,9 @@ class ComputeForecastMetrics:
                                                                'data': pc1.data}}}
 
            xr.Dataset.from_dict(f_met_pcpeof_nc).to_netcdf(
-               "{0}/{1}_f{2}_{3}eof.nc".format(self.config['work_dir'], str(self.datea_str), fff, metname), encoding={'fore_met_init': {'dtype': 'float32'}})
+               "{0}/{1}_f{2}_{3}.nc".format(self.config['work_dir'], str(self.datea_str), fff, metname), encoding={'fore_met_init': {'dtype': 'float32'}})
 
-           self.metlist.append('f{0}_{1}eof'.format(fff,metname))
+           self.metlist.append('f{0}_{1}'.format(fff,metname))
 
 
     def __ivt_landfall_eof(self):
@@ -1561,6 +1561,7 @@ class ComputeForecastMetrics:
               lon2  = float(conf['definition'].get('longitude_max'))
               eofn  = int(conf['definition'].get('eof_number',1))
               level = float(conf['definition'].get('pressure', 500)) 
+              metname = conf['definition'].get('metric_name','h{0}hPa'.format(int(level)))
            except IOError:
               logging.warning('{0} does not exist.  Cannot compute IVT Landfall EOF'.format(infull))
               return None
@@ -1570,7 +1571,7 @@ class ComputeForecastMetrics:
               lon2 = (lon2 + 360.) % 360.
 
            inpath, infile = infull.rsplit('/', 1)
-           infile1, metname = infile.split('_', 1)
+#           infile1, metname = infile.split('_', 1)
            fff = '%0.3i' % fhr
 
            g1 = self.dpp.ReadGribFiles(self.datea_str, fhr, self.config)
@@ -1649,7 +1650,7 @@ class ComputeForecastMetrics:
               fracvar = '%4.3f' % solver.varianceFraction(neigs=eofn)[-1]
            plt.title("{0} {1} hour height, {2} of variance".format(str(self.datea_str),fhr,fracvar))
 
-           outdir = '{0}/f{1}_{2}eof'.format(self.config['figure_dir'],fff,metname)
+           outdir = '{0}/f{1}_{2}'.format(self.config['figure_dir'],fff,metname)
            if not os.path.isdir(outdir):
               try:
                  os.makedirs(outdir)
@@ -1670,9 +1671,9 @@ class ComputeForecastMetrics:
                                                                'data': pc1.data}}}
 
            xr.Dataset.from_dict(f_met_slpeof_nc).to_netcdf(
-               "{0}/{1}_f{2}_{3}eof.nc".format(self.config['work_dir'], str(self.datea_str), fff, metname), encoding={'fore_met_init': {'dtype': 'float32'}})
+               "{0}/{1}_f{2}_{3}.nc".format(self.config['work_dir'], str(self.datea_str), fff, metname), encoding={'fore_met_init': {'dtype': 'float32'}})
 
-           self.metlist.append('f{0}_{1}eof'.format(fff,metname))
+           self.metlist.append('f{0}_{1}'.format(fff,metname))
 
 
     def __temp_eof(self):
@@ -1700,6 +1701,7 @@ class ComputeForecastMetrics:
               tmax  = float(conf['definition'].get('temperature_max','400'))
               eofn  = int(conf['definition'].get('eof_number',1))
               level = float(conf['definition'].get('pressure', 850))
+              metname = conf['definition'].get('metric_name','t{0}hPa'.format(int(level)))
            except IOError:
               logging.warning('{0} does not exist.  Cannot compute temperature EOF'.format(infull))
               return None
@@ -1708,8 +1710,8 @@ class ComputeForecastMetrics:
               lon1 = (lon1 + 360.) % 360.
               lon2 = (lon2 + 360.) % 360.
 
-           inpath, infile = infull.rsplit('/', 1)
-           infile1, metname = infile.split('_', 1)
+#           inpath, infile = infull.rsplit('/', 1)
+#           infile1, metname = infile.split('_', 1)
            fff = '%0.3i' % fhr
 
            g1 = self.dpp.ReadGribFiles(self.datea_str, fhr, self.config)
@@ -1812,7 +1814,7 @@ class ComputeForecastMetrics:
            plt.title("{0} {1} hour temperature, {2} of variance".format(str(self.datea_str),fhr,fracvar))
 
            #  Create metric directory, save image file with metric
-           outdir = '{0}/f{1}_{2}eof'.format(self.config['figure_dir'],fff,metname)
+           outdir = '{0}/f{1}_{2}'.format(self.config['figure_dir'],fff,metname)
            if not os.path.isdir(outdir):
               try:
                  os.makedirs(outdir)
@@ -1833,9 +1835,9 @@ class ComputeForecastMetrics:
                                                                'data': pc1.data}}}
 
            xr.Dataset.from_dict(f_met_tmpeof_nc).to_netcdf(
-               "{0}/{1}_f{2}_{3}eof.nc".format(self.config['work_dir'], str(self.datea_str), fff, metname), encoding={'fore_met_init': {'dtype': 'float32'}})
+               "{0}/{1}_f{2}_{3}.nc".format(self.config['work_dir'], str(self.datea_str), fff, metname), encoding={'fore_met_init': {'dtype': 'float32'}})
 
-           self.metlist.append('f{0}_{1}eof'.format(fff,metname))
+           self.metlist.append('f{0}_{1}'.format(fff,metname))
 
 
 if __name__ == "__main__":
