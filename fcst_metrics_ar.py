@@ -1421,7 +1421,7 @@ class ComputeForecastMetrics:
               conf = configparser.ConfigParser()
               conf.read(infull)
               fhr = int(conf['definition'].get('forecast_hour'))
-              metname = conf['definition'].get('metric_name','mslp')
+              metname = conf['definition'].get('metric_name','mslpeof')
               eofn = int(conf['definition'].get('eof_number',1))
               lat1 = float(conf['definition'].get('latitude_min'))
               lat2 = float(conf['definition'].get('latitude_max'))
@@ -1514,7 +1514,7 @@ class ComputeForecastMetrics:
            plt.title("{0} {1} hour Precipitation, {2} of variance".format(str(self.datea_str),fhr,fracvar))
 
            #  Create a output directory with the metric file
-           outdir = '{0}/f{1}_{2}eof'.format(self.config['figure_dir'],fff,metname)
+           outdir = '{0}/f{1}_{2}'.format(self.config['figure_dir'],fff,metname)
            if not os.path.isdir(outdir):
               try:
                  os.makedirs(outdir)
@@ -1535,9 +1535,9 @@ class ComputeForecastMetrics:
                                                                'data': pc1.data}}}
 
            xr.Dataset.from_dict(f_met_slpeof_nc).to_netcdf(
-               "{0}/{1}_f{2}_{3}eof.nc".format(self.config['work_dir'], str(self.datea_str), fff, metname), encoding={'fore_met_init': {'dtype': 'float32'}})
+               "{0}/{1}_f{2}_{3}.nc".format(self.config['work_dir'], str(self.datea_str), fff, metname), encoding={'fore_met_init': {'dtype': 'float32'}})
 
-           self.metlist.append('f{0}_{1}eof'.format(fff,metname))
+           self.metlist.append('f{0}_{1}'.format(fff,metname))
 
 
     def __hght_eof(self):
