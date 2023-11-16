@@ -849,6 +849,18 @@ class ComputeForecastMetrics:
 
               #  Read precipitation over the default window, calculate SD, search for maximum value
               ensmat = self.__read_precip(fhr1, fhr2, self.config, vDict)
+
+              if frozen:
+
+                 fmask = np.zeros(ensmat.shape)
+                 fint = int(self.config['metric'].get('fcst_int',6))
+                 for fhr in range(fhr1, fhr2+fint, fint):
+                    g1 = self.dpp.ReadGribFiles(self.datea_str, fhr, self.config)
+                    for n in range(g1.nens):
+                       fmask[n,:,:] = np.maximum(fmask[n,:,:],np.where(np.squeeze(g1.read_grib_field('precip_type', n, vDict)) >= 2.0, 1.0, 0.0))
+
+                 ensmat[:,:,:] = ensmat[:,:,:] * fmask[:,:,:]
+
               e_std = np.std(ensmat, axis=0)
               estd_mask = e_std.values[:,:] * lmask.values[:,:]
 
@@ -856,21 +868,19 @@ class ComputeForecastMetrics:
               lonc   = ensmat.longitude.values[int(maxloc[1])]
               latc   = ensmat.latitude.values[int(maxloc[0])]
 
-              print(latc,lonc)
               logging.info('    Precip. Time Adapt: Lat/Lon center: {0}, {1}'.format(latc,lonc))
 
               pmax = -1.0
               for fhr in range(fhr1, fhr2-24+time_freq, time_freq):
 
                  psum = np.sum(np.mean(self.__read_precip(fhr, fhr+24, self.config, vDict), axis=0))
-                 print(fhr,fhr+24,psum.values)
                  logging.info('    Precip. Time Adapt: {0}-{1} h, area precip: {2}'.format(fhr,fhr+24,psum.values))
                  if psum > pmax:
                     fhr1 = fhr
                     fhr2 = fhr+24
                     pmax = psum
 
-           logging.warning('  Precipitation Metric Bounds, Hours: {0}-{1}, Lat: {2}-{3}, Lon: {4}-{5}'.format(fhr1,fhr2,lat1,lat2,lon1,lon2))
+           logging.warning('  Precipitation Metric ({0}), Hours: {1}-{2}, Lat: {3}-{4}, Lon: {5}-{6}'.format(metname,fhr1,fhr2,lat1,lat2,lon1,lon2))
 
 
            #  Read the total precipitation, scale to a 24 h value 
@@ -918,7 +928,8 @@ class ComputeForecastMetrics:
                  logging.error('  precipitation metric does not have any land points.  Skipping metric.')
                  return None
 
-              estd_mask = e_std.values[:,:] * lmask.values[:,:]
+              estd_mask = e_mean.values[:,:] * lmask.values[:,:]
+#              estd_mask = e_std.values[:,:] * lmask.values[:,:]
 
               stdmax = estd_mask.max()
               maxloc = np.where(estd_mask == stdmax)
@@ -952,7 +963,7 @@ class ComputeForecastMetrics:
 
               #  Evaluate whether the forecast metric grid has enough land points
               if np.sum(fmgrid) <= 1.0:
-                 logging.error('  TC precipitation metric does not have any land points after doing search.  Skipping metric.')
+                 logging.error('  precipitation metric does not have any land points after doing search.  Skipping metric.')
                  break
 
               #  Find the grid bounds for the precipitation domain (for plotting purposes)
