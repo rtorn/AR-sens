@@ -275,7 +275,7 @@ class ComputeForecastMetrics:
            fmetatt = {'FORECAST_METRIC_LEVEL': '', 'FORECAST_METRIC_NAME': 'IVT PC', 'FORECAST_METRIC_SHORT_NAME': 'ivteof', 'FORECAST_HOUR': int(fhr), \
                       'LATITUDE1': lat1, 'LATITUDE2': lat2, 'LONGITUDE1': lon1, 'LONGITUDE2': lon2, 'EOF_NUMBER': int(eofn)}
 
-           f_met = {'coords': {}, 'attrs': fmetatt, 'dims': {'num_ens': nens}, \
+           f_met = {'coords': {}, 'attrs': fmetatt, 'dims': {'num_ens': g1.nens}, \
                     'data_vars': {'fore_met_init': {'dims': ('num_ens',), 'attrs': {'units': '', \
                                                     'description': 'IVT PC'}, 'data': pc1.data}}}
 
@@ -493,7 +493,7 @@ class ComputeForecastMetrics:
                       'FORECAST_HOUR1': int(fhr1), 'FORECAST_HOUR2': int(fhr2), 'LATITUDE1': lat1, 'LATITUDE2': lat2, \
                       'ADAPT': str(adapt), 'ADAPT_IVT_MIN': ivtmin, 'EOF_NUMBER': int(eofn)}
 
-           f_met = {'coords': {}, 'attrs': fmetatt, 'dims': {'num_ens': nens}, \
+           f_met = {'coords': {}, 'attrs': fmetatt, 'dims': {'num_ens': g1.nens}, \
                     'data_vars': {'fore_met_init': {'dims': ('num_ens',), 'attrs': {'units': '', \
                                                     'description': 'IVT Landfall PC'}, 'data': pc1.data}}}
 
@@ -1392,7 +1392,7 @@ class ComputeForecastMetrics:
                       'FORECAST_HOUR1': int(fhr1), 'FORECAST_HOUR2': int(fhr2), 'AUTOMATED': str(auto_domain), \
                       'AUTOMATED_SD_MIN': auto_sdmin, 'ACCUMULATION': str(accumulated), 'EOF_NUMBER': int(eofn)} 
 
-           f_met = {'coords': {}, 'attrs': fmetatt, 'dims': {'num_ens': nens, 'basin': len(hucid_list)}, \
+           f_met = {'coords': {}, 'attrs': fmetatt, 'dims': {'num_ens': ensmat.shape[0], 'basin': len(hucid_list)}, \
                     'data_vars': {'fore_met_init': {'dims': ('num_ens',), 'attrs': {'units': '', \
                                                     'description': 'precipitation PC'}, 'data': pc1.data}, 
                                   'huc_id': {'dims': ('basin',), 'attrs': {'description': 'HUC ID'}, 'data': hucid_list}}}
