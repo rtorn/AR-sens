@@ -92,7 +92,7 @@ class ComputeForecastMetrics:
         if self.config['metric'].get('ivt_eof_metric', 'False') == 'True':
            self.__ivt_eof()
 
-        #  Compute IVT EOF metric
+        #  Compute IVT Landfall EOF metric
         if self.config['metric'].get('ivt_landfall_metric', 'False') == 'True':
            self.__ivt_landfall_eof()
 
@@ -104,9 +104,11 @@ class ComputeForecastMetrics:
         if self.config['metric'].get('slp_eof_metric', 'False') == 'True':
            self.__slp_eof()
 
+        #  Compute Height EOF metric
         if self.config['metric'].get('hght_eof_metric', 'False') == 'True':
            self.__hght_eof()
 
+        #  Compute temperature EOF metric
         if self.config['metric'].get('temp_eof_metric', 'False') == 'True':
            self.__temp_eof()
 
@@ -270,20 +272,17 @@ class ComputeForecastMetrics:
            plt.savefig('{0}/metric.png'.format(outdir), format='png', dpi=120, bbox_inches='tight')
            plt.close(fig)
 
-           f_met_pcpeof_nc = {'coords': {},
-                              'attrs': {'FORECAST_METRIC_LEVEL': '',
-                                        'FORECAST_METRIC_NAME': 'IVT PC',
-                                        'FORECAST_METRIC_SHORT_NAME': 'ivteof'},
-                                'dims': {'num_ens': g1.nens},
-                                'data_vars': {'fore_met_init': {'dims': ('num_ens',),
-                                                               'attrs': {'units': '',
-                                                                         'description': 'IVT PC'},
-                                                               'data': pc1.data}}}
+           fmetatt = {'FORECAST_METRIC_LEVEL': '', 'FORECAST_METRIC_NAME': 'IVT PC', 'FORECAST_METRIC_SHORT_NAME': 'ivteof', 'FORECAST_HOUR': int(fhr), \
+                      'LATITUDE1': lat1, 'LATITUDE2': lat2, 'LONGITUDE1': lon1, 'LONGITUDE2': lon2, 'EOF_NUMBER': int(eofn)}
 
-           xr.Dataset.from_dict(f_met_pcpeof_nc).to_netcdf(
-               "{0}/{1}_f{2}_{3}.nc".format(self.config['work_dir'], str(self.datea_str), fff, metname), encoding={'fore_met_init': {'dtype': 'float32'}})
+           f_met = {'coords': {}, 'attrs': fmetatt, 'dims': {'num_ens': nens}, \
+                    'data_vars': {'fore_met_init': {'dims': ('num_ens',), 'attrs': {'units': '', \
+                                                    'description': 'IVT PC'}, 'data': pc1.data}}}
 
-           self.metlist.append('f{0}_{1}'.format(fff,metname))
+           xr.Dataset.from_dict(f_met).to_netcdf(
+               "{0}/{1}_f{2}_{3}.nc".format(self.config['work_dir'],str(self.datea_str),'%0.3i' % fhr2,metname), encoding={'fore_met_init': {'dtype': 'float32'}})
+
+           self.metlist.append('f{0}_{1}'.format('%0.3i' % fhr2, metname))
 
 
     def __ivt_landfall_eof(self):
@@ -402,7 +401,7 @@ class ComputeForecastMetrics:
                  k = k + 1
 
               #  Evaluate whether the forecast metric grid has enough land points
-              if k == 0:
+              if k == 0 or fhr1 != fhr2 or lat1 != lat2:
                  logging.error('  IVT landfall metric does not have any points above minimum.  Skipping metric.')
                  break
 
@@ -490,20 +489,18 @@ class ComputeForecastMetrics:
            plt.savefig('{0}/metric.png'.format(outdir), format='png', dpi=120, bbox_inches='tight')
            plt.close(fig)
 
-           f_met_pcpeof_nc = {'coords': {},
-                              'attrs': {'FORECAST_METRIC_LEVEL': '',
-                                        'FORECAST_METRIC_NAME': 'IVT Landfall PC',
-                                        'FORECAST_METRIC_SHORT_NAME': 'ivteof'},
-                                'dims': {'num_ens': g1.nens},
-                                'data_vars': {'fore_met_init': {'dims': ('num_ens',),
-                                                               'attrs': {'units': '',
-                                                                         'description': 'IVT PC'},
-                                                               'data': pc1.data}}}
+           fmetatt = {'FORECAST_METRIC_LEVEL': '', 'FORECAST_METRIC_NAME': 'IVT Landfall PC', 'FORECAST_METRIC_SHORT_NAME': 'ivtleof', \
+                      'FORECAST_HOUR1': int(fhr1), 'FORECAST_HOUR2': int(fhr2), 'LATITUDE1': lat1, 'LATITUDE2': lat2, \
+                      'ADAPT': str(adapt), 'ADAPT_IVT_MIN': ivtmin, 'EOF_NUMBER': int(eofn)}
 
-           xr.Dataset.from_dict(f_met_pcpeof_nc).to_netcdf(
-               "{0}/{1}_f{2}_{3}.nc".format(self.config['work_dir'], str(self.datea_str), '%0.3i' % fhr2, metname), encoding={'fore_met_init': {'dtype': 'float32'}})
+           f_met = {'coords': {}, 'attrs': fmetatt, 'dims': {'num_ens': nens}, \
+                    'data_vars': {'fore_met_init': {'dims': ('num_ens',), 'attrs': {'units': '', \
+                                                    'description': 'IVT Landfall PC'}, 'data': pc1.data}}}
 
-           self.metlist.append('f{0}_{1}'.format('%0.3i' % fhr2,metname))
+           xr.Dataset.from_dict(f_met).to_netcdf(
+               "{0}/{1}_f{2}_{3}.nc".format(self.config['work_dir'],str(self.datea_str),'%0.3i' % fhr2,metname), encoding={'fore_met_init': {'dtype': 'float32'}})
+
+           self.metlist.append('f{0}_{1}'.format('%0.3i' % fhr2, metname))
 
 
     def __read_ivt(self, fhr, vDict):
@@ -918,7 +915,7 @@ class ComputeForecastMetrics:
 
               # Search for maximum in ensemble precipitation SD 
               if np.amax(lmask.values) < lmaskmin:
-                 logging.error('  TC precipitation metric does not have any land points.  Skipping metric.')
+                 logging.error('  precipitation metric does not have any land points.  Skipping metric.')
                  return None
 
               estd_mask = e_std.values[:,:] * lmask.values[:,:]
@@ -1380,21 +1377,19 @@ class ComputeForecastMetrics:
            plt.savefig('{0}/metric.png'.format(outdir), format='png', dpi=150, bbox_inches='tight')
            plt.close(fig)
 
-           f_met_basineof_nc = {'coords': {},
-                                'attrs': {'FORECAST_METRIC_LEVEL': '',
-                                          'FORECAST_METRIC_NAME': 'integrated min. SLP PC',
-                                          'FORECAST_METRIC_SHORT_NAME': 'intslp'},
-                                'dims': {'num_ens': ensmat.shape[0]},
-                                'data_vars': {'fore_met_init': {'dims': ('num_ens',),
-                                                              'attrs': {'units': '',
-                                                                        'description': 'integrated min. SLP PC'},
-                                                               'data': pc1.data}}}
+           fmetatt = {'FORECAST_METRIC_LEVEL': '', 'FORECAST_METRIC_NAME': 'river basin precipitation PC', 'FORECAST_METRIC_SHORT_NAME': 'rpcpeof', \
+                      'FORECAST_HOUR1': int(fhr1), 'FORECAST_HOUR2': int(fhr2), 'AUTOMATED': str(auto_domain), \
+                      'AUTOMATED_SD_MIN': auto_sdmin, 'ACCUMULATION': str(accumulated), 'EOF_NUMBER': int(eofn)} 
 
-           fff2 = '%0.3i' % fhr2
-           xr.Dataset.from_dict(f_met_basineof_nc).to_netcdf(
-               "{0}/{1}_f{2}_{3}.nc".format(self.config['work_dir'], str(self.datea_str), fff2, metname), encoding={'fore_met_init': {'dtype': 'float32'}})
+           f_met = {'coords': {}, 'attrs': fmetatt, 'dims': {'num_ens': nens, 'basin': len(hucid_list)}, \
+                    'data_vars': {'fore_met_init': {'dims': ('num_ens',), 'attrs': {'units': '', \
+                                                    'description': 'precipitation PC'}, 'data': pc1.data}, 
+                                  'huc_id': {'dims': ('basin',), 'attrs': {'description': 'HUC ID'}, 'data': hucid_list}}}
 
-           self.metlist.append('f{0}_{1}'.format(fff2,metname))
+           xr.Dataset.from_dict(f_met).to_netcdf(
+               "{0}/{1}_f{2}_{3}.nc".format(self.config['work_dir'],str(self.datea_str),'%0.3i' % fhr2,metname), encoding={'fore_met_init': {'dtype': 'float32'}})
+
+           self.metlist.append('f{0}_{1}'.format('%0.3i' % fhr2, metname))
 
 
     def __slp_eof(self):
