@@ -14,9 +14,9 @@ model_dir=/tornlab_rit/torn/ecmwf
 work_dir=/rt11/torn/ar_sens/east_ecmwf
 output_dir=/rt11/torn/ar_sens/output_ecmwf
 script_dir=/home11/staff/torn/JHT-python
-figure_dir=/rt11/torn/html/AR-East/ECMWF
-outgrid_dir=/rt11/torn/html/AR-East/ECMWF
-log_dir=/rt11/torn/ar_sens/log_ecmwf
+figure_dir=/home11/staff/torn/html/AR-East/ECMWF
+outgrid_dir=/home11/staff/torn/html/AR-East/ECMWF
+log_dir=/rt11/torn/ar_sens/log_eceast
 
 save_work_dir=True
 
@@ -70,7 +70,7 @@ max_lon=-70
 zero_non_sig_sens=True
 grid_interval=10.
 barb_interval=6
-pv_levels=[250]
+pv_levels=[250, 500, 700, 850]
 thetae_levels=[850]
 dropsonde_file=./2019083100_drop_info.txt
 drop_mark_size=6

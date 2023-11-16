@@ -21,7 +21,7 @@ output_dir=/rt11/torn/ar_sens/output_ecwpac
 script_dir=/home11/staff/torn/JHT-python
 figure_dir=/rt11/torn/html/AR-WPac/ECMWF
 outgrid_dir=/rt11/torn/html/AR-WPac/ECMWF
-log_dir=/rt11/torn/ar_sens/log_ecmwf
+log_dir=/rt11/torn/ar_sens/log_ecwpac
 
 save_work_dir=True
 
