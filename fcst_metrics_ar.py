@@ -852,14 +852,14 @@ class ComputeForecastMetrics:
 
               if frozen:
 
-                 fmask = np.zeros(ensmat.shape)
+                 ensmat[:,:,:] = 0.
                  fint = int(self.config['metric'].get('fcst_int',6))
-                 for fhr in range(fhr1, fhr2+fint, fint):
+                 for fhr in range(fhr1+fint, fhr2+fint, fint):
+                    pcp = self.__read_precip(fhr-fint, fhr, self.config, vDict)
                     g1 = self.dpp.ReadGribFiles(self.datea_str, fhr, self.config)
                     for n in range(g1.nens):
-                       fmask[n,:,:] = np.maximum(fmask[n,:,:],np.where(np.squeeze(g1.read_grib_field('precip_type', n, vDict)) >= 2.0, 1.0, 0.0))
-
-                 ensmat[:,:,:] = ensmat[:,:,:] * fmask[:,:,:]
+                       ensmat[n,:,:] = ensmat[n,:,:] + np.where(np.squeeze(g1.read_grib_field('precip_type', n, vDict)) >= 2.0, \
+                                                                np.squeeze(pcp[n,:,:]), 0.0)
 
               e_std = np.std(ensmat, axis=0)
               estd_mask = e_std.values[:,:] * lmask.values[:,:]
@@ -891,14 +891,16 @@ class ComputeForecastMetrics:
 
            if frozen:
 
-              fmask = np.zeros(ensmat.shape)
+              ensmat[:,:,:] = 0.
               fint = int(self.config['metric'].get('fcst_int',6))
-              for fhr in range(fhr1, fhr2+fint, fint):
+              for fhr in range(fhr1+fint, fhr2+fint, fint):
+                 pcp = self.__read_precip(fhr-fint, fhr, self.config, vDict)
                  g1 = self.dpp.ReadGribFiles(self.datea_str, fhr, self.config)
                  for n in range(g1.nens):
-                    fmask[n,:,:] = np.maximum(fmask[n,:,:],np.where(np.squeeze(g1.read_grib_field('precip_type', n, vDict)) >= 2.0, 1.0, 0.0))
+                    ensmat[n,:,:] = ensmat[n,:,:] + np.where(np.squeeze(g1.read_grib_field('precip_type', n, vDict)) >= 2.0, \
+                                                             np.squeeze(pcp[n,:,:]), 0.0)
 
-              ensmat[:,:,:] = ensmat[:,:,:] * fmask[:,:,:]
+              ensmat[:,:,:] = ensmat[:,:,:] * 24. / float(fhr2-fhr1)
 
            e_mean = np.mean(ensmat, axis=0)
            e_std  = np.std(ensmat, axis=0)
@@ -1530,20 +1532,17 @@ class ComputeForecastMetrics:
            plt.savefig('{0}/metric.png'.format(outdir), format='png', dpi=120, bbox_inches='tight')
            plt.close(fig)
 
-           f_met_slpeof_nc = {'coords': {},
-                              'attrs': {'FORECAST_METRIC_LEVEL': '',
-                                        'FORECAST_METRIC_NAME': 'SLP PC',
-                                        'FORECAST_METRIC_SHORT_NAME': 'slpeof'},
-                                'dims': {'num_ens': g1.nens},
-                                'data_vars': {'fore_met_init': {'dims': ('num_ens',),
-                                                               'attrs': {'units': '',
-                                                                         'description': 'sea-level pressure PC'},
-                                                               'data': pc1.data}}}
+           fmetatt = {'FORECAST_METRIC_LEVEL': '', 'FORECAST_METRIC_NAME': 'SLP PC', 'FORECAST_METRIC_SHORT_NAME': 'slpeof', 'FORECAST_HOUR': int(fhr), \
+                      'LATITUDE1': lat1, 'LATITUDE2': lat2, 'LONGITUDE1': lon1, 'LONGITUDE2': lon2, 'EOF_NUMBER': int(eofn)}
 
-           xr.Dataset.from_dict(f_met_slpeof_nc).to_netcdf(
-               "{0}/{1}_f{2}_{3}.nc".format(self.config['work_dir'], str(self.datea_str), fff, metname), encoding={'fore_met_init': {'dtype': 'float32'}})
+           f_met = {'coords': {}, 'attrs': fmetatt, 'dims': {'num_ens': g1.nens}, \
+                    'data_vars': {'fore_met_init': {'dims': ('num_ens',), 'attrs': {'units': '', \
+                                                    'description': 'sea-level pressure PC'}, 'data': pc1.data}}}
 
-           self.metlist.append('f{0}_{1}'.format(fff,metname))
+           xr.Dataset.from_dict(f_met).to_netcdf(
+               "{0}/{1}_f{2}_{3}.nc".format(self.config['work_dir'],str(self.datea_str),'%0.3i' % fhr,metname), encoding={'fore_met_init': {'dtype': 'float32'}})
+
+           self.metlist.append('f{0}_{1}'.format('%0.3i' % fhr, metname))
 
 
     def __hght_eof(self):
@@ -1666,20 +1665,17 @@ class ComputeForecastMetrics:
            plt.savefig('{0}/metric.png'.format(outdir), format='png', dpi=120, bbox_inches='tight')
            plt.close(fig)
 
-           f_met_slpeof_nc = {'coords': {},
-                              'attrs': {'FORECAST_METRIC_LEVEL': '',
-                                        'FORECAST_METRIC_NAME': 'Height PC',
-                                        'FORECAST_METRIC_SHORT_NAME': 'hghteof'},
-                                'dims': {'num_ens': g1.nens},
-                                'data_vars': {'fore_met_init': {'dims': ('num_ens',),
-                                                               'attrs': {'units': '',
-                                                                         'description': 'height PC'},
-                                                               'data': pc1.data}}}
+           fmetatt = {'FORECAST_METRIC_LEVEL': '', 'FORECAST_METRIC_NAME': 'Height PC', 'FORECAST_METRIC_SHORT_NAME': 'hghteof', 'FORECAST_HOUR': int(fhr), \
+                      'LATITUDE1': lat1, 'LATITUDE2': lat2, 'LONGITUDE1': lon1, 'LONGITUDE2': lon2, 'PRESSURE': level, 'EOF_NUMBER': int(eofn)}
 
-           xr.Dataset.from_dict(f_met_slpeof_nc).to_netcdf(
-               "{0}/{1}_f{2}_{3}.nc".format(self.config['work_dir'], str(self.datea_str), fff, metname), encoding={'fore_met_init': {'dtype': 'float32'}})
+           f_met = {'coords': {}, 'attrs': fmetatt, 'dims': {'num_ens': g1.nens}, \
+                    'data_vars': {'fore_met_init': {'dims': ('num_ens',), 'attrs': {'units': '', \
+                                                    'description': 'height PC'}, 'data': pc1.data}}}
 
-           self.metlist.append('f{0}_{1}'.format(fff,metname))
+           xr.Dataset.from_dict(f_met).to_netcdf(
+               "{0}/{1}_f{2}_{3}.nc".format(self.config['work_dir'],str(self.datea_str),'%0.3i' % fhr,metname), encoding={'fore_met_init': {'dtype': 'float32'}})
+
+           self.metlist.append('f{0}_{1}'.format('%0.3i' % fhr, metname))
 
 
     def __temp_eof(self):
@@ -1830,20 +1826,18 @@ class ComputeForecastMetrics:
            plt.savefig('{0}/metric.png'.format(outdir), format='png', dpi=120, bbox_inches='tight')
            plt.close(fig)
 
-           f_met_tmpeof_nc = {'coords': {},
-                              'attrs': {'FORECAST_METRIC_LEVEL': '',
-                                        'FORECAST_METRIC_NAME': 'Temperature PC',
-                                        'FORECAST_METRIC_SHORT_NAME': 'tempeof'},
-                                'dims': {'num_ens': g1.nens},
-                                'data_vars': {'fore_met_init': {'dims': ('num_ens',),
-                                                               'attrs': {'units': '',
-                                                                         'description': 'temperature PC'},
-                                                               'data': pc1.data}}}
+           fmetatt = {'FORECAST_METRIC_LEVEL': '', 'FORECAST_METRIC_NAME': 'Temperature PC', 'FORECAST_METRIC_SHORT_NAME': 'tempeof', 'FORECAST_HOUR': int(fhr), \
+                      'LATITUDE1': lat1, 'LATITUDE2': lat2, 'LONGITUDE1': lon1, 'LONGITUDE2': lon2, 'PRESSURE': level, \
+                      'TEMPERATURE_MIN': tmin, 'TEMPERATURE_MAX': tmax, 'EOF_NUMBER': int(eofn)}
 
-           xr.Dataset.from_dict(f_met_tmpeof_nc).to_netcdf(
-               "{0}/{1}_f{2}_{3}.nc".format(self.config['work_dir'], str(self.datea_str), fff, metname), encoding={'fore_met_init': {'dtype': 'float32'}})
+           f_met = {'coords': {}, 'attrs': fmetatt, 'dims': {'num_ens': g1.nens}, \
+                    'data_vars': {'fore_met_init': {'dims': ('num_ens',), 'attrs': {'units': '', \
+                                                    'description': 'temperature PC'}, 'data': pc1.data}}}
 
-           self.metlist.append('f{0}_{1}'.format(fff,metname))
+           xr.Dataset.from_dict(f_met).to_netcdf(
+               "{0}/{1}_f{2}_{3}.nc".format(self.config['work_dir'],str(self.datea_str),'%0.3i' % fhr,metname), encoding={'fore_met_init': {'dtype': 'float32'}})
+
+           self.metlist.append('f{0}_{1}'.format('%0.3i' % fhr, metname))
 
 
 if __name__ == "__main__":
