@@ -401,7 +401,7 @@ class ComputeForecastMetrics:
                  k = k + 1
 
               #  Evaluate whether the forecast metric grid has enough land points
-              if k == 0 or fhr1 != fhr2 or lat1 != lat2:
+              if k == 0 or fhr1 == fhr2 or lat1 == lat2:
                  logging.error('  IVT landfall metric does not have any points above minimum.  Skipping metric.')
                  break
 
@@ -441,8 +441,8 @@ class ComputeForecastMetrics:
            ivtfac = np.max(abs(divt))
            if ivtfac < 60:
              cntrs = np.array([-50, -40, -30, -20, -10, 10, 20, 30, 40, 50])
-           elif ivtfac >= 60 and ivtfac < 200:
-             cntrs = np.array([-180, -150, -120, -90, -60, -30, 30, 60, 90, 120, 150, 180])
+           elif ivtfac >= 60 and ivtfac < 300:
+             cntrs = np.array([-270, -240, -210, -180, -150, -120, -90, -60, -30, 30, 60, 90, 120, 150, 180, 210, 240, 270])
            else:
              cntrs = np.array([-500, -400, -300, -200, -100, 100, 200, 300, 400, 500])
 
