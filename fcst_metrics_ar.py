@@ -321,7 +321,7 @@ class ComputeForecastMetrics:
               ivtmin = float(conf['definition'].get('adapt_ivt_min',self.config['metric'].get('ivt_land_adapt_min',225.)))
            except IOError:
               logging.warning('{0} does not exist.  Cannot compute IVT Landfall EOF'.format(infull))
-              return None
+              continue
 
            latlist = []
            lonlist = []
@@ -355,7 +355,7 @@ class ComputeForecastMetrics:
               ntime = len(e_mean.fcst_hour.values)
               nlat  = len(e_mean.latitude.values)
 
-              estd   = np.std(ivtarr, axis=0)
+              estd   = np.mean(ivtarr, axis=0)
               stdmax = estd.max()
               maxloc = np.where(estd == stdmax)
               icen   = int(maxloc[1])
@@ -365,7 +365,7 @@ class ComputeForecastMetrics:
 
               if e_mean[jcen,icen] < ivtmin: 
                  logging.error('  IVT landfall metric center point is below minimum.  Skipping metric.')
-                 break
+                 continue
 
               fmgrid = e_mean.copy()
               fmgrid[:,:] = 0.0
@@ -403,7 +403,7 @@ class ComputeForecastMetrics:
               #  Evaluate whether the forecast metric grid has enough land points
               if k == 0 or fhr1 == fhr2 or lat1 == lat2:
                  logging.error('  IVT landfall metric does not have any points above minimum.  Skipping metric.')
-                 break
+                 continue
 
               ivtarr = ivtarr.sel(latitude=slice(lat2,lat1), fcst_hour=slice(fhr1,fhr2))
               e_mean = e_mean.sel(latitude=slice(lat2,lat1), fcst_hour=slice(fhr1,fhr2))
@@ -928,7 +928,7 @@ class ComputeForecastMetrics:
               # Search for maximum in ensemble precipitation SD 
               if np.amax(lmask.values) < lmaskmin:
                  logging.error('  precipitation metric does not have any land points.  Skipping metric.')
-                 return None
+                 continue
 
               estd_mask = e_mean.values[:,:] * lmask.values[:,:]
 #              estd_mask = e_std.values[:,:] * lmask.values[:,:]
@@ -966,7 +966,7 @@ class ComputeForecastMetrics:
               #  Evaluate whether the forecast metric grid has enough land points
               if np.sum(fmgrid) <= 1.0:
                  logging.error('  precipitation metric does not have any land points after doing search.  Skipping metric.')
-                 break
+                 continue
 
               #  Find the grid bounds for the precipitation domain (for plotting purposes)
               i1 = nlon-1

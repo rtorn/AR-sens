@@ -26,8 +26,8 @@ log_dir=/rt11/torn/ar_sens/log_ecwpac
 save_work_dir=True
 
 [vitals_plot]
-precip_hour_1=[36, 48, 60, 72,  84,  96, 108, 120]
-precip_hour_2=[60, 72, 84, 96, 108, 120, 132, 144]
+precip_hour_1=[]
+precip_hour_2=[]
 min_lon_precip=230
 max_lon_precip=252
 
@@ -60,7 +60,7 @@ thetae_levels=[1000, 925, 850, 700]
 #thetae_levels=[1000, 925, 850, 700, 500, 300, 250, 200]
 #wind_levels=[1000, 925, 850, 700, 500, 300, 250, 200]
 #qvapor_levels=[1000, 925, 850, 700, 500, 300, 250, 200]
-pv_levels=[850, 700, 500, 300, 250]
+pv_levels=[850, 700, 500, 300, 250, 200]
 calc_pv_pres=True
 calc_theta-e=True
 calc_qvapor=True
