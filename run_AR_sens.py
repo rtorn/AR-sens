@@ -22,6 +22,7 @@ from cartopy.feature import NaturalEarthFeature
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 
 sys.path.append('../esens-util')
+from diagnostics import basin_ens_maps
 import fcst_metrics_ar as fmet
 from compute_precip_fields import ComputeFields
 from precip_sens import ComputeSensitivity
@@ -133,6 +134,8 @@ def main():
 
 
     #  Plot the precipitation forecast
+#    fhr1 = [e.strip() for e in config['vitals_plot'].get('precip_hour_1').split(',')]
+#    fhr2 = [e.strip() for e in config['vitals_plot'].get('precip_hour_2').split(',')]
     fhr1 = json.loads(config['vitals_plot'].get('precip_hour_1'))
     fhr2 = json.loads(config['vitals_plot'].get('precip_hour_2'))
     if eval(config['vitals_plot'].get('multiprocessor','False')):
@@ -145,6 +148,12 @@ def main():
 
        for h in range(len(fhr1)):
           precipitation_ens_maps(datea, int(fhr1[h]), int(fhr2[h]), config)
+
+
+    fhr1 = [e.strip() for e in config['vitals_plot'].get('basin_hour_1').split(',')]
+    fhr2 = [e.strip() for e in config['vitals_plot'].get('basin_hour_2').split(',')]
+    for h in range(len(fhr1)):
+       basin_ens_maps(datea, int(fhr1[h]), int(fhr2[h]), config)
 
 
     #  Compute precipitation-related forecast metrics
