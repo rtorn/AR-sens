@@ -20,9 +20,9 @@ log_dir=/rt11/torn/ar_sens/log_eceast
 
 save_work_dir=True
 
-[vitals_plot]
-precip_hour_1=[36, 48, 60, 72,  84,  96, 108, 120, 132, 144]
-precip_hour_2=[60, 72, 84, 96, 108, 120, 132, 144, 156, 168]
+[fcst_diag]
+precip_hour_1=36, 48, 60, 72,  84,  96, 108, 120, 132, 144
+precip_hour_2=60, 72, 84, 96, 108, 120, 132, 144, 156, 168
 min_lat_precip=25
 #min_lon_precip=-90
 #max_lon_precip=-65

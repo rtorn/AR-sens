@@ -25,9 +25,7 @@ log_dir=/rt11/torn/ar_sens/log_ecwpac
 
 save_work_dir=True
 
-[vitals_plot]
-precip_hour_1=[]
-precip_hour_2=[]
+[fcst_diag]
 min_lon_precip=230
 max_lon_precip=252
 
