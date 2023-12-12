@@ -37,11 +37,11 @@ log_dir=/cw3e/mead/projects/cwp110/scratch/ryantorn/ww_sens/log
 
 save_work_dir=True
 
-[vitals_plot]
+[fcst_diag]
 #precip_hour_1=[36, 48, 60, 72,  84,  96]
 #precip_hour_2=[60, 72, 84, 96, 108, 120]
-precip_hour_1=[36, 48, 60, 72,  84,  96, 108, 120, 132]
-precip_hour_2=[60, 72, 84, 96, 108, 120, 132, 144, 156]
+precip_hour_1=36, 48, 60, 72,  84,  96, 108, 120, 132
+precip_hour_2=60, 72, 84, 96, 108, 120, 132, 144, 156
 min_lat_precip=30
 max_lat_precip=52
 min_lon_precip=-132

@@ -17,13 +17,15 @@ output_dir=/rt11/torn/ar_sens/output_ecmwf
 script_dir=/home11/staff/torn/JHT-python
 figure_dir=/rt11/torn/html/AR-Sens/ECMWF
 outgrid_dir=/rt11/torn/html/AR-Sens/ECMWF
-log_dir=/rt11/torn/ar_sens/log_ecmwf
+log_dir=/rt11/torn/ar_sens/log_ecepac
 
 save_work_dir=True
 
-[vitals_plot]
-precip_hour_1=[36, 48, 60, 72,  84,  96, 108, 120, 132, 144]
-precip_hour_2=[60, 72, 84, 96, 108, 120, 132, 144, 156, 168]
+[fcst_diag]
+basin_hour_1=48, 60, 72,  84,  96, 108, 120, 132, 144
+basin_hour_2=72, 84, 96, 108, 120, 132, 144, 156, 168
+precip_hour_1=36, 48, 60, 72,  84,  96, 108, 120, 132, 144
+precip_hour_2=60, 72, 84, 96, 108, 120, 132, 144, 156, 168
 #min_lat_precip=30
 #max_lat_precip=45
 #min_lon_precip=-115
@@ -42,7 +44,7 @@ slp_eof_metric=True
 slp_metric_loc=/rt11/torn/ar_sens/metrics_epac/slp
 hght_eof_metric=True
 hght_metric_loc=/rt11/torn/ar_sens/metrics_epac/hght
-temp_eof_metric=False
+temp_eof_metric=True
 temp_metric_loc=/rt11/torn/ar_sens/metrics_epac/t850
 ivt_landfall_metric=True
 ivt_land_metric_loc=/rt11/torn/ar_sens/metrics_epac/ivtl

@@ -2,30 +2,18 @@ import os, glob
 import sys
 import argparse
 import importlib
-import json
 import shutil
 import tarfile
 import numpy as np
-import datetime as dt
 import configparser
 import logging
 from multiprocessing import Pool
 
-import matplotlib
-from IPython.core.pylabtools import figsize, getfigs
-import importlib
-import matplotlib.pyplot as plt
-import matplotlib.ticker as mticker
-import cartopy
-import cartopy.crs as ccrs
-from cartopy.feature import NaturalEarthFeature
-from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
-
 sys.path.append('../esens-util')
+from fcst_diag import precipitation_ens_maps, basin_ens_maps
 import fcst_metrics_ar as fmet
 from compute_precip_fields import ComputeFields
 from precip_sens import ComputeSensitivity
-from SensPlotRoutines import background_map
 
 #  Routine to read configuration file
 def read_config(datea, filename):
@@ -43,7 +31,7 @@ def read_config(datea, filename):
     confin.read(filename)
 
     config = {}
-    config['vitals_plot'] = confin['vitals_plot']
+    config['fcst_diag']   = confin['fcst_diag']
     config['metric']      = confin['metric']
     config['fields']      = confin['fields']
     config['sens']        = confin['sens']
@@ -133,18 +121,25 @@ def main():
 
 
     #  Plot the precipitation forecast
-    fhr1 = json.loads(config['vitals_plot'].get('precip_hour_1'))
-    fhr2 = json.loads(config['vitals_plot'].get('precip_hour_2'))
-    if eval(config['vitals_plot'].get('multiprocessor','False')):
+    if ('precip_hour_1' in config['fcst_diag']) and ('precip_hour_2' in config['fcst_diag']):
+       fhr1 = [e.strip() for e in config['fcst_diag'].get('precip_hour_1','').split(',')]
+       fhr2 = [e.strip() for e in config['fcst_diag'].get('precip_hour_2','').split(',')]
+       if eval(config['fcst_diag'].get('multiprocessor','False')):
 
-       arglist = [(datea, int(fhr1[h]), int(fhr2[h]), config) for h in range(len(fhr1))]
-       with Pool() as pool:
-          results = pool.map(precipitation_ens_maps_parallel, arglist)
+          arglist = [(datea, int(fhr1[h]), int(fhr2[h]), config) for h in range(len(fhr1))]
+          with Pool() as pool:
+             results = pool.map(precipitation_ens_maps_parallel, arglist)
 
-    else:
+       else:
 
+          for h in range(len(fhr1)):
+             precipitation_ens_maps(datea, int(fhr1[h]), int(fhr2[h]), config)
+
+    if ('basin_hour_1' in config['fcst_diag']) and ('basin_hour_2' in config['fcst_diag']):
+       fhr1 = [e.strip() for e in config['fcst_diag'].get('basin_hour_1','').split(',')]
+       fhr2 = [e.strip() for e in config['fcst_diag'].get('basin_hour_2','').split(',')]
        for h in range(len(fhr1)):
-          precipitation_ens_maps(datea, int(fhr1[h]), int(fhr2[h]), config)
+          basin_ens_maps(datea, int(fhr1[h]), int(fhr2[h]), config)
 
 
     #  Compute precipitation-related forecast metrics
@@ -243,150 +238,6 @@ def main():
        shutil.rmtree(config['work_dir'])
 
  
-def precipitation_ens_maps(datea, fhr1, fhr2, config):
-    '''
-    Function that plots the ensemble precipitation forecast between two forecast hours.
-
-    Attributes:
-        datea (string):  initialization date of the forecast (yyyymmddhh format)
-        fhr1     (int):  starting forecast hour of the window
-        fhr2     (int):  ending forecast hour of the window
-        config (dict.):  dictionary that contains configuration options (read from file)
-    '''
-
-    dpp = importlib.import_module(config['io_module'])
-
-    lat1 = float(config['vitals_plot'].get('min_lat_precip','30.'))
-    lat2 = float(config['vitals_plot'].get('max_lat_precip','52.'))
-    lon1 = float(config['vitals_plot'].get('min_lon_precip','-130.'))
-    lon2 = float(config['vitals_plot'].get('max_lon_precip','-108.'))
-
-    fff1 = '%0.3i' % fhr1
-    fff2 = '%0.3i' % fhr2
-    datea_1   = dt.datetime.strptime(datea, '%Y%m%d%H') + dt.timedelta(hours=fhr1)
-    date1_str = datea_1.strftime("%Y%m%d%H")
-    datea_2   = dt.datetime.strptime(datea, '%Y%m%d%H') + dt.timedelta(hours=fhr2)
-    date2_str = datea_2.strftime("%Y%m%d%H")
-    fint      = int(config.get('fcst_hour_int','12'))
-    g1        = dpp.ReadGribFiles(datea, fhr1, config)
-
-    #  Read the total precipitation for the beginning of the window
-    if g1.has_total_precip:
-
-       g1 = dpp.ReadGribFiles(datea, fhr1, config)
-
-       vDict = {'latitude': (lat1-0.00001, lat2), 'longitude': (lon1-0.00001, lon2),
-                'description': 'precipitation', 'units': 'mm', '_FillValue': -9999.}
-       vDict = g1.set_var_bounds('precipitation', vDict)
-
-       g2 = dpp.ReadGribFiles(datea, fhr2, config)
-
-       ensmat = g2.create_ens_array('precipitation', g2.nens, vDict)
-
-       for n in range(g2.nens):
-          ens1 = np.squeeze(g1.read_grib_field('precipitation', n, vDict))
-          ens2 = np.squeeze(g2.read_grib_field('precipitation', n, vDict))
-          ensmat[n,:,:] = ens2[:,:] - ens1[:,:]
-
-       if hasattr(ens2, 'units'):
-          if ens2.units == "m":
-             vscale = 1000.
-          else:
-             vscale = 1.
-       else:
-          vscale = 1.
-
-    else:
-
-       g1 = dpp.ReadGribFiles(datea, fhr1+fint, config)
-
-       vDict = {'latitude': (lat1-0.00001, lat2), 'longitude': (lon1-0.00001, lon2),
-                'description': 'precipitation', 'units': 'mm', '_FillValue': -9999.}
-       vDict = g1.set_var_bounds('precipitation', vDict)
-
-       ensmat = g1.create_ens_array('precipitation', g1.nens, vDict)
-
-       for n in range(g1.nens):
-          ensmat[n,:,:] = np.squeeze(g1.read_grib_field('precipitation', n, vDict))
-
-       for fhr in range(fhr1+2*fint, fhr2+fint, fint):
-
-          print('forecast hour',fhr)
-          g1 = dpp.ReadGribFiles(datea, fhr, config)
-
-          for n in range(g1.nens):
-             ensmat[n,:,:] = ensmat[n,:,:] + np.squeeze(g1.read_grib_field('precipitation', n, vDict))
-       
-       if hasattr(g1.read_grib_field('precipitation', 0, vDict), 'units'):
-          if g1.read_grib_field('precipitation', 0, vDict).units == "m":
-             vscale = 1000.
-          else:
-             vscale = 1.
-       else:
-          vscale = 1.
-
-    #  Scale all of the rainfall to mm and to a 24 h precipitation
-    ensmat[:,:,:] = ensmat[:,:,:] * vscale * 24. / float(fhr2-fhr1)
-
-    e_mean = np.mean(ensmat, axis=0)
-    e_std  = np.std(ensmat, axis=0)
-
-    #  Create basic figure, including political boundaries and grid lines
-    fig = plt.figure(figsize=(11,6.5), constrained_layout=True)
-
-    colorlist = ("#FFFFFF", "#00ECEC", "#01A0F6", "#0000F6", "#00FF00", "#00C800", "#009000", "#FFFF00", \
-                 "#E7C000", "#FF9000", "#FF0000", "#D60000", "#C00000", "#FF00FF", "#9955C9")
-
-    plotBase = config.copy()
-    plotBase['subplot']       = 'True'
-    plotBase['subrows']       = 1
-    plotBase['subcols']       = 2
-    plotBase['subnumber']     = 1
-    plotBase['grid_interval'] = config['vitals_plot'].get('grid_interval', 5)
-    plotBase['left_labels'] = 'True'
-    plotBase['right_labels'] = 'None'
-    ax1 = background_map(config.get('projection', 'PlateCarree'), lon1, lon2, lat1, lat2, plotBase)
-
-    #  Plot the mean precipitation map
-    mpcp = [0.0, 0.25, 0.50, 1., 1.5, 2., 4., 6., 8., 12., 16., 24., 32., 64., 96., 97.]
-    norm = matplotlib.colors.BoundaryNorm(mpcp,len(mpcp))
-    pltf1 = plt.contourf(ensmat.longitude.values,ensmat.latitude.values,e_mean,mpcp,norm=norm,extend='max', \
-                         cmap=matplotlib.colors.ListedColormap(colorlist), transform=ccrs.PlateCarree())
-
-    cbar = plt.colorbar(pltf1, fraction=0.15, aspect=45., pad=0.04, orientation='horizontal', ticks=mpcp)
-    cbar.set_ticks(mpcp[1:(len(mpcp)-1):2])
-
-    plt.title('Mean')
-
-    plotBase['subnumber']     = 2
-    plotBase['left_labels'] = 'None'
-    plotBase['right_labels'] = 'None'
-    ax2 = background_map(config.get('projection', 'PlateCarree'), lon1, lon2, lat1, lat2, plotBase)
-
-    #  Plot the standard deviation of the ensemble precipitation
-    spcp = [0., 3., 6., 9., 12., 15., 18., 21., 24., 27., 30., 33., 36., 39., 42., 43.]
-    norm = matplotlib.colors.BoundaryNorm(spcp,len(spcp))
-    pltf2 = plt.contourf(ensmat.longitude.values,ensmat.latitude.values,e_std,spcp,norm=norm,extend='max', \
-                         cmap=matplotlib.colors.ListedColormap(colorlist), transform=ccrs.PlateCarree())
-
-    cbar = plt.colorbar(pltf2, fraction=0.15, aspect=45., pad=0.04, orientation='horizontal', ticks=spcp)
-    cbar.set_ticks(spcp[1:(len(spcp)-1)])
-
-    plt.title('Standard Deviation')
-
-    fig.suptitle('F{0}-F{1} Precipitation ({2}-{3})'.format(fff1, fff2, date1_str, date2_str), fontsize=16)
-
-    outdir = '{0}/std/pcp'.format(config['figure_dir'])
-    if not os.path.isdir(outdir):
-       try:
-          os.makedirs(outdir)
-       except OSError as e:
-          raise e
-
-    plt.savefig('{0}/{1}_f{2}_pcp24h_std.png'.format(outdir,datea,fff2),format='png',dpi=120,bbox_inches='tight')
-    plt.close(fig)
-
-
 def precipitation_ens_maps_parallel(args):
 
     datea, fhri, fhrf, config = args

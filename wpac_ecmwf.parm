@@ -4,7 +4,7 @@ model_src=ECMWF
 num_ens=50
 io_module=ecmwf_teton
 fcst_hour_int=12
-fcst_hour_max=144
+fcst_hour_max=168
 input_hour_int=12
 tigge_forecast_time=0/12/24/36/48/60/72/84/96/108/120/132/144/156/168
 tigge_surface_time=0/6/12/18/24/30/36/42/48/54/60/66/72/78/84/90/96/102/108/114/120/126/132/138/144/150/156/162/168
@@ -21,18 +21,16 @@ output_dir=/rt11/torn/ar_sens/output_ecwpac
 script_dir=/home11/staff/torn/JHT-python
 figure_dir=/rt11/torn/html/AR-WPac/ECMWF
 outgrid_dir=/rt11/torn/html/AR-WPac/ECMWF
-log_dir=/rt11/torn/ar_sens/log_ecmwf
+log_dir=/rt11/torn/ar_sens/log_ecwpac
 
 save_work_dir=True
 
-[vitals_plot]
-precip_hour_1=[36, 48, 60, 72,  84,  96, 108, 120]
-precip_hour_2=[60, 72, 84, 96, 108, 120, 132, 144]
+[fcst_diag]
 min_lon_precip=230
 max_lon_precip=252
 
 [metric]
-fcst_int=12
+fcst_int=6
 static_fields_file=/rt11/torn/JHT/landmask_ecmwf_0p2.grb2
 precipitation_mean_metric=False
 precipitation_eof_metric=True
@@ -60,7 +58,7 @@ thetae_levels=[1000, 925, 850, 700]
 #thetae_levels=[1000, 925, 850, 700, 500, 300, 250, 200]
 #wind_levels=[1000, 925, 850, 700, 500, 300, 250, 200]
 #qvapor_levels=[1000, 925, 850, 700, 500, 300, 250, 200]
-pv_levels=[850, 700, 500, 300, 250]
+pv_levels=[850, 700, 500, 300, 250, 200]
 calc_pv_pres=True
 calc_theta-e=True
 calc_qvapor=True
@@ -91,5 +89,5 @@ ring_center_lon=144.80
 ring_values=[2500, 2501]
 output_sens=False
 output_list=ivt, e850hPa, pv250hPa, pv500hPa
-plot_summary=False
+plot_summary=True
 multiprocessor=True

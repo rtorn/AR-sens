@@ -23,9 +23,9 @@ log_dir=/lfs1/HFIP/hfip-ahw/ar_sens/log_gefs
 
 save_work_dir=True
 
-[vitals_plot]
-precip_hour_1=[36, 60, 84, 108, 132]
-precip_hour_2=[60, 84, 108, 132, 156]
+[fcst_diag]
+precip_hour_1=36, 60, 84, 108, 132
+precip_hour_2=60, 84, 108, 132, 156
 
 [metric]
 precipitation_mean_metric=False
