@@ -15,6 +15,7 @@ import cartopy.crs as ccrs
 from cartopy.feature import NaturalEarthFeature
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 
+from compute_precip_fields import read_precip
 from SensPlotRoutines import background_map
 
 def basin_ens_maps(datea, fhr1, fhr2, config):
@@ -125,10 +126,10 @@ def precipitation_ens_maps(datea, fhr1, fhr2, config):
 
     dpp = importlib.import_module(config['io_module'])
 
-    lat1 = float(config['vitals_plot'].get('min_lat_precip','30.'))
-    lat2 = float(config['vitals_plot'].get('max_lat_precip','52.'))
-    lon1 = float(config['vitals_plot'].get('min_lon_precip','-130.'))
-    lon2 = float(config['vitals_plot'].get('max_lon_precip','-108.'))
+    lat1 = float(config['fcst_diag'].get('min_lat_precip','30.'))
+    lat2 = float(config['fcst_diag'].get('max_lat_precip','52.'))
+    lon1 = float(config['fcst_diag'].get('min_lon_precip','-130.'))
+    lon2 = float(config['fcst_diag'].get('max_lon_precip','-108.'))
 
     fff1 = '%0.3i' % fhr1
     fff2 = '%0.3i' % fhr2
@@ -162,7 +163,7 @@ def precipitation_ens_maps(datea, fhr1, fhr2, config):
     plotBase['subrows']       = 1
     plotBase['subcols']       = 2
     plotBase['subnumber']     = 1
-    plotBase['grid_interval'] = config['vitals_plot'].get('grid_interval', 5)
+    plotBase['grid_interval'] = config['fcst_diag'].get('grid_interval', 5)
     plotBase['left_labels'] = 'True'
     plotBase['right_labels'] = 'None'
     ax1 = background_map(config.get('projection', 'PlateCarree'), lon1, lon2, lat1, lat2, plotBase)
@@ -205,5 +206,3 @@ def precipitation_ens_maps(datea, fhr1, fhr2, config):
 
     plt.savefig('{0}/{1}_f{2}_pcp24h_std.png'.format(outdir,datea,fff2),format='png',dpi=120,bbox_inches='tight')
     plt.close(fig)
-
-

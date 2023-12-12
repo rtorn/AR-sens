@@ -238,7 +238,7 @@ class ComputeForecastMetrics:
                         "#FF4B00", "#FF1900", "#E60015", "#B3003E", "#80007B", "#570088")
 
            plotBase = self.config.copy()
-           plotBase['grid_interval'] = self.config['vitals_plot'].get('grid_interval', 5)
+           plotBase['grid_interval'] = self.config['fcst_diag'].get('grid_interval', 5)
            plotBase['left_labels'] = 'True'
            plotBase['right_labels'] = 'None'
 
@@ -280,9 +280,9 @@ class ComputeForecastMetrics:
                                                     'description': 'IVT PC'}, 'data': pc1.data}}}
 
            xr.Dataset.from_dict(f_met).to_netcdf(
-               "{0}/{1}_f{2}_{3}.nc".format(self.config['work_dir'],str(self.datea_str),'%0.3i' % fhr2,metname), encoding={'fore_met_init': {'dtype': 'float32'}})
+               "{0}/{1}_f{2}_{3}.nc".format(self.config['work_dir'],str(self.datea_str),'%0.3i' % fhr,metname), encoding={'fore_met_init': {'dtype': 'float32'}})
 
-           self.metlist.append('f{0}_{1}'.format('%0.3i' % fhr2, metname))
+           self.metlist.append('f{0}_{1}'.format('%0.3i' % fhr, metname))
 
 
     def __ivt_landfall_eof(self):
@@ -465,7 +465,7 @@ class ComputeForecastMetrics:
            plotBase['subrows']       = 1
            plotBase['subcols']       = 2
            plotBase['subnumber']     = 2
-           plotBase['grid_interval'] = self.config['vitals_plot'].get('grid_interval', 5)
+           plotBase['grid_interval'] = self.config['fcst_diag'].get('grid_interval', 5)
            plotBase['left_labels'] = 'None'
            plotBase['right_labels'] = 'None'
            plotBase['bottom_labels'] = 'None'
@@ -1078,7 +1078,7 @@ class ComputeForecastMetrics:
                         "#E7C000", "#FF9000", "#FF0000", "#D60000", "#C00000", "#FF00FF", "#9955C9")
 
            plotBase = self.config.copy()
-           plotBase['grid_interval'] = self.config['vitals_plot'].get('grid_interval', 5)
+           plotBase['grid_interval'] = self.config['fcst_diag'].get('grid_interval', 5)
            plotBase['left_labels'] = 'True'
            plotBase['right_labels'] = 'None'
 
@@ -1493,7 +1493,7 @@ class ComputeForecastMetrics:
            colorlist = ("#9A32CD","#00008B","#3A5FCD","#00BFFF","#B0E2FF","#FFFFFF","#FFEC8B","#FFA500","#FF4500","#B22222","#FF82AB")
 
            plotBase = self.config.copy()
-           plotBase['grid_interval'] = self.config['vitals_plot'].get('grid_interval', 5)
+           plotBase['grid_interval'] = self.config['fcst_diag'].get('grid_interval', 5)
            plotBase['left_labels'] = 'True'
            plotBase['right_labels'] = 'None'
 
@@ -1786,7 +1786,7 @@ class ComputeForecastMetrics:
            colorlist = ("#9A32CD","#00008B","#3A5FCD","#00BFFF","#B0E2FF","#FFFFFF","#FFEC8B","#FFA500","#FF4500","#B22222","#FF82AB")
  
            plotBase = self.config.copy()
-           plotBase['grid_interval'] = self.config['vitals_plot'].get('grid_interval', 5)
+           plotBase['grid_interval'] = self.config['fcst_diag'].get('grid_interval', 5)
            plotBase['left_labels'] = 'True'
            plotBase['right_labels'] = 'None'
 
