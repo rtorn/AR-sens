@@ -6,7 +6,7 @@ fcst_hour_int=12
 fcst_hour_max=120
 tigge_forecast_time=0/12/24/36/48/60/72/84/96/108/120/132/144/156
 num_ens=51
-ensemble_list=/cw3e/mead/projects/cwp110/ryantorn/allmem
+#ensemble_list=/cw3e/mead/projects/cwp110/ryantorn/allmem
 
 flip_lon=True
 projection=RotatedLatLon
@@ -91,7 +91,7 @@ grid_interval=10.
 barb_interval=6
 pv_levels=[200, 250, 300]
 thetae_levels=[850]
-dropsonde_file=./2019083100_drop_info.txt
+dropsonde_file=/cw3e/mead/projects/cwp110/scratch/ryantorn/ww_sens/drop_locs/{0}_drop_info.txt
 drop_mark_size=6
 drop_mark_color=black
 drop_mark_type=+
