@@ -323,22 +323,23 @@ def ComputeSensitivity(datea, fhr, metname, config):
 
    if eval(config['sens'].get('plot_summary','True')):
 
-      pres = [500, 300, 250, 200]
-      nlev = len(pres)
-
+      pres    = [500, 300, 250, 200]
+      preslev = []
       senslev = []
 
-      for k in range(nlev):
+      for k in range(len(pres)):
 
          sensfile = '{0}/{1}/{2}_f{3}_pv{4}hPa_sens.nc'.format(config['figure_dir'],metname,datea,fhrt,pres[k])
          if os.path.isfile(sensfile):
 
             efile = nc.Dataset(sensfile)
             senslev.append(np.squeeze(efile.variables['sensitivity'][:]))
+            preslev.append(pres[k])
             if pres[k] == 250:
                mpv = np.squeeze(efile.variables['ensemble_mean'][:])
 
-         else:
+
+         elif os.path.isfile('{0}/{1}_f{2}_pv{3}hPa_ens.nc'.format(config['work_dir'],datea,fhrt,pres[k])):
 
             ds = xr.open_dataset('{0}/{1}_f{2}_pv{3}hPa_ens.nc'.format(config['work_dir'],datea,fhrt,pres[k]))
             ens = ds.ensemble_data.values
@@ -351,49 +352,49 @@ def ComputeSensitivity(datea, fhr, metname, config):
             sens, sigv = computeSens(ens, emea, evar, metric)
             sens[:,:] = sens[:,:] * np.sqrt(evar[:,:])
             senslev.append(sens)
+            preslev.append(pres[k])
 
       pvsens = np.zeros(senslev[0].shape)
 
-      for k in range(nlev-1):
+      for k in range(len(preslev)-1):
 
-         pvsens[:,:] = pvsens[:,:] + 0.5 * (senslev[k][:,:]+senslev[k+1][:,:]) * abs(pres[k+1]-pres[k])
+         pvsens[:,:] = pvsens[:,:] + 0.5 * (senslev[k][:,:]+senslev[k+1][:,:]) * abs(preslev[k+1]-preslev[k])
 
-      pvsens[:,:] = pvsens[:,:] / abs(pres[-1]-pres[0])
+      pvsens[:,:] = pvsens[:,:] / abs(preslev[-1]-preslev[0])
 
 
-      pres = [1000, 925, 850, 700]
-      nlev = len(pres)
-
+      pres    = [1000, 950, 925, 900, 850, 700]
       senslev = []
+      preslev = []
 
-      for k in range(nlev):
+      for k in range(len(pres)):
 
          sensfile = '{0}/{1}/{2}_f{3}_e{4}hPa_sens.nc'.format(config['figure_dir'],metname,datea,fhrt,pres[k])
          if os.path.isfile(sensfile):
 
             efile = nc.Dataset(sensfile)
             senslev.append(np.squeeze(efile.variables['sensitivity'][:]))
+            preslev.append(pres[k])
 
-         else:
+         elif os.path.isfile('{0}/{1}_f{2}_e{3}hPa_ens.nc'.format(config['work_dir'],datea,fhrt,pres[k])):
 
-#            ds = xr.open_dataset('{0}/{1}_f{2}_e{3}hPa_ens.nc'.format(config['work_dir'],datea,fhrt,pres[k]))
-#            ens = ds.ensemble_data.values
-            efile = nc.Dataset('{0}/{1}_f{2}_e{3}hPa_ens.nc'.format(config['work_dir'],datea,fhrt,pres[k]))
-            ens   = np.squeeze(efile.variables['ensemble_data'][:])
+            ds = xr.open_dataset('{0}/{1}_f{2}_e{3}hPa_ens.nc'.format(config['work_dir'],datea,fhrt,pres[k]))
+            ens = ds.ensemble_data.values
             emea  = np.mean(ens, axis=0)
             evar = np.var(ens, axis=0)
 
             sens, sigv = computeSens(ens, emea, evar, metric)
             sens[:,:] = sens[:,:] * np.sqrt(evar[:,:])
             senslev.append(sens)
+            preslev.append(pres[k])
 
       esens = np.zeros(senslev[0].shape)
 
-      for k in range(nlev-1):
+      for k in range(len(preslev)-1):
 
-         esens[:,:] = esens[:,:] + 0.5 * (senslev[k][:,:]+senslev[k+1][:,:]) * abs(pres[k+1]-pres[k])
+         esens[:,:] = esens[:,:] + 0.5 * (senslev[k][:,:]+senslev[k+1][:,:]) * abs(preslev[k+1]-preslev[k])
 
-      esens[:,:] = esens[:,:] / abs(pres[-1]-pres[0])
+      esens[:,:] = esens[:,:] / abs(preslev[-1]-preslev[0])
 
 
       outdir = '{0}/{1}/sens/summ'.format(config['figure_dir'],metname)

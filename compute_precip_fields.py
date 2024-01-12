@@ -427,6 +427,8 @@ def ComputeFields(datea, fhr, config):
             idx  = np.where(pvec==level)
             lev1 = np.min(pvec[(int(idx[0])-1):(int(idx[0])+2)])
             lev2 = np.max(pvec[(int(idx[0])-1):(int(idx[0])+2)])
+            if (level == lev1) or (level==lev2):
+               continue
 
             vDict = {'latitude': (lat1, lat2), 'longitude': (lon1, lon2), 'isobaricInhPa': (lev1, lev2),
                      'description': '{0} hPa Potential Vorticity'.format(levstr), 'units': 'PVU', '_FillValue': -9999.}
