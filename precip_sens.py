@@ -323,7 +323,10 @@ def ComputeSensitivity(datea, fhr, metname, config):
 
    if eval(config['sens'].get('plot_summary','True')):
 
-      pres    = [500, 300, 250, 200]
+      if 'summary_pressure_pv' in config['sens']:
+         pres = [e.strip() for e in config['sens'].get('summary_pressure_pv','').split(',')]
+      else:
+         pres    = [500, 300, 250, 200]
       preslev = []
       senslev = []
 
@@ -363,7 +366,10 @@ def ComputeSensitivity(datea, fhr, metname, config):
       pvsens[:,:] = pvsens[:,:] / abs(preslev[-1]-preslev[0])
 
 
-      pres    = [1000, 950, 925, 900, 850, 700]
+      if 'summary_pressure_thetae' in config['sens']:
+         pres = [e.strip() for e in config['sens'].get('summary_pressure_thetae','').split(',')]
+      else:
+         pres    = [1000, 950, 925, 900, 850, 700]
       senslev = []
       preslev = []
 
