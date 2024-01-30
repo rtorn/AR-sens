@@ -47,7 +47,31 @@ def ComputeSensitivity(datea, fhr, metname, config):
 
    logging.warning('Sensitivity of {0} to F{1}'.format(metname,fhrt))
 
-   plotDict['plotTitle']    = '{0} F{1}'.format(datea,fhrt)
+   #  Obtain the metric information (here read from file)
+   try:
+      mfile = nc.Dataset('{0}/{1}_{2}.nc'.format(config['work_dir'],datea,metname))
+   except IOError:
+      logging.error('{0}/{1}_{2}.nc does not exist'.format(config['work_dir'],datea,metname))
+      return
+
+   if hasattr(mfile,'FORECAST_METRIC_NAME'):
+      metstring = ", {0}".format(mfile.FORECAST_METRIC_NAME)
+   else:
+      metstring = "" 
+
+   init = dt.datetime.strptime(datea, '%Y%m%d%H')
+   if hasattr(mfile,'FORECAST_HOUR1') and hasattr(mfile,'FORECAST_HOUR2'):
+      fdate = init + dt.timedelta(hours=int(mfile.FORECAST_HOUR1))
+      date1 = fdate.strftime("%Y%m%d%H")
+      fdate = init + dt.timedelta(hours=int(mfile.FORECAST_HOUR2))
+      date2 = fdate.strftime("%Y%m%d%H")
+      timestr = " ({0} - {1})".format(date1, date2)
+   elif hasattr(mfile,'FORECAST_HOUR'):
+      fdate = init + dt.timedelta(hours=int(mfile.FORECAST_HOUR))
+      date1 = fdate.strftime("%Y%m%d%H")
+      timestr = " ({0})".format(date1)
+
+   plotDict['plotTitle']    = '{0} F{1}{2}{3}'.format(datea,fhrt,metstring,timestr)
    plotDict['fileTitle']    = 'AR Recon ECMWF Sensitivity'
    plotDict['initDate']     = '{0}-{1}-{2} {3}:00:00'.format(datea[0:4],datea[4:6],datea[6:8],datea[8:10])
    plotDict['left_labels']  = 'True'
@@ -56,13 +80,6 @@ def ComputeSensitivity(datea, fhr, metname, config):
    if 'ring_center_lat' in config['sens'] and 'ring_center_lon' in config['sens']:
       plotDict['ring_center_lat'] = float(config['sens']['ring_center_lat'])
       plotDict['ring_center_lon'] = float(config['sens']['ring_center_lon'])
-
-   #  Obtain the metric information (here read from file)
-   try:
-      mfile = nc.Dataset('{0}/{1}_{2}.nc'.format(config['work_dir'],datea,metname))
-   except IOError:
-      logging.error('{0}/{1}_{2}.nc does not exist'.format(config['work_dir'],datea,metname))
-      return
 
    metric = mfile.variables['fore_met_init'][:]
    nens   = len(metric)
@@ -74,7 +91,6 @@ def ComputeSensitivity(datea, fhr, metname, config):
    else:
       plotDict['sensmax'] = 0.1 * np.ceil(10*cmaxmet)
 
-   init   = dt.datetime.strptime(datea, '%Y%m%d%H')
    datef   = init + dt.timedelta(hours=fhr)
    datef_s = datef.strftime("%Y%m%d%H")
    if 'dropsonde_file' in plotDict:
