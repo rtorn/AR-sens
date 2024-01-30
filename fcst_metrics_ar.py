@@ -511,7 +511,7 @@ class ComputeForecastMetrics:
         if 'ivt' in gf.var_dict:
 
            for n in range(gf.nens):
-              ensmat[n,:,:] = gf.read_grib_field('ivt', n, vDict)
+              ivtout[n,:,:] = gf.read_grib_field('ivt', n, vDict)
 
         else:
 

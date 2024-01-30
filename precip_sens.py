@@ -47,7 +47,31 @@ def ComputeSensitivity(datea, fhr, metname, config):
 
    logging.warning('Sensitivity of {0} to F{1}'.format(metname,fhrt))
 
-   plotDict['plotTitle']    = '{0} F{1}'.format(datea,fhrt)
+   #  Obtain the metric information (here read from file)
+   try:
+      mfile = nc.Dataset('{0}/{1}_{2}.nc'.format(config['work_dir'],datea,metname))
+   except IOError:
+      logging.error('{0}/{1}_{2}.nc does not exist'.format(config['work_dir'],datea,metname))
+      return
+
+   if hasattr(mfile,'FORECAST_METRIC_NAME'):
+      metstring = ", {0}".format(mfile.FORECAST_METRIC_NAME)
+   else:
+      metstring = "" 
+
+   init = dt.datetime.strptime(datea, '%Y%m%d%H')
+   if hasattr(mfile,'FORECAST_HOUR1') and hasattr(mfile,'FORECAST_HOUR2'):
+      fdate = init + dt.timedelta(hours=int(mfile.FORECAST_HOUR1))
+      date1 = fdate.strftime("%Y%m%d%H")
+      fdate = init + dt.timedelta(hours=int(mfile.FORECAST_HOUR2))
+      date2 = fdate.strftime("%Y%m%d%H")
+      timestr = " ({0} - {1})".format(date1, date2)
+   elif hasattr(mfile,'FORECAST_HOUR'):
+      fdate = init + dt.timedelta(hours=int(mfile.FORECAST_HOUR))
+      date1 = fdate.strftime("%Y%m%d%H")
+      timestr = " ({0})".format(date1)
+
+   plotDict['plotTitle']    = '{0} F{1}{2}{3}'.format(datea,fhrt,metstring,timestr)
    plotDict['fileTitle']    = 'AR Recon ECMWF Sensitivity'
    plotDict['initDate']     = '{0}-{1}-{2} {3}:00:00'.format(datea[0:4],datea[4:6],datea[6:8],datea[8:10])
    plotDict['left_labels']  = 'True'
@@ -56,13 +80,6 @@ def ComputeSensitivity(datea, fhr, metname, config):
    if 'ring_center_lat' in config['sens'] and 'ring_center_lon' in config['sens']:
       plotDict['ring_center_lat'] = float(config['sens']['ring_center_lat'])
       plotDict['ring_center_lon'] = float(config['sens']['ring_center_lon'])
-
-   #  Obtain the metric information (here read from file)
-   try:
-      mfile = nc.Dataset('{0}/{1}_{2}.nc'.format(config['work_dir'],datea,metname))
-   except IOError:
-      logging.error('{0}/{1}_{2}.nc does not exist'.format(config['work_dir'],datea,metname))
-      return
 
    metric = mfile.variables['fore_met_init'][:]
    nens   = len(metric)
@@ -74,7 +91,6 @@ def ComputeSensitivity(datea, fhr, metname, config):
    else:
       plotDict['sensmax'] = 0.1 * np.ceil(10*cmaxmet)
 
-   init   = dt.datetime.strptime(datea, '%Y%m%d%H')
    datef   = init + dt.timedelta(hours=fhr)
    datef_s = datef.strftime("%Y%m%d%H")
    if 'dropsonde_file' in plotDict:
@@ -323,22 +339,26 @@ def ComputeSensitivity(datea, fhr, metname, config):
 
    if eval(config['sens'].get('plot_summary','True')):
 
-      pres = [500, 300, 250, 200]
-      nlev = len(pres)
-
+      if 'summary_pressure_pv' in config['sens']:
+         pres = [e.strip() for e in config['sens'].get('summary_pressure_pv','').split(',')]
+      else:
+         pres    = [500, 300, 250, 200]
+      preslev = []
       senslev = []
 
-      for k in range(nlev):
+      for k in range(len(pres)):
 
          sensfile = '{0}/{1}/{2}_f{3}_pv{4}hPa_sens.nc'.format(config['figure_dir'],metname,datea,fhrt,pres[k])
          if os.path.isfile(sensfile):
 
             efile = nc.Dataset(sensfile)
             senslev.append(np.squeeze(efile.variables['sensitivity'][:]))
+            preslev.append(pres[k])
             if pres[k] == 250:
                mpv = np.squeeze(efile.variables['ensemble_mean'][:])
 
-         else:
+
+         elif os.path.isfile('{0}/{1}_f{2}_pv{3}hPa_ens.nc'.format(config['work_dir'],datea,fhrt,pres[k])):
 
             ds = xr.open_dataset('{0}/{1}_f{2}_pv{3}hPa_ens.nc'.format(config['work_dir'],datea,fhrt,pres[k]))
             ens = ds.ensemble_data.values
@@ -351,49 +371,52 @@ def ComputeSensitivity(datea, fhr, metname, config):
             sens, sigv = computeSens(ens, emea, evar, metric)
             sens[:,:] = sens[:,:] * np.sqrt(evar[:,:])
             senslev.append(sens)
+            preslev.append(pres[k])
 
       pvsens = np.zeros(senslev[0].shape)
 
-      for k in range(nlev-1):
+      for k in range(len(preslev)-1):
 
-         pvsens[:,:] = pvsens[:,:] + 0.5 * (senslev[k][:,:]+senslev[k+1][:,:]) * abs(pres[k+1]-pres[k])
+         pvsens[:,:] = pvsens[:,:] + 0.5 * (senslev[k][:,:]+senslev[k+1][:,:]) * abs(preslev[k+1]-preslev[k])
 
-      pvsens[:,:] = pvsens[:,:] / abs(pres[-1]-pres[0])
+      pvsens[:,:] = pvsens[:,:] / abs(preslev[-1]-preslev[0])
 
 
-      pres = [1000, 925, 850, 700]
-      nlev = len(pres)
-
+      if 'summary_pressure_thetae' in config['sens']:
+         pres = [e.strip() for e in config['sens'].get('summary_pressure_thetae','').split(',')]
+      else:
+         pres    = [1000, 950, 925, 900, 850, 700]
       senslev = []
+      preslev = []
 
-      for k in range(nlev):
+      for k in range(len(pres)):
 
          sensfile = '{0}/{1}/{2}_f{3}_e{4}hPa_sens.nc'.format(config['figure_dir'],metname,datea,fhrt,pres[k])
          if os.path.isfile(sensfile):
 
             efile = nc.Dataset(sensfile)
             senslev.append(np.squeeze(efile.variables['sensitivity'][:]))
+            preslev.append(pres[k])
 
-         else:
+         elif os.path.isfile('{0}/{1}_f{2}_e{3}hPa_ens.nc'.format(config['work_dir'],datea,fhrt,pres[k])):
 
-#            ds = xr.open_dataset('{0}/{1}_f{2}_e{3}hPa_ens.nc'.format(config['work_dir'],datea,fhrt,pres[k]))
-#            ens = ds.ensemble_data.values
-            efile = nc.Dataset('{0}/{1}_f{2}_e{3}hPa_ens.nc'.format(config['work_dir'],datea,fhrt,pres[k]))
-            ens   = np.squeeze(efile.variables['ensemble_data'][:])
+            ds = xr.open_dataset('{0}/{1}_f{2}_e{3}hPa_ens.nc'.format(config['work_dir'],datea,fhrt,pres[k]))
+            ens = ds.ensemble_data.values
             emea  = np.mean(ens, axis=0)
             evar = np.var(ens, axis=0)
 
             sens, sigv = computeSens(ens, emea, evar, metric)
             sens[:,:] = sens[:,:] * np.sqrt(evar[:,:])
             senslev.append(sens)
+            preslev.append(pres[k])
 
       esens = np.zeros(senslev[0].shape)
 
-      for k in range(nlev-1):
+      for k in range(len(preslev)-1):
 
-         esens[:,:] = esens[:,:] + 0.5 * (senslev[k][:,:]+senslev[k+1][:,:]) * abs(pres[k+1]-pres[k])
+         esens[:,:] = esens[:,:] + 0.5 * (senslev[k][:,:]+senslev[k+1][:,:]) * abs(preslev[k+1]-preslev[k])
 
-      esens[:,:] = esens[:,:] / abs(pres[-1]-pres[0])
+      esens[:,:] = esens[:,:] / abs(preslev[-1]-preslev[0])
 
 
       outdir = '{0}/{1}/sens/summ'.format(config['figure_dir'],metname)

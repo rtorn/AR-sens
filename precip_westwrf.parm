@@ -6,7 +6,7 @@ fcst_hour_int=12
 fcst_hour_max=120
 tigge_forecast_time=0/12/24/36/48/60/72/84/96/108/120/132/144/156
 num_ens=51
-ensemble_list=/cw3e/mead/projects/cwp110/ryantorn/allmem
+#ensemble_list=/cw3e/mead/projects/cwp110/ryantorn/allmem
 
 flip_lon=True
 projection=RotatedLatLon
@@ -23,7 +23,7 @@ grid_stdlon=125.0
 
 [locations]
 atcf_dir=/ct12/abrammer/graphics/ecmf_tc_data/data
-model_dir=/cw3e/mead/datasets/cw3e/NRT/2022-2023/NRT_ens/{yyyymmddhh}/cf
+model_dir=/cw3e/mead/datasets/cw3e/NRT/2023-2024/NRT_ens/{yyyymmddhh}/cf
 
 work_dir=/cw3e/mead/projects/cwp110/scratch/ryantorn/ww_sens/work
 output_dir=/cw3e/mead/projects/cwp110/scratch/ryantorn/ww_sens/output
@@ -50,13 +50,13 @@ multiprocessor=True
 [metric]
 precipitation_mean_metric=False
 precipitation_eof_metric=True
-precip_metric_loc=/cw3e/mead/projects/cwp110/scratch/ryantorn/ww_sens/metrics_pcp
+precip_metric_loc=/cw3e/mead/projects/cwp110/scratch/ryantorn/ww_sens/metrics/pcp
 ivt_eof_metric=True
-ivt_metric_loc=/cw3e/mead/projects/cwp110/scratch/ryantorn/ww_sens/metrics_ivt
+ivt_metric_loc=/cw3e/mead/projects/cwp110/scratch/ryantorn/ww_sens/metrics/ivt
 slp_eof_metric=True
-slp_metric_loc=/cw3e/mead/projects/cwp110/scratch/ryantorn/ww_sens/metrics_slp
+slp_metric_loc=/cw3e/mead/projects/cwp110/scratch/ryantorn/ww_sens/metrics/slp
 ivt_landfall_metric=True
-ivt_land_metric_loc=/cw3e/mead/projects/cwp110/scratch/ryantorn/ww_sens/metrics_ivtl
+ivt_land_metric_loc=/cw3e/mead/projects/cwp110/scratch/ryantorn/ww_sens/metrics/ivtl
 coast_points_file=/cw3e/mead/projects/cwp110/ryantorn/JHT-python/latlon_coast_1p0.txt
 #min_lat_precip=30
 #max_lat_precip=45
@@ -73,7 +73,7 @@ multiprocessor=True
 calc_ivt=True
 calc_height=True
 #height_levels=[1000, 925, 850, 700, 500, 300, 250, 200]
-thetae_levels=[1000, 925, 850, 700]
+thetae_levels=[1000, 950, 900, 850, 700]
 #wind_levels=[1000, 925, 850, 700, 500, 300, 250, 200]
 #qvapor_levels=[1000, 925, 850, 700, 500, 300, 250, 200]
 pv_levels=[850, 700, 500, 300, 250, 200]
@@ -89,9 +89,9 @@ zero_non_sig_sens=True
 cbar_shrink=0.70
 grid_interval=10.
 barb_interval=6
-pv_levels=[200, 250, 300]
+pv_levels=[250, 500, 700, 850]
 thetae_levels=[850]
-dropsonde_file=./2019083100_drop_info.txt
+dropsonde_file=/cw3e/mead/projects/cwp110/scratch/ryantorn/ww_sens/drop_locs/{0}_drop_info.txt
 drop_mark_size=6
 drop_mark_color=black
 drop_mark_type=+
