@@ -77,6 +77,16 @@ def ComputeSensitivity(datea, fhr, metname, config):
    plotDict['left_labels']  = 'True'
    plotDict['right_labels'] = 'None'      
 
+   if hasattr(mfile,'LATITUDE1') and hasattr(mfile,'LATITUDE2') and hasattr(mfile,'LONGITUDE1') and hasattr(mfile,'LONGITUDE2'):
+      plotDict['metric_lat'] = [float(mfile.LATITUDE1), float(mfile.LATITUDE1), float(mfile.LATITUDE2), \
+                                float(mfile.LATITUDE2), float(mfile.LATITUDE1)]
+      plotDict['metric_lon'] = [float(mfile.LONGITUDE1), float(mfile.LONGITUDE2), float(mfile.LONGITUDE2), \
+                                float(mfile.LONGITUDE1), float(mfile.LONGITUDE1)]
+
+   elif 'metric_lat' in mfile.variables and 'metric_lon' in mfile.variables:
+      plotDict['metric_lat'] = mfile.variables['metric_lat'][:]
+      plotDict['metric_lon'] = mfile.variables['metric_lon'][:]
+
    if 'ring_center_lat' in config['sens'] and 'ring_center_lon' in config['sens']:
       plotDict['ring_center_lat'] = float(config['sens']['ring_center_lat'])
       plotDict['ring_center_lon'] = float(config['sens']['ring_center_lon'])
@@ -607,6 +617,11 @@ def plotSummarySens(lat, lon, ivt, pvort, ivsens, tesens, pvsens, fileout, plotD
 #                       extend='both',transform=ccrs.PlateCarree())
 #   for i, collection in enumerate(pltt.collections):
 #      collection.set_edgecolor('b')
+
+   if 'metric_lat' in plotDict and 'metric_lon' in plotDict:
+      print(plotDict['metric_lat'])
+      plt.plot(plotDict['metric_lon'], plotDict['metric_lat'], color=plotDict.get('metric_color','lime'), \
+                linewidth=plotDict.get('metric_linewidth',4), zorder=15, transform=ccrs.PlateCarree())
 
    if 'plotTitle' in plotDict:
       plt.title(plotDict['plotTitle'])
