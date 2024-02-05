@@ -493,9 +493,10 @@ class ComputeForecastMetrics:
                       'FORECAST_HOUR1': int(fhr1), 'FORECAST_HOUR2': int(fhr2), 'LATITUDE1': lat1, 'LATITUDE2': lat2, \
                       'ADAPT': str(adapt), 'ADAPT_IVT_MIN': ivtmin, 'EOF_NUMBER': int(eofn)}
 
-           f_met = {'coords': {}, 'attrs': fmetatt, 'dims': {'num_ens': g1.nens}, \
-                    'data_vars': {'fore_met_init': {'dims': ('num_ens',), 'attrs': {'units': '', \
-                                                    'description': 'IVT Landfall PC'}, 'data': pc1.data}}}
+           f_met = {'coords': {}, 'attrs': fmetatt, 'dims': {'num_ens': g1.nens, 'locations': len(latlist)}, \
+                    'data_vars': {'fore_met_init': {'dims': ('num_ens',), 'attrs': {'units': '', 'description': 'IVT Landfall PC'}, 'data': pc1.data},
+                                  'metric_lat': {'dims': ('locations',), 'attrs': {'units': 'degrees', 'description': 'metric latitude bounds'}, 'data': latlist},
+                                  'metric_lon': {'dims': ('locations',), 'attrs': {'units': 'degrees', 'description': 'metric longitude bounds'}, 'data': lonlist}}}
 
            xr.Dataset.from_dict(f_met).to_netcdf(
                "{0}/{1}_f{2}_{3}.nc".format(self.config['work_dir'],str(self.datea_str),'%0.3i' % fhr2,metname), encoding={'fore_met_init': {'dtype': 'float32'}})
