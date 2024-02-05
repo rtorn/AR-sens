@@ -131,6 +131,7 @@ def ComputeSensitivity(datea, fhr, metname, config):
       emea.units = efile.variables['ensemble_data'].units
       evar = np.var(ens, axis=0)
 
+      plotDict['plotTitle']    = '{0} F{1} IVT{2}{3}'.format(datea,fhrt,metstring,timestr)
       plotDict['projinfo'] = set_projection(plotDict.get('projection', 'PlateCarree'), \
                                             float(plotDict.get('min_lon', np.amin(lon))), \
                                             float(plotDict.get('max_lon', np.amax(lon))), plotDict)
@@ -198,7 +199,8 @@ def ComputeSensitivity(datea, fhr, metname, config):
 
          if plotDict.get('output_sens', 'False')=='True':
             writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_a{4}hPa_sens.nc'.format(config['figure_dir'],metname,datea,fhrt,pres), plotDict) 
-         
+
+         plotDict['plotTitle'] = '{0} F{1} {4} hPa a wind{2}{3}'.format(datea,fhrt,metstring,timestr,pres) 
          plotVecSens(lat, lon, sens, umea, vmea, sigv, '{0}/{1}_f{2}_a{3}hPa_sens.png'.format(outdir,datea,fhrt,pres), plotDict)
 
 
@@ -217,6 +219,7 @@ def ComputeSensitivity(datea, fhr, metname, config):
          if plotDict.get('output_sens', 'False')=='True':
             writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_x{4}hPa_sens.nc'.format(config['figure_dir'],metname,datea,fhrt,pres), plotDict)
 
+         plotDict['plotTitle'] = '{0} F{1} {4} hPa x wind{2}{3}'.format(datea,fhrt,metstring,timestr,pres)
          plotVecSens(lat, lon, sens, umea, vmea, sigv, '{0}/{1}_f{2}_x{3}hPa_sens.png'.format(outdir,datea,fhrt,pres), plotDict)
 
 
@@ -272,6 +275,7 @@ def ComputeSensitivity(datea, fhr, metname, config):
             writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_e{4}hPa_sens.nc'.format(config['figure_dir'],metname,datea,fhrt,pres), plotDict)
 
          plotDict['meanCntrs'] = np.array(range(270,390,3))
+         plotDict['plotTitle'] = '{0} F{1} {4} hPa $\\theta_e${2}{3}'.format(datea,fhrt,metstring,timestr,pres)
          plotScalarSens(lat, lon, sens, emea, sigv, '{0}/{1}_f{2}_e{3}hPa_sens.png'.format(outdir,datea,fhrt,pres), plotDict)
 
 
@@ -300,6 +304,7 @@ def ComputeSensitivity(datea, fhr, metname, config):
             writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_qvap{4}hPa_sens.nc'.format(config['figure_dir'],metname,datea,fhrt,pres), plotDict)
 
          plotDict['meanCntrs'] = np.array([0.25, 0.50, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25])
+         plotDict['plotTitle'] = '{0} F{1} {4} hPa qvapor{2}{3}'.format(datea,fhrt,metstring,timestr,pres)
          plotScalarSens(lat, lon, sens, emea, sigv, '{0}/{1}_f{2}_qvap{3}hPa_sens.png'.format(outdir,datea,fhrt,pres), plotDict)
 
 
@@ -342,6 +347,7 @@ def ComputeSensitivity(datea, fhr, metname, config):
          if pres >= 500.:
             plotDict['clabel_fmt'] = "%2.1f" 
          plotDict['meanCntrs'] = np.array(pvd['pv{0}hPa'.format(pres)])
+         plotDict['plotTitle'] = '{0} F{1} {4} hPa PV{2}{3}'.format(datea,fhrt,metstring,timestr,pres)
          plotScalarSens(lat, lon, sens, emea, sigv, '{0}/{1}_f{2}_pv{3}hPa_sens.png'.format(outdir,datea,fhrt,pres), plotDict)
          if 'clabel_fmt' in plotDict:
             del plotDict['clabel_fmt']          
@@ -433,6 +439,7 @@ def ComputeSensitivity(datea, fhr, metname, config):
       if not os.path.isdir(outdir):
          os.makedirs(outdir, exist_ok=True)
 
+      plotDict['plotTitle'] = '{0} F{1} IVT/$\\theta_e$/PV{2}{3}'.format(datea,fhrt,metstring,timestr)
       plotSummarySens(lat, lon, mivt, mpv, sivt, esens, pvsens, '{0}/{1}_f{2}_summ_sens.png'.format(outdir,datea,fhrt), plotDict)
 
 
@@ -460,6 +467,7 @@ def ComputeSensitivity(datea, fhr, metname, config):
 
       plotDict['meanCntrs'] = np.array([-5.0, -4.0, -3.0, -2.0, -1.5, -1.0, -0.5, 0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 5.0])
       plotDict['clabel_fmt'] = "%2.1f"
+      plotDict['plotTitle'] = '{0} F{1} {4} hPa div.{2}{3}'.format(datea,fhrt,metstring,timestr,pres)
       plotScalarSens(lat, lon, sens, emea, sigv, '{0}/{1}_f{2}_div300hPa_sens.png'.format(outdir,datea,fhrt), plotDict)
       del plotDict['clabel_fmt']
 
@@ -493,6 +501,7 @@ def ComputeSensitivity(datea, fhr, metname, config):
             writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_h{4}hPa_sens.nc'.format(config['figure_dir'],metname,datea,fhrt,pres), plotDict)
 
          plotDict['meanCntrs'] = np.array(hghtd['h{0}hPa'.format(pres)])
+         plotDict['plotTitle'] = '{0} F{1} {4} hPa height{2}{3}'.format(datea,fhrt,metstring,timestr,pres)
          plotScalarSens(lat, lon, sens, emea, sigv, '{0}/{1}_f{2}_h{3}hPa_sens.png'.format(outdir,datea,fhrt,pres), plotDict)
 
 
@@ -525,6 +534,7 @@ def ComputeSensitivity(datea, fhr, metname, config):
             writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_ref{4}hPa_sens.nc'.format(config['figure_dir'],metname,datea,fhrt,pres), plotDict)
 
          plotDict['meanCntrs'] = np.array(refd['ref{0}hPa'.format(pres)])
+         plotDict['plotTitle'] = '{0} F{1} {4} hPa refract.{2}{3}'.format(datea,fhrt,metstring,timestr,pres)
          plotScalarSens(lat, lon, sens, emea, sigv, '{0}/{1}_f{2}_ref{3}hPa_sens.png'.format(outdir,datea,fhrt,pres), plotDict)
 
 
@@ -554,6 +564,7 @@ def ComputeSensitivity(datea, fhr, metname, config):
             plotDict[key] = config['sens'][key]
 
       plotDict['meanCntrs'] = np.array([960, 968, 976, 980, 984, 988, 992, 996, 1000, 1004, 1008, 1012, 1016, 1020, 1024, 1028, 1032, 1036, 1040, 1044])
+      plotDict['plotTitle'] = '{0} F{1} MSLP{2}{3}'.format(datea,fhrt,metstring,timestr)
       plotScalarSens(lat, lon, sens, emea, sigv, '{0}/{1}_f{2}_mslp_sens.png'.format(outdir,datea,fhrt), plotDict)
 
       for key in ['buoy1_file', 'buoy2_file']:
