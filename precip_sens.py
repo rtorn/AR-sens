@@ -630,7 +630,6 @@ def plotSummarySens(lat, lon, ivt, pvort, ivsens, tesens, pvsens, fileout, plotD
 #      collection.set_edgecolor('b')
 
    if 'metric_lat' in plotDict and 'metric_lon' in plotDict:
-      print(plotDict['metric_lat'])
       plt.plot(plotDict['metric_lon'], plotDict['metric_lat'], color=plotDict.get('metric_color','lime'), \
                 linewidth=plotDict.get('metric_linewidth',4), zorder=15, transform=ccrs.PlateCarree())
 

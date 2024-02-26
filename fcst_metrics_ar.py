@@ -1244,7 +1244,7 @@ class ComputeForecastMetrics:
               for basin in range(len(bstd)):
                  if bstd[basin] >= auto_sdmin * bstd[imax]:
                     hucid = ds.HUCID[basin]
-                    hucid_list.append(hucid)
+                    hucid_list.append(int(hucid))
                     basin_list.append(db[db['ID'] == int(hucid)]['Name'].values)
                     index_list.append(basin)
 #                    print('  adding basin',basin_list[-1],bstd[basin].values)
@@ -1265,7 +1265,7 @@ class ComputeForecastMetrics:
 
                  hucid_list = []
                  for basin in basin_list:
-                    hucid_list.append(db[db['Name'] == basin]['ID'].values)
+                    hucid_list.append(db[db['Name'] == basin]['ID'].values[0])
 
               index_list = []
               for hucid in hucid_list:
