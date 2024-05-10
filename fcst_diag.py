@@ -4,6 +4,7 @@ import datetime as dt
 import pandas as pd
 import xarray as xr
 import geopandas as gpd
+import logging
 
 import matplotlib
 from IPython.core.pylabtools import figsize, getfigs
@@ -14,6 +15,10 @@ import cartopy
 import cartopy.crs as ccrs
 from cartopy.feature import NaturalEarthFeature
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
+
+import metpy.constants as mpcon
+import metpy.calc as mpcalc
+from metpy.units import units
 
 from compute_precip_fields import read_precip
 from SensPlotRoutines import background_map
@@ -206,3 +211,46 @@ def precipitation_ens_maps(datea, fhr1, fhr2, config):
 
     plt.savefig('{0}/{1}_f{2}_pcp24h_std.png'.format(outdir,datea,fff2),format='png',dpi=120,bbox_inches='tight')
     plt.close(fig)
+
+
+def read_ivt(datea, fhr, config, vDict):
+
+   dpp = importlib.import_module(config['io_module'])
+   gf = dpp.ReadGribFiles(datea, fhr, config)
+   ivtu = gf.create_ens_array('temperature', gf.nens, vDict)
+   ivtv = gf.create_ens_array('temperature', gf.nens, vDict)
+   ivtt = gf.create_ens_array('temperature', gf.nens, vDict)
+
+   if 'ivt' in gf.var_dict:
+
+      for n in range(gf.nens):
+         ivtu[n,:,:] = gf.read_grib_field('ivtu', n, vDict)
+         ivtv[n,:,:] = gf.read_grib_field('ivtv', n, vDict)
+         ivtt[n,:,:] = gf.read_grib_field('ivt',  n, vDict)
+
+   else:
+
+      fDict = vDict.copy()
+      fDict['isobaricInhPa'] = (300, 1000)
+      fDict = gf.set_var_bounds('temperature', fDict)
+
+      for n in range(gf.nens):
+
+         uwnd = gf.read_grib_field('zonal_wind', n, fDict) * units('m / sec')
+         vwnd = gf.read_grib_field('meridional_wind', n, fDict) * units('m / sec')
+
+         tmpk = np.squeeze(gf.read_grib_field('temperature', n, fDict)) * units('K')
+         pres = (tmpk.isobaricInhPa.values * units.hPa).to(units.Pa)
+
+         if gf.has_specific_humidity:
+            qvap = np.squeeze(gf.read_grib_field('specific_humidity', n, fDict)) * units('dimensionless')
+         else:
+            relh = np.minimum(np.maximum(gf.read_grib_field('relative_humidity', n, fDict), 0.01), 100.0) * units('percent')
+            qvap = mpcalc.mixing_ratio_from_relative_humidity(pres[:,None,None], tmpk, relh)
+
+         #  Integrate water vapor over the pressure levels
+         ivtu[n,:,:] = np.abs(np.trapz(uwnd[:,:,:]*qvap[:,:,:], pres, axis=0)) / mpcon.earth_gravity
+         ivtv[n,:,:] = np.abs(np.trapz(vwnd[:,:,:]*qvap[:,:,:], pres, axis=0)) / mpcon.earth_gravity
+         ivtt[n,:,:] = np.sqrt(ivtu[n,:,:]**2 + ivtv[n,:,:]**2)
+
+   return(ivtu, ivtv, ivtt)

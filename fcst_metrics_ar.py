@@ -27,6 +27,7 @@ from eofs.standard import Eof
 from eofs.xarray import Eof as Eof_xarray
 
 from SensPlotRoutines import background_map
+from fcst_diag import read_ivt
 
 def great_circle(lon1, lat1, lon2, lat2):
     '''
@@ -198,7 +199,7 @@ class ComputeForecastMetrics:
                     'description': 'Integrated Water Vapor Transport', 'units': 'kg s-1', '_FillValue': -9999.}
            vDict = g1.set_var_bounds('temperature', vDict)
 
-           ensmat = self.__read_ivt(fhr, vDict)
+           ivtu, ivtv, ensmat = read_ivt(self.datea_str, fhr, self.config, vDict)
 
            e_mean = np.mean(ensmat, axis=0)
            for n in range(g1.nens):
@@ -319,6 +320,7 @@ class ComputeForecastMetrics:
               latcoa2 = float(conf['definition'].get('latitude_max',self.config['metric'].get('ivt_land_latitude_max',55.)))
               adapt = eval(conf['definition'].get('adapt',self.config['metric'].get('ivt_land_adapt','False')))
               ivtmin = float(conf['definition'].get('adapt_ivt_min',self.config['metric'].get('ivt_land_adapt_min',225.)))
+              vecmet = eval(conf['definition'].get('vector',self.config['metric'].get('ivt_land_vector','False')))
            except IOError:
               logging.warning('{0} does not exist.  Cannot compute IVT Landfall EOF'.format(infull))
               continue
@@ -355,7 +357,7 @@ class ComputeForecastMetrics:
               ntime = len(e_mean.fcst_hour.values)
               nlat  = len(e_mean.latitude.values)
 
-              estd   = np.mean(ivtarr, axis=0)
+              estd   = np.mean(ivtarr[:,0,:,:], axis=0)
               stdmax = estd.max()
               maxloc = np.where(estd == stdmax)
               icen   = int(maxloc[1])
@@ -363,11 +365,11 @@ class ComputeForecastMetrics:
               timec  = e_mean.fcst_hour.values[icen]
               latc   = e_mean.latitude.values[jcen]
 
-              if e_mean[jcen,icen] < ivtmin: 
+              if e_mean[2,jcen,icen] < ivtmin: 
                  logging.error('  IVT landfall metric center point is below minimum.  Skipping metric.')
                  continue
 
-              fmgrid = e_mean.copy()
+              fmgrid = e_mean[0,:,:].squeeze().copy()
               fmgrid[:,:] = 0.0
               fmgrid[jcen,icen] = 1.0
 
@@ -392,7 +394,7 @@ class ComputeForecastMetrics:
 
                  for i in range(max(iloc[k]-1,0), min(iloc[k]+2,ntime)):
                     for j in range(max(jloc[k]-1,0), min(jloc[k]+2,nlat)):
-                       if e_mean[j,i] >= ivtmin and fmgrid[j,i] < 1.0:
+                       if e_mean[2,j,i] >= ivtmin and fmgrid[j,i] < 1.0:
                           nloc = nloc + 1
                           iloc[nloc] = i
                           jloc[nloc] = j
@@ -409,24 +411,30 @@ class ComputeForecastMetrics:
               e_mean = e_mean.sel(latitude=slice(lat2,lat1), fcst_hour=slice(fhr1,fhr2))
 
            for n in range(g1.nens):
-              ivtarr[n,:,:] = ivtarr[n,:,:] - e_mean[:,:]
+              ivtarr[n,:,:,:] = ivtarr[n,:,:,:] - e_mean[:,:,:]
 
            #  Compute the EOF of the precipitation pattern and then the PCs
-           solver = Eof_xarray(ivtarr.rename({'ensemble': 'time'}))
+           if vecmet:
+              print('implement')
+           else:
+              solver = Eof_xarray(ivtarr[:,2,:,:].squeeze().rename({'ensemble': 'time'}))
            pcout  = solver.pcs(npcs=eofn, pcscaling=1)
            pc1 = np.squeeze(pcout[:,eofn-1])
            pc1[:] = pc1[:] / np.std(pc1)
 
            #  Compute the IVT pattern associated with a 1 PC perturbation
-           divt = np.zeros(e_mean.shape)
+           if vecmet:
+              print('implement')
 
-           for n in range(g1.nens):
-              divt[:,:] = divt[:,:] + ivtarr[n,:,:] * pc1[n]
+           else:
 
-           divt[:,:] = divt[:,:] / float(g1.nens)
-           if np.sum(divt) < 0.0:
-              divt[:,:] = -divt[:,:]
-              pc1[:]    = -pc1[:]
+              divt = np.zeros(np.squeeze(e_mean[2,:,:]).shape)
+              for n in range(g1.nens):
+                 divt[:,:] = divt[:,:] + ivtarr[n,2,:,:] * pc1[n]
+              divt[:,:] = divt[:,:] / float(g1.nens)
+              if np.sum(divt) < 0.0:
+                 divt[:,:] = -divt[:,:]
+                 pc1[:]    = -pc1[:]
 
            fig = plt.figure(figsize=(10, 6))
 
@@ -435,18 +443,23 @@ class ComputeForecastMetrics:
 
            mivt = [0.0, 250., 300., 400., 500., 600., 700., 800., 1000., 1200., 1400., 1600., 2000.]
            norm = matplotlib.colors.BoundaryNorm(mivt,len(mivt))
-           pltf = ax0.contourf(ivtarr.fcst_hour.values,ivtarr.latitude.values,e_mean,mivt, \
+           pltf = ax0.contourf(ivtarr.fcst_hour.values,ivtarr.latitude.values,np.squeeze(e_mean[2,:,:]),mivt, \
                                 cmap=matplotlib.colors.ListedColormap(colorlist), norm=norm, extend='max')
 
-           ivtfac = np.max(abs(divt))
-           if ivtfac < 60:
-             cntrs = np.array([-50, -40, -30, -20, -10, 10, 20, 30, 40, 50])
-           elif ivtfac >= 60 and ivtfac < 300:
-             cntrs = np.array([-270, -240, -210, -180, -150, -120, -90, -60, -30, 30, 60, 90, 120, 150, 180, 210, 240, 270])
-           else:
-             cntrs = np.array([-500, -400, -300, -200, -100, 100, 200, 300, 400, 500])
+           if vecmet:
+              print('implement')
 
-           pltm = ax0.contour(ivtarr.fcst_hour.values,ivtarr.latitude.values,divt,cntrs,linewidths=1.5, colors='k', zorder=10)
+           else:
+
+              ivtfac = np.max(abs(divt))
+              if ivtfac < 60:
+                 cntrs = np.array([-50, -40, -30, -20, -10, 10, 20, 30, 40, 50])
+              elif ivtfac >= 60 and ivtfac < 300:
+                 cntrs = np.array([-270, -240, -210, -180, -150, -120, -90, -60, -30, 30, 60, 90, 120, 150, 180, 210, 240, 270])
+              else:
+                 cntrs = np.array([-500, -400, -300, -200, -100, 100, 200, 300, 400, 500])
+
+              pltm = ax0.contour(ivtarr.fcst_hour.values,ivtarr.latitude.values,divt,cntrs,linewidths=1.5, colors='k', zorder=10)
 
            ax0.set_xlim([np.min(ivtarr.fcst_hour.values), np.max(ivtarr.fcst_hour.values)])
            ax0.set_ylim([np.min(latcoa), np.max(latcoa)])
@@ -549,7 +562,7 @@ class ComputeForecastMetrics:
 
         fhrvec = np.arange(fhr1, fhr2+int(self.config['fcst_hour_int']), int(self.config['fcst_hour_int']))
 
-        ivtarr = xr.DataArray(name='ensemble_data', data=np.zeros([gf.nens, len(latlist), len(fhrvec)]), dims=['ensemble', 'latitude', 'fcst_hour'], \
+        ivtarr = xr.DataArray(name='ensemble_data', data=np.zeros([gf.nens, 3, len(latlist), len(fhrvec)]), dims=['ensemble', 'component', 'latitude', 'fcst_hour'], \
                               coords={'ensemble': [i for i in range(gf.nens)], 'fcst_hour': fhrvec, 'latitude': latlist})
 
         vecloc = len(np.shape(ensmat.latitude)) == 1
@@ -569,18 +582,24 @@ class ComputeForecastMetrics:
 
         for t in range(len(fhrvec)):
 
-           ensmat = self.__read_ivt(int(fhrvec[t]), vDict)
+           ivtu, ivtv, ivtm = read_ivt(self.datea_str, int(fhrvec[t]), self.config, vDict)
 
            if vecloc:
 
               for i in range(len(latlist)):
-                 ivtarr[:,i,t] = ensmat.sel(latitude=slice(latlist[i], latlist[i]), \
+                 ivtarr[:,0,i,t] = ivtu.sel(latitude=slice(latlist[i], latlist[i]), \
+                                            longitude=slice(lonlist[i], lonlist[i])).squeeze()
+                 ivtarr[:,1,i,t] = ivtv.sel(latitude=slice(latlist[i], latlist[i]), \
+                                            longitude=slice(lonlist[i], lonlist[i])).squeeze() 
+                 ivtarr[:,2,i,t] = ivtm.sel(latitude=slice(latlist[i], latlist[i]), \
                                             longitude=slice(lonlist[i], lonlist[i])).squeeze()
 
            else:
 
               for i in range(len(latlist)):
-                 ivtarr[:,i,t] = ensmat.sel(lat=yloc[i], lon=xloc[i]).squeeze().data
+                 ivtarr[:,0,i,t] = ivtu.sel(lat=yloc[i], lon=xloc[i]).squeeze().data
+                 ivtarr[:,1,i,t] = ivtv.sel(lat=yloc[i], lon=xloc[i]).squeeze().data
+                 ivtarr[:,2,i,t] = ivtm.sel(lat=yloc[i], lon=xloc[i]).squeeze().data
 
         return(ivtarr)
 
