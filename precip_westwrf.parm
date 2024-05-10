@@ -5,8 +5,9 @@ io_module=westwrf_comet
 fcst_hour_int=12
 fcst_hour_max=120
 tigge_forecast_time=0/12/24/36/48/60/72/84/96/108/120/132/144/156
-num_ens=51
+num_ens=200
 #ensemble_list=/cw3e/mead/projects/cwp110/ryantorn/allmem
+ensemble_list=/cw3e/mead/projects/cwp110/scratch/ryantorn/ww_sens/work/{yyyymmddhh}/memlist
 
 flip_lon=True
 projection=RotatedLatLon
