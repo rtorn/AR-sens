@@ -27,6 +27,7 @@ from eofs.standard import Eof
 from eofs.xarray import Eof as Eof_xarray
 
 from SensPlotRoutines import background_map
+from fcst_diag import read_ivt
 
 def great_circle(lon1, lat1, lon2, lat2):
     '''
@@ -198,7 +199,7 @@ class ComputeForecastMetrics:
                     'description': 'Integrated Water Vapor Transport', 'units': 'kg s-1', '_FillValue': -9999.}
            vDict = g1.set_var_bounds('temperature', vDict)
 
-           ensmat = self.__read_ivt(fhr, vDict)
+           ivtu, ivtv, ensmat = read_ivt(self.datea_str, fhr, self.config, vDict)
 
            e_mean = np.mean(ensmat, axis=0)
            for n in range(g1.nens):
