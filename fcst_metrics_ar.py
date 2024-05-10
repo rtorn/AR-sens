@@ -320,6 +320,7 @@ class ComputeForecastMetrics:
               latcoa2 = float(conf['definition'].get('latitude_max',self.config['metric'].get('ivt_land_latitude_max',55.)))
               adapt = eval(conf['definition'].get('adapt',self.config['metric'].get('ivt_land_adapt','False')))
               ivtmin = float(conf['definition'].get('adapt_ivt_min',self.config['metric'].get('ivt_land_adapt_min',225.)))
+              vecmet = eval(conf['definition'].get('vector',self.config['metric'].get('ivt_land_vector','False')))
            except IOError:
               logging.warning('{0} does not exist.  Cannot compute IVT Landfall EOF'.format(infull))
               continue
@@ -413,21 +414,27 @@ class ComputeForecastMetrics:
               ivtarr[n,:,:,:] = ivtarr[n,:,:,:] - e_mean[:,:,:]
 
            #  Compute the EOF of the precipitation pattern and then the PCs
-           solver = Eof_xarray(ivtarr[:,2,:,:].squeeze().rename({'ensemble': 'time'}))
+           if vecmet:
+              print('implement')
+           else:
+              solver = Eof_xarray(ivtarr[:,2,:,:].squeeze().rename({'ensemble': 'time'}))
            pcout  = solver.pcs(npcs=eofn, pcscaling=1)
            pc1 = np.squeeze(pcout[:,eofn-1])
            pc1[:] = pc1[:] / np.std(pc1)
 
            #  Compute the IVT pattern associated with a 1 PC perturbation
-           divt = np.zeros(np.squeeze(e_mean[2,:,:]).shape)
+           if vecmet:
+              print('implement')
 
-           for n in range(g1.nens):
-              divt[:,:] = divt[:,:] + ivtarr[n,2,:,:] * pc1[n]
+           else:
 
-           divt[:,:] = divt[:,:] / float(g1.nens)
-           if np.sum(divt) < 0.0:
-              divt[:,:] = -divt[:,:]
-              pc1[:]    = -pc1[:]
+              divt = np.zeros(np.squeeze(e_mean[2,:,:]).shape)
+              for n in range(g1.nens):
+                 divt[:,:] = divt[:,:] + ivtarr[n,2,:,:] * pc1[n]
+              divt[:,:] = divt[:,:] / float(g1.nens)
+              if np.sum(divt) < 0.0:
+                 divt[:,:] = -divt[:,:]
+                 pc1[:]    = -pc1[:]
 
            fig = plt.figure(figsize=(10, 6))
 
@@ -439,15 +446,20 @@ class ComputeForecastMetrics:
            pltf = ax0.contourf(ivtarr.fcst_hour.values,ivtarr.latitude.values,np.squeeze(e_mean[2,:,:]),mivt, \
                                 cmap=matplotlib.colors.ListedColormap(colorlist), norm=norm, extend='max')
 
-           ivtfac = np.max(abs(divt))
-           if ivtfac < 60:
-             cntrs = np.array([-50, -40, -30, -20, -10, 10, 20, 30, 40, 50])
-           elif ivtfac >= 60 and ivtfac < 300:
-             cntrs = np.array([-270, -240, -210, -180, -150, -120, -90, -60, -30, 30, 60, 90, 120, 150, 180, 210, 240, 270])
-           else:
-             cntrs = np.array([-500, -400, -300, -200, -100, 100, 200, 300, 400, 500])
+           if vecmet:
+              print('implement')
 
-           pltm = ax0.contour(ivtarr.fcst_hour.values,ivtarr.latitude.values,divt,cntrs,linewidths=1.5, colors='k', zorder=10)
+           else:
+
+              ivtfac = np.max(abs(divt))
+              if ivtfac < 60:
+                 cntrs = np.array([-50, -40, -30, -20, -10, 10, 20, 30, 40, 50])
+              elif ivtfac >= 60 and ivtfac < 300:
+                 cntrs = np.array([-270, -240, -210, -180, -150, -120, -90, -60, -30, 30, 60, 90, 120, 150, 180, 210, 240, 270])
+              else:
+                 cntrs = np.array([-500, -400, -300, -200, -100, 100, 200, 300, 400, 500])
+
+              pltm = ax0.contour(ivtarr.fcst_hour.values,ivtarr.latitude.values,divt,cntrs,linewidths=1.5, colors='k', zorder=10)
 
            ax0.set_xlim([np.min(ivtarr.fcst_hour.values), np.max(ivtarr.fcst_hour.values)])
            ax0.set_ylim([np.min(latcoa), np.max(latcoa)])
