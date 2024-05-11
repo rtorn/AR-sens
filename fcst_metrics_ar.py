@@ -415,7 +415,7 @@ class ComputeForecastMetrics:
 
            #  Compute the EOF of the precipitation pattern and then the PCs
            if vecmet:
-              print('implement')
+              solver = Eof_xarray(ivtarr[:,0:2,:,:].squeeze().rename({'ensemble': 'time'}))
            else:
               solver = Eof_xarray(ivtarr[:,2,:,:].squeeze().rename({'ensemble': 'time'}))
            pcout  = solver.pcs(npcs=eofn, pcscaling=1)
@@ -423,15 +423,30 @@ class ComputeForecastMetrics:
            pc1[:] = pc1[:] / np.std(pc1)
 
            #  Compute the IVT pattern associated with a 1 PC perturbation
+           divt = np.zeros(np.squeeze(e_mean[2,:,:]).shape)
+           for n in range(g1.nens):
+              divt[:,:] = divt[:,:] + ivtarr[n,2,:,:] * pc1[n]
+
+           divt[:,:] = divt[:,:] / float(g1.nens)
+
            if vecmet:
-              print('implement')
+
+              divu = np.zeros(np.squeeze(e_mean[0,:,:]).shape)
+              divv = np.zeros(np.squeeze(e_mean[1,:,:]).shape)
+              for n in range(g1.nens):
+                 divu[:,:] = divu[:,:] + ivtarr[n,0,:,:] * pc1[n]
+                 divv[:,:] = divv[:,:] + ivtarr[n,1,:,:] * pc1[n]
+
+              divu[:,:] = divu[:,:] / float(g1.nens)
+              divv[:,:] = divv[:,:] / float(g1.nens)
+
+              if np.sum(divu) + np.sum(divv) < 0.0:
+                 divu[:,:] = -divu[:,:]
+                 divv[:,:] = -divv[:,:]
+                 pc1[:]    = -pc1[:]
 
            else:
 
-              divt = np.zeros(np.squeeze(e_mean[2,:,:]).shape)
-              for n in range(g1.nens):
-                 divt[:,:] = divt[:,:] + ivtarr[n,2,:,:] * pc1[n]
-              divt[:,:] = divt[:,:] / float(g1.nens)
               if np.sum(divt) < 0.0:
                  divt[:,:] = -divt[:,:]
                  pc1[:]    = -pc1[:]
@@ -447,7 +462,12 @@ class ComputeForecastMetrics:
                                 cmap=matplotlib.colors.ListedColormap(colorlist), norm=norm, extend='max')
 
            if vecmet:
-              print('implement')
+
+              divu[:,:] = np.where(np.abs(divt) >= 30.0, divu, np.nan)
+              divv[:,:] = np.where(np.abs(divt) >= 30.0, divv, np.nan)
+              qo1 = ax0.quiver(ivtarr.fcst_hour.values,ivtarr.latitude.values,divu,divv, \
+                         scale_units='height', scale=2500, width=0.005, pivot='mid', color='black', minlength=0)
+              qk = ax0.quiverkey(qo1, 0.45, 0.9, 100, '100', labelpos='E', coordinates='figure')
 
            else:
 
@@ -460,14 +480,10 @@ class ComputeForecastMetrics:
                  cntrs = np.array([-500, -400, -300, -200, -100, 100, 200, 300, 400, 500])
 
               pltm = ax0.contour(ivtarr.fcst_hour.values,ivtarr.latitude.values,divt,cntrs,linewidths=1.5, colors='k', zorder=10)
+              cb = plt.clabel(pltm, inline_spacing=0.0, fontsize=12, fmt="%1.0f")
 
            ax0.set_xlim([np.min(ivtarr.fcst_hour.values), np.max(ivtarr.fcst_hour.values)])
            ax0.set_ylim([np.min(latcoa), np.max(latcoa)])
-
-           #  Add colorbar to the plot
-#           cbar = plt.colorbar(pltf, ax=ax0, fraction=0.15, aspect=45., pad=0.02, ticks=mivt)
-#           cbar.set_ticks(mivt[1:(len(mivt)-1)])
-           cb = plt.clabel(pltm, inline_spacing=0.0, fontsize=12, fmt="%1.0f")
 
            plt.xticks(np.arange(fhr1, fhr2, step=12.))
            plt.xlabel('Forecast Hour')
