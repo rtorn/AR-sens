@@ -214,6 +214,17 @@ def precipitation_ens_maps(datea, fhr1, fhr2, config):
 
 
 def read_ivt(datea, fhr, config, vDict):
+   '''
+   Routine that reads either the IVT u/v/magnitude if those variables are present in a file;
+   otherwise, compute these quantities from basic meteorological variables.  The subroutine 
+   returns the ensemble IVT u/v/magnitude fields. 
+
+   Attributes:
+       datea (string):  Initialization date (yyyymmddhh format)
+       fhr (integer):   forecast hour
+       config (dict.):  dictionary that contains configuration options (read from file)
+       vDict (dict.):   dictionary that contains domain-specific options
+   '''
 
    dpp = importlib.import_module(config['io_module'])
    gf = dpp.ReadGribFiles(datea, fhr, config)
@@ -223,6 +234,7 @@ def read_ivt(datea, fhr, config, vDict):
 
    if 'ivt' in gf.var_dict:
 
+      #  Read each ensemble member from file
       for n in range(gf.nens):
          ivtu[n,:,:] = gf.read_grib_field('ivtu', n, vDict)
          ivtv[n,:,:] = gf.read_grib_field('ivtv', n, vDict)
@@ -236,12 +248,14 @@ def read_ivt(datea, fhr, config, vDict):
 
       for n in range(gf.nens):
 
+         #  Read wind/temperature data 
          uwnd = gf.read_grib_field('zonal_wind', n, fDict) * units('m / sec')
          vwnd = gf.read_grib_field('meridional_wind', n, fDict) * units('m / sec')
 
          tmpk = np.squeeze(gf.read_grib_field('temperature', n, fDict)) * units('K')
          pres = (tmpk.isobaricInhPa.values * units.hPa).to(units.Pa)
 
+         #  Read or calculate specific humidity based on what is in the original
          if gf.has_specific_humidity:
             qvap = np.squeeze(gf.read_grib_field('specific_humidity', n, fDict)) * units('dimensionless')
          else:
