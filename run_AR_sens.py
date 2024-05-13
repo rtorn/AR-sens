@@ -31,6 +31,8 @@ def read_config(datea, filename):
     confin.read(filename)
 
     config = {}
+    config['model']       = confin['model']
+    config['locations']   = confin['locations']
     config['fcst_diag']   = confin['fcst_diag']
     config['metric']      = confin['metric']
     config['fields']      = confin['fields']
@@ -40,27 +42,27 @@ def read_config(datea, filename):
     config.update(confin['locations'])
 
     #  Modify work and output directory for specific case/time
-    config['work_dir']   = '{0}/{1}'.format(config['work_dir'],datea)
-    config['output_dir'] = '{0}/{1}'.format(config['output_dir'],datea)
-    config['figure_dir'] = '{0}/{1}'.format(config['figure_dir'],datea)
+    config['locations']['work_dir']   = '{0}/{1}'.format(config['locations']['work_dir'],datea)
+    config['locations']['output_dir'] = '{0}/{1}'.format(config['locations']['output_dir'],datea)
+    config['locations']['figure_dir'] = '{0}/{1}'.format(config['locations']['figure_dir'],datea)
 
     #  Create appropriate directories
-    if not os.path.isdir(config['work_dir']):
+    if not os.path.isdir(config['locations']['work_dir']):
       try:
-        os.makedirs(config['work_dir'])
+        os.makedirs(config['locations']['work_dir'])
       except OSError as e:
         raise e
 
-    if (eval(config.get('archive_metric','False')) or eval(config.get('archive_metric','False')) ) and \
-               (not os.path.isdir(config['output_dir'])):
+    if eval(config['locations'].get('archive_metric','False')) and \
+         (not os.path.isdir(config['locations']['output_dir'])):
       try:
-        os.makedirs(config['output_dir'])
+        os.makedirs(config['locations']['output_dir'])
       except OSError as e:
         raise e
 
-    if not os.path.isdir(config['figure_dir']):
+    if not os.path.isdir(config['locations']['figure_dir']):
       try:
-        os.makedirs(config['figure_dir'])
+        os.makedirs(config['locations']['figure_dir'])
       except OSError as e:
         raise e
 
@@ -106,13 +108,13 @@ def main():
     config = read_config(datea, paramfile)
 
     #  Import the module that contains routines to read ATCF and Grib data specific to the model
-    dpp = importlib.import_module(config['io_module'])
+    dpp = importlib.import_module(config['model']['io_module'])
 
-    os.chdir(config['work_dir'])
+    os.chdir(config['locations']['work_dir'])
 
     for handler in logging.root.handlers[:]:
        logging.root.removeHandler(handler)
-    logging.basicConfig(filename="{0}/{1}.log".format(config.get("log_dir","."),datea), \
+    logging.basicConfig(filename="{0}/{1}.log".format(config['locations'].get("log_dir","."),datea), \
                                filemode='w', format='%(message)s')
     logging.warning("STARTING SENSITIVITIES for {0}".format(str(datea)))
 
@@ -153,16 +155,16 @@ def main():
 
 
     #  Compute forecast fields at each desired time to use in sensitivity calculation
-    fmaxfld = int(config['fields'].get('fields_hour_max',config['fcst_hour_max']))
+    fmaxfld = int(config['fields'].get('fields_hour_max',config['model']['fcst_hour_max']))
     if eval(config['fields'].get('multiprocessor','False')):
 
-       arglist = [(datea, fhr, config) for fhr in range(0,fmaxfld+int(config['fcst_hour_int']),int(config['fcst_hour_int']))]
+       arglist = [(datea, fhr, config) for fhr in range(0,fmaxfld+int(config['model']['fcst_hour_int']),int(config['model']['fcst_hour_int']))]
        with Pool() as pool:       
           results = pool.map(ComputeFieldsParallel, arglist)
 
     else:
 
-       for fhr in range(0,fmaxfld+int(config['fcst_hour_int']),int(config['fcst_hour_int'])):
+       for fhr in range(0,fmaxfld+int(config['model']['fcst_hour_int']),int(config['model']['fcst_hour_int'])):
           ComputeFields(datea, fhr, config)
 
 
@@ -176,9 +178,9 @@ def main():
           #  Limit loop over time to forecast metric lead time
           a = metlist[i].split('_')
           fhrstr = a[0]
-          fhrmax = int(np.min([float(fhrstr[1:4]),float(config['fcst_hour_max']),float(fmaxfld)]))
+          fhrmax = int(np.min([float(fhrstr[1:4]),float(config['model']['fcst_hour_max']),float(fmaxfld)]))
 
-          for fhr in range(0,fhrmax+int(config['fcst_hour_int']),int(config['fcst_hour_int'])):
+          for fhr in range(0,fhrmax+int(config['model']['fcst_hour_int']),int(config['model']['fcst_hour_int'])):
 
              fhrarg.append(fhr)
              metarg.append(metlist[i])
@@ -194,48 +196,48 @@ def main():
           #  Limit loop over time to forecast metric lead time
           a = metlist[i].split('_')
           fhrstr = a[0]
-          fhrmax = int(np.min([float(fhrstr[1:4]),float(config['fcst_hour_max']),float(fmaxfld)]))
+          fhrmax = int(np.min([float(fhrstr[1:4]),float(config['model']['fcst_hour_max']),float(fmaxfld)]))
 
-          for fhr in range(0,fhrmax+int(config['fcst_hour_int']),int(config['fcst_hour_int'])):
+          for fhr in range(0,fhrmax+int(config['model']['fcst_hour_int']),int(config['model']['fcst_hour_int'])):
 
              ComputeSensitivity(datea, fhr, metlist[i], config)
 
 
-    with open('{0}/metric_list'.format(config['work_dir']), 'w') as f:
+    with open('{0}/metric_list'.format(config['locations']['work_dir']), 'w') as f:
        for item in metlist:
           f.write("%s\n" % item) 
     f.close()
 
 
     #  Save some of the files, if needed
-    if ( config.get('archive_metric','False') == 'True' ):
+    if ( config['locations'].get('archive_metric','False') == 'True' ):
        print("Add capability")
 
-    if ( config.get('archive_fields','False') == 'True' ):
-       os.rename('{0}/\*_ens.nc'.format(config['work_dir']), '{0}/.'.format(config['output_dir']))
+    if ( config['locations'].get('archive_fields','False') == 'True' ):
+       os.rename('{0}/\*_ens.nc'.format(config['locations']['work_dir']), '{0}/.'.format(config['locations']['output_dir']))
 
 
     #  Create a tar file of gridded sensitivity files, if needed
     if eval(config['sens'].get('output_sens', 'False')):
 
-       os.chdir(config['figure_dir'])
+       os.chdir(config['locations']['figure_dir'])
 
        for met in metlist:
 
-          tarout = '{0}/{1}/{1}_{2}_esens.tar'.format(config['outgrid_dir'],datea,met)
+          tarout = '{0}/{1}/{1}_{2}_esens.tar'.format(config['locations']['outgrid_dir'],datea,met)
           tar = tarfile.open(tarout, 'w')
           for f in glob.glob('{0}/*sens.nc'.format(met)):
              tar.add(f)
           tar.close()
 
-          for f in glob.glob('{0}/{1}/*sens.nc'.format(config['figure_dir'],met)):
+          for f in glob.glob('{0}/{1}/*sens.nc'.format(config['locations']['figure_dir'],met)):
              os.remove(f)
 
 
     #  Clean up work directory, if desired
-    os.chdir('{0}/..'.format(config['work_dir']))
-    if not eval(config.get('save_work_dir','False')):
-       shutil.rmtree(config['work_dir'])
+    os.chdir('{0}/..'.format(config['locations']['work_dir']))
+    if not eval(config['locations'].get('save_work_dir','False')):
+       shutil.rmtree(config['locations']['work_dir'])
 
  
 def precipitation_ens_maps_parallel(args):

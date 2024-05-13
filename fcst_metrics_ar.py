@@ -75,12 +75,12 @@ class ComputeForecastMetrics:
         self.datea_str = datea
         self.datea = dt.datetime.strptime(datea, '%Y%m%d%H')
         self.datea_s = self.datea.strftime("%m%d%H%M")
-        self.outdir = config['output_dir']
+        self.outdir = config['locations']['output_dir']
 
         self.config = config
 
         self.metlist = []
-        self.dpp = importlib.import_module(config['io_module'])
+        self.dpp = importlib.import_module(config['model']['io_module'])
 
         if self.config['metric'].get('precipitation_mean_metric', 'True') == 'True':
            self.__precipitation_mean()
@@ -187,7 +187,7 @@ class ComputeForecastMetrics:
               logging.warning('{0} does not exist.  Cannot compute IVT EOF'.format(infull))
               return None
 
-           if eval(self.config.get('flip_lon','False')):
+           if eval(self.config['model'].get('flip_lon','False')):
               lon1 = (lon1 + 360.) % 360.
               lon2 = (lon2 + 360.) % 360.
 
@@ -206,7 +206,7 @@ class ComputeForecastMetrics:
               ensmat[n,:,:] = ensmat[n,:,:] - e_mean[:,:]
 
            #  Compute the EOF of the precipitation pattern and then the PCs
-           if self.config.get('grid_type','LatLon') == 'LatLon':
+           if self.config['model'].get('grid_type','LatLon') == 'LatLon':
 
               coslat = np.cos(np.deg2rad(ensmat.latitude.values)).clip(0., 1.)
               wgts = np.sqrt(coslat)[..., np.newaxis]
@@ -243,7 +243,7 @@ class ComputeForecastMetrics:
            plotBase['left_labels'] = 'True'
            plotBase['right_labels'] = 'None'
 
-           ax = background_map(self.config.get('projection', 'PlateCarree'), lon1, lon2, lat1, lat2, plotBase)
+           ax = background_map(self.config['model'].get('projection', 'PlateCarree'), lon1, lon2, lat1, lat2, plotBase)
 
            mivt = [0.0, 250., 300., 400., 500., 600., 700., 800., 1000., 1200., 1400., 1600., 2000.]
            norm = matplotlib.colors.BoundaryNorm(mivt,len(mivt))
@@ -263,7 +263,7 @@ class ComputeForecastMetrics:
            fracvar = '%4.3f' % solver.varianceFraction(neigs=1)
            plt.title("{0} {1} hour IVT, {2} of variance".format(str(self.datea_str),fhr,fracvar))
 
-           outdir = '{0}/f{1}_{2}'.format(self.config['figure_dir'],fff,metname)
+           outdir = '{0}/f{1}_{2}'.format(self.config['locations']['figure_dir'],fff,metname)
            if not os.path.isdir(outdir):
               try:
                  os.makedirs(outdir)
@@ -281,7 +281,7 @@ class ComputeForecastMetrics:
                                                     'description': 'IVT PC'}, 'data': pc1.data}}}
 
            xr.Dataset.from_dict(f_met).to_netcdf(
-               "{0}/{1}_f{2}_{3}.nc".format(self.config['work_dir'],str(self.datea_str),'%0.3i' % fhr,metname), encoding={'fore_met_init': {'dtype': 'float32'}})
+               "{0}/{1}_f{2}_{3}.nc".format(self.config['locations']['work_dir'],str(self.datea_str),'%0.3i' % fhr,metname), encoding={'fore_met_init': {'dtype': 'float32'}})
 
            self.metlist.append('f{0}_{1}'.format('%0.3i' % fhr, metname))
 
@@ -332,7 +332,7 @@ class ComputeForecastMetrics:
                  latlist.append(latcoa[i])
                  lonlist.append(loncoa[i])
 
-           if eval(self.config.get('flip_lon','False')):
+           if eval(self.config['model'].get('flip_lon','False')):
               for i in range(len(loncoa)):
                  loncoa[i] = (loncoa[i] + 360.) % 360.
               for i in range(len(lonlist)):
@@ -508,7 +508,7 @@ class ComputeForecastMetrics:
            cbar = plt.colorbar(pltf, fraction=0.15, aspect=45., pad=0.13, orientation='horizontal', cax=fig.add_axes([0.15, 0.01, 0.7, 0.025]))
            cbar.set_ticks(mivt[1:(len(mivt)-1)])
 
-           outdir = '{0}/f{1}_{2}'.format(self.config['figure_dir'],'%0.3i' % fhr2,metname)
+           outdir = '{0}/f{1}_{2}'.format(self.config['locations']['figure_dir'],'%0.3i' % fhr2,metname)
            if not os.path.isdir(outdir):
               try:
                  os.makedirs(outdir)
@@ -528,7 +528,7 @@ class ComputeForecastMetrics:
                                   'metric_lon': {'dims': ('locations',), 'attrs': {'units': 'degrees', 'description': 'metric longitude bounds'}, 'data': lonlist}}}
 
            xr.Dataset.from_dict(f_met).to_netcdf(
-               "{0}/{1}_f{2}_{3}.nc".format(self.config['work_dir'],str(self.datea_str),'%0.3i' % fhr2,metname), encoding={'fore_met_init': {'dtype': 'float32'}})
+               "{0}/{1}_f{2}_{3}.nc".format(self.config['locations']['work_dir'],str(self.datea_str),'%0.3i' % fhr2,metname), encoding={'fore_met_init': {'dtype': 'float32'}})
 
            self.metlist.append('f{0}_{1}'.format('%0.3i' % fhr2, metname))
 
@@ -576,7 +576,7 @@ class ComputeForecastMetrics:
 
         ensmat = gf.create_ens_array('temperature', gf.nens, vDict)
 
-        fhrvec = np.arange(fhr1, fhr2+int(self.config['fcst_hour_int']), int(self.config['fcst_hour_int']))
+        fhrvec = np.arange(fhr1, fhr2+int(self.config['model']['fcst_hour_int']), int(self.config['model']['fcst_hour_int']))
 
         ivtarr = xr.DataArray(name='ensemble_data', data=np.zeros([gf.nens, 3, len(latlist), len(fhrvec)]), dims=['ensemble', 'component', 'latitude', 'fcst_hour'], \
                               coords={'ensemble': [i for i in range(gf.nens)], 'fcst_hour': fhrvec, 'latitude': latlist})
@@ -656,7 +656,7 @@ class ComputeForecastMetrics:
            lon1 = float(self.config['metric'].get('min_lon_precip','-130.'))
            lon2 = float(self.config['metric'].get('max_lon_precip','-108.'))
 
-           if eval(self.config.get('flip_lon','False')):
+           if eval(self.config['model'].get('flip_lon','False')):
               lon1 = (lon1 + 360.) % 360.
               lon2 = (lon2 + 360.) % 360.
               lonc = (lonc + 360.) % 360.
@@ -806,7 +806,7 @@ class ComputeForecastMetrics:
 
            fig.suptitle('F{0}-F{1} Precipitation ({2}-{3})'.format(fff1, fff2, date1_str, date2_str), fontsize=16)
 
-           outdir = '{0}/f{1}_{2}'.format(self.config['figure_dir'],fff2,metname)
+           outdir = '{0}/f{1}_{2}'.format(self.config['locations']['figure_dir'],fff2,metname)
            if not os.path.isdir(outdir):
               try:
                  os.makedirs(outdir)
@@ -827,7 +827,7 @@ class ComputeForecastMetrics:
                                                                'data': fmout}}}
 
            xr.Dataset.from_dict(f_metric).to_netcdf(
-               "{0}/{1}_f{2}_{3}.nc".format(self.config['work_dir'], str(self.datea_str), fff2, metname), encoding={'fore_met_init': {'dtype': 'float32'}})
+               "{0}/{1}_f{2}_{3}.nc".format(self.config['locations']['work_dir'], str(self.datea_str), fff2, metname), encoding={'fore_met_init': {'dtype': 'float32'}})
 
            self.metlist.append('f{0}_{1}'.format(fff2,metname))
 
@@ -845,7 +845,7 @@ class ComputeForecastMetrics:
 
         for infile in glob.glob('{0}/{1}_*'.format(self.config['metric'].get('precip_metric_loc'),self.datea_str)):
 
-           fint = int(self.config['metric'].get('fcst_int',self.config['fcst_hour_int']))
+           fint = int(self.config['metric'].get('fcst_int',self.config['model']['fcst_hour_int']))
 
            try:
               conf = configparser.ConfigParser()
@@ -869,7 +869,7 @@ class ComputeForecastMetrics:
            except:
               logging.warning('  {0} does not exist.  Using parameter and/or default values'.format(infile))
 
-           if eval(self.config.get('flip_lon','False')):
+           if eval(self.config['model'].get('flip_lon','False')):
               lon1 = (lon1 + 360.) % 360.
               lon2 = (lon2 + 360.) % 360.
 
@@ -951,7 +951,7 @@ class ComputeForecastMetrics:
               lmask[:,:] = 1.0
 
            #  Compute the EOF of the precipitation pattern and then the PCs
-           if self.config.get('grid_type','LatLon') == 'LatLon':
+           if self.config['model'].get('grid_type','LatLon') == 'LatLon':
               coslat = np.cos(np.deg2rad(ensmat.latitude.values)).clip(0., 1.)       
               wgts = np.sqrt(coslat)[..., np.newaxis]
 
@@ -1054,7 +1054,7 @@ class ComputeForecastMetrics:
                  ensarr = xr.DataArray(name='ensemble_data', data=np.zeros([nens, nlat*nlon]), \
                                          dims=['time', 'state'])
 
-                 if self.config.get('grid_type','LatLon') == 'LatLon':
+                 if self.config['model'].get('grid_type','LatLon') == 'LatLon':
 
                     for i in range(nlon):
                        for j in range(nlat):
@@ -1076,7 +1076,7 @@ class ComputeForecastMetrics:
               else:
 
                  #  Compute the EOF of the precipitation pattern and then the PCs
-                 if self.config.get('grid_type','LatLon') == 'LatLon':
+                 if self.config['model'].get('grid_type','LatLon') == 'LatLon':
 
                     coslat = np.cos(np.deg2rad(ensmat.latitude.values)).clip(0., 1.)
                     wgts = np.sqrt(coslat)[..., np.newaxis]
@@ -1118,7 +1118,7 @@ class ComputeForecastMetrics:
            plotBase['left_labels'] = 'True'
            plotBase['right_labels'] = 'None'
 
-           ax = background_map(self.config.get('projection', 'PlateCarree'), lon1, lon2, lat1, lat2, plotBase)
+           ax = background_map(self.config['model'].get('projection', 'PlateCarree'), lon1, lon2, lat1, lat2, plotBase)
 
            #  Add the ensemble-mean precipitation in shading
            mpcp = [0.0, 0.25, 0.50, 1., 1.5, 2., 4., 6., 8., 12., 16., 24., 32., 64., 96., 97.]
@@ -1148,7 +1148,7 @@ class ComputeForecastMetrics:
               fracvar = '%4.3f' % solver.varianceFraction(neigs=eofn)[-1]
            plt.title("{0} {1}-{2} hour Precipitation, {3} of variance".format(str(self.datea_str),fhr1,fhr2,fracvar))
 
-           outdir = '{0}/f{1}_{2}'.format(self.config['figure_dir'],'%0.3i' % fhr2,metname)
+           outdir = '{0}/f{1}_{2}'.format(self.config['locations']['figure_dir'],'%0.3i' % fhr2,metname)
            if not os.path.isdir(outdir):
               try:
                  os.makedirs(outdir)
@@ -1168,7 +1168,7 @@ class ComputeForecastMetrics:
                                                     'description': 'precipitation PC'}, 'data': pc1.data}}}
 
            xr.Dataset.from_dict(f_met).to_netcdf(
-               "{0}/{1}_f{2}_{3}.nc".format(self.config['work_dir'],str(self.datea_str),'%0.3i' % fhr2,metname), encoding={'fore_met_init': {'dtype': 'float32'}})
+               "{0}/{1}_f{2}_{3}.nc".format(self.config['locations']['work_dir'],str(self.datea_str),'%0.3i' % fhr2,metname), encoding={'fore_met_init': {'dtype': 'float32'}})
 
            self.metlist.append('f{0}_{1}'.format('%0.3i' % fhr2, metname))
 
@@ -1416,7 +1416,7 @@ class ComputeForecastMetrics:
               datef  = init + dt.timedelta(hours=fhr)
               ticklist.append(datef.strftime("%HZ\n%m/\n%d"))
 
-           outdir = '{0}/f{1}_{2}'.format(self.config['figure_dir'],'%0.3i' % fhr2,metname)
+           outdir = '{0}/f{1}_{2}'.format(self.config['locations']['figure_dir'],'%0.3i' % fhr2,metname)
            if not os.path.isdir(outdir):
               try:
                  os.makedirs(outdir)
@@ -1436,7 +1436,7 @@ class ComputeForecastMetrics:
                                   'huc_id': {'dims': ('basin',), 'attrs': {'description': 'HUC ID'}, 'data': hucid_list}}}
 
            xr.Dataset.from_dict(f_met).to_netcdf(
-               "{0}/{1}_f{2}_{3}.nc".format(self.config['work_dir'],str(self.datea_str),'%0.3i' % fhr2,metname), encoding={'fore_met_init': {'dtype': 'float32'}})
+               "{0}/{1}_f{2}_{3}.nc".format(self.config['locations']['work_dir'],str(self.datea_str),'%0.3i' % fhr2,metname), encoding={'fore_met_init': {'dtype': 'float32'}})
 
            self.metlist.append('f{0}_{1}'.format('%0.3i' % fhr2, metname))
 
@@ -1475,7 +1475,7 @@ class ComputeForecastMetrics:
               logging.warning('{0} does not exist.  Cannot compute SLP EOF'.format(infull))
               return None
 
-           if eval(self.config.get('flip_lon','False')):
+           if eval(self.config['model'].get('flip_lon','False')):
               lon1 = (lon1 + 360.) % 360.
               lon2 = (lon2 + 360.) % 360.
 
@@ -1501,7 +1501,7 @@ class ComputeForecastMetrics:
               ensmat[n,:,:] = ensmat[n,:,:] - e_mean[:,:]
 
            #  Compute the EOF of the precipitation pattern and then the PCs
-           if self.config.get('grid_type','LatLon') == 'LatLon':
+           if self.config['model'].get('grid_type','LatLon') == 'LatLon':
 
               coslat = np.cos(np.deg2rad(ensmat.latitude.values)).clip(0., 1.)
               wgts = np.sqrt(coslat)[..., np.newaxis]
@@ -1533,7 +1533,7 @@ class ComputeForecastMetrics:
            plotBase['left_labels'] = 'True'
            plotBase['right_labels'] = 'None'
 
-           ax = background_map(self.config.get('projection', 'PlateCarree'), lon1, lon2, lat1, lat2, plotBase)
+           ax = background_map(self.config['model'].get('projection', 'PlateCarree'), lon1, lon2, lat1, lat2, plotBase)
 
            #  Plot the SLP EOF pattern in shading
            slpfac = np.ceil(np.max(np.abs(dslp)) / 5.0)
@@ -1558,7 +1558,7 @@ class ComputeForecastMetrics:
            plt.title("{0} {1} hour Precipitation, {2} of variance".format(str(self.datea_str),fhr,fracvar))
 
            #  Create a output directory with the metric file
-           outdir = '{0}/f{1}_{2}'.format(self.config['figure_dir'],fff,metname)
+           outdir = '{0}/f{1}_{2}'.format(self.config['locations']['figure_dir'],fff,metname)
            if not os.path.isdir(outdir):
               try:
                  os.makedirs(outdir)
@@ -1576,7 +1576,7 @@ class ComputeForecastMetrics:
                                                     'description': 'sea-level pressure PC'}, 'data': pc1.data}}}
 
            xr.Dataset.from_dict(f_met).to_netcdf(
-               "{0}/{1}_f{2}_{3}.nc".format(self.config['work_dir'],str(self.datea_str),'%0.3i' % fhr,metname), encoding={'fore_met_init': {'dtype': 'float32'}})
+               "{0}/{1}_f{2}_{3}.nc".format(self.config['locations']['work_dir'],str(self.datea_str),'%0.3i' % fhr,metname), encoding={'fore_met_init': {'dtype': 'float32'}})
 
            self.metlist.append('f{0}_{1}'.format('%0.3i' % fhr, metname))
 
@@ -1607,7 +1607,7 @@ class ComputeForecastMetrics:
               logging.warning('{0} does not exist.  Cannot compute IVT Landfall EOF'.format(infull))
               return None
 
-           if eval(self.config.get('flip_lon','False')):
+           if eval(self.config['model'].get('flip_lon','False')):
               lon1 = (lon1 + 360.) % 360.
               lon2 = (lon2 + 360.) % 360.
 
@@ -1632,7 +1632,7 @@ class ComputeForecastMetrics:
               ensmat[n,:,:] = ensmat[n,:,:] - e_mean[:,:]
 
            #  Compute the EOF of the precipitation pattern and then the PCs
-           if self.config.get('grid_type','LatLon') == 'LatLon':
+           if self.config['model'].get('grid_type','LatLon') == 'LatLon':
 
               coslat = np.cos(np.deg2rad(ensmat.latitude.values)).clip(0., 1.)
               wgts = np.sqrt(coslat)[..., np.newaxis]
@@ -1691,7 +1691,7 @@ class ComputeForecastMetrics:
               fracvar = '%4.3f' % solver.varianceFraction(neigs=eofn)[-1]
            plt.title("{0} {1} hour height, {2} of variance".format(str(self.datea_str),fhr,fracvar))
 
-           outdir = '{0}/f{1}_{2}'.format(self.config['figure_dir'],fff,metname)
+           outdir = '{0}/f{1}_{2}'.format(self.config['locations']['figure_dir'],fff,metname)
            if not os.path.isdir(outdir):
               try:
                  os.makedirs(outdir)
@@ -1709,7 +1709,7 @@ class ComputeForecastMetrics:
                                                     'description': 'height PC'}, 'data': pc1.data}}}
 
            xr.Dataset.from_dict(f_met).to_netcdf(
-               "{0}/{1}_f{2}_{3}.nc".format(self.config['work_dir'],str(self.datea_str),'%0.3i' % fhr,metname), encoding={'fore_met_init': {'dtype': 'float32'}})
+               "{0}/{1}_f{2}_{3}.nc".format(self.config['locations']['work_dir'],str(self.datea_str),'%0.3i' % fhr,metname), encoding={'fore_met_init': {'dtype': 'float32'}})
 
            self.metlist.append('f{0}_{1}'.format('%0.3i' % fhr, metname))
 
@@ -1744,7 +1744,7 @@ class ComputeForecastMetrics:
               logging.warning('{0} does not exist.  Cannot compute temperature EOF'.format(infull))
               return None
 
-           if eval(self.config.get('flip_lon','False')):
+           if eval(self.config['model'].get('flip_lon','False')):
               lon1 = (lon1 + 360.) % 360.
               lon2 = (lon2 + 360.) % 360.
 
@@ -1769,7 +1769,7 @@ class ComputeForecastMetrics:
               ensmat[n,:,:] = ensmat[n,:,:] - e_mean[:,:]
 
            #  Compute the EOF of the precipitation pattern and then the PCs
-           if self.config.get('grid_type','LatLon') == 'LatLon':
+           if self.config['model'].get('grid_type','LatLon') == 'LatLon':
 
               coslat = np.cos(np.deg2rad(ensmat.latitude.values)).clip(0., 1.)
               nlat = len(ensmat[0,:,0])
@@ -1826,7 +1826,7 @@ class ComputeForecastMetrics:
            plotBase['left_labels'] = 'True'
            plotBase['right_labels'] = 'None'
 
-           ax = background_map(self.config.get('projection', 'PlateCarree'), lon1, lon2, lat1, lat2, plotBase)
+           ax = background_map(self.config['model'].get('projection', 'PlateCarree'), lon1, lon2, lat1, lat2, plotBase)
 
            #  Plot the temperature EOF pattern in shading
            tfac = np.ceil(np.max(dtemp) / 2.5)
@@ -1852,7 +1852,7 @@ class ComputeForecastMetrics:
            plt.title("{0} {1} hour temperature, {2} of variance".format(str(self.datea_str),fhr,fracvar))
 
            #  Create metric directory, save image file with metric
-           outdir = '{0}/f{1}_{2}'.format(self.config['figure_dir'],fff,metname)
+           outdir = '{0}/f{1}_{2}'.format(self.config['locations']['figure_dir'],fff,metname)
            if not os.path.isdir(outdir):
               try:
                  os.makedirs(outdir)
@@ -1871,7 +1871,7 @@ class ComputeForecastMetrics:
                                                     'description': 'temperature PC'}, 'data': pc1.data}}}
 
            xr.Dataset.from_dict(f_met).to_netcdf(
-               "{0}/{1}_f{2}_{3}.nc".format(self.config['work_dir'],str(self.datea_str),'%0.3i' % fhr,metname), encoding={'fore_met_init': {'dtype': 'float32'}})
+               "{0}/{1}_f{2}_{3}.nc".format(self.config['locations']['work_dir'],str(self.datea_str),'%0.3i' % fhr,metname), encoding={'fore_met_init': {'dtype': 'float32'}})
 
            self.metlist.append('f{0}_{1}'.format('%0.3i' % fhr, metname))
 

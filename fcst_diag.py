@@ -107,7 +107,7 @@ def basin_ens_maps(datea, fhr1, fhr2, config):
 
     fig.suptitle('F{0}-F{1} Precipitation ({2}-{3})'.format(fff1, fff2, date1_str, date2_str), fontsize=16)
 
-    outdir = '{0}/std/pbasin'.format(config['figure_dir'])
+    outdir = '{0}/std/pbasin'.format(config['locations']['figure_dir'])
     if not os.path.isdir(outdir):
        try:
           os.makedirs(outdir)
@@ -142,7 +142,7 @@ def precipitation_ens_maps(datea, fhr1, fhr2, config):
     date1_str = datea_1.strftime("%Y%m%d%H")
     datea_2   = dt.datetime.strptime(datea, '%Y%m%d%H') + dt.timedelta(hours=fhr2)
     date2_str = datea_2.strftime("%Y%m%d%H")
-    fint      = int(config.get('fcst_hour_int','12'))
+    fint      = int(config['model'].get('fcst_hour_int','12'))
     g1        = dpp.ReadGribFiles(datea, fhr1, config)
 
     vDict = {'latitude': (lat1-0.00001, lat2), 'longitude': (lon1-0.00001, lon2),
@@ -171,7 +171,7 @@ def precipitation_ens_maps(datea, fhr1, fhr2, config):
     plotBase['grid_interval'] = config['fcst_diag'].get('grid_interval', 5)
     plotBase['left_labels'] = 'True'
     plotBase['right_labels'] = 'None'
-    ax1 = background_map(config.get('projection', 'PlateCarree'), lon1, lon2, lat1, lat2, plotBase)
+    ax1 = background_map(config['model'].get('projection', 'PlateCarree'), lon1, lon2, lat1, lat2, plotBase)
 
     #  Plot the mean precipitation map
     mpcp = [0.0, 0.25, 0.50, 1., 1.5, 2., 4., 6., 8., 12., 16., 24., 32., 64., 96., 97.]
@@ -187,7 +187,7 @@ def precipitation_ens_maps(datea, fhr1, fhr2, config):
     plotBase['subnumber']     = 2
     plotBase['left_labels'] = 'None'
     plotBase['right_labels'] = 'None'
-    ax2 = background_map(config.get('projection', 'PlateCarree'), lon1, lon2, lat1, lat2, plotBase)
+    ax2 = background_map(config['model'].get('projection', 'PlateCarree'), lon1, lon2, lat1, lat2, plotBase)
 
     #  Plot the standard deviation of the ensemble precipitation
     spcp = [0., 3., 6., 9., 12., 15., 18., 21., 24., 27., 30., 33., 36., 39., 42., 43.]
@@ -202,7 +202,7 @@ def precipitation_ens_maps(datea, fhr1, fhr2, config):
 
     fig.suptitle('F{0}-F{1} Precipitation ({2}-{3})'.format(fff1, fff2, date1_str, date2_str), fontsize=16)
 
-    outdir = '{0}/std/pcp'.format(config['figure_dir'])
+    outdir = '{0}/std/pcp'.format(config['locations']['figure_dir'])
     if not os.path.isdir(outdir):
        try:
           os.makedirs(outdir)
@@ -226,7 +226,7 @@ def read_ivt(datea, fhr, config, vDict):
        vDict (dict.):   dictionary that contains domain-specific options
    '''
 
-   dpp = importlib.import_module(config['io_module'])
+   dpp = importlib.import_module(config['model']['io_module'])
    gf = dpp.ReadGribFiles(datea, fhr, config)
    ivtu = gf.create_ens_array('temperature', gf.nens, vDict)
    ivtv = gf.create_ens_array('temperature', gf.nens, vDict)

@@ -33,7 +33,7 @@ def ComputeSensitivity(datea, fhr, metname, config):
 
    plotDict = {}
 
-   for key in config:
+   for key in config['model']:
       plotDict[key] = config[key]
 
    for key in config['sens']:
@@ -49,9 +49,9 @@ def ComputeSensitivity(datea, fhr, metname, config):
 
    #  Obtain the metric information (here read from file)
    try:
-      mfile = nc.Dataset('{0}/{1}_{2}.nc'.format(config['work_dir'],datea,metname))
+      mfile = nc.Dataset('{0}/{1}_{2}.nc'.format(config['locations']['work_dir'],datea,metname))
    except IOError:
-      logging.error('{0}/{1}_{2}.nc does not exist'.format(config['work_dir'],datea,metname))
+      logging.error('{0}/{1}_{2}.nc does not exist'.format(config['locations']['work_dir'],datea,metname))
       return
 
    if hasattr(mfile,'FORECAST_METRIC_NAME'):
@@ -112,7 +112,7 @@ def ComputeSensitivity(datea, fhr, metname, config):
       flist = []
 
    if 'flip_lon' in config:
-      plotDict['flip_lon'] = config['flip_lon']
+      plotDict['flip_lon'] = config['model']['flip_lon']
  
    #  Read major axis direction if appropriate  
    if hasattr(mfile.variables['fore_met_init'],'units'):
@@ -120,7 +120,7 @@ def ComputeSensitivity(datea, fhr, metname, config):
 
 
    #  Read IVT, compute sensitivity to that field, if the file exists
-   ensfile = '{0}/{1}_f{2}_ivt_ens.nc'.format(config['work_dir'],datea,fhrt)
+   ensfile = '{0}/{1}_f{2}_ivt_ens.nc'.format(config['locations']['work_dir'],datea,fhrt)
    if os.path.isfile(ensfile):
 
       efile = nc.Dataset(ensfile)
@@ -139,12 +139,12 @@ def ComputeSensitivity(datea, fhr, metname, config):
       sens, sigv = computeSens(ens, emea, evar, metric)
       sens[:,:] = sens[:,:] * np.sqrt(evar[:,:])
 
-      outdir = '{0}/{1}/sens/ivt'.format(config['figure_dir'],metname)
+      outdir = '{0}/{1}/sens/ivt'.format(config['locations']['figure_dir'],metname)
       if not os.path.isdir(outdir):
          os.makedirs(outdir, exist_ok=True)
 
       if eval(config['sens'].get('output_sens', 'False')) and ('ivt' in flist):
-         writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_ivt_sens.nc'.format(config['figure_dir'],metname,datea,fhrt), plotDict)
+         writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_ivt_sens.nc'.format(config['locations']['figure_dir'],metname,datea,fhrt), plotDict)
 
       plotDict['meanCntrs'] = np.array([200., 400., 600., 800., 1000., 1300., 1600.])
       plotScalarSens(lat, lon, sens, emea, sigv, '{0}/{1}_f{2}_ivt_sens.png'.format(outdir,datea,fhrt), plotDict)
@@ -160,8 +160,8 @@ def ComputeSensitivity(datea, fhr, metname, config):
 
    for pres in plist:
 
-      uensfile = '{0}/{1}_f{2}_uwnd{3}hPa_ens.nc'.format(config['work_dir'],datea,fhrt,pres)
-      vensfile = '{0}/{1}_f{2}_vwnd{3}hPa_ens.nc'.format(config['work_dir'],datea,fhrt,pres)
+      uensfile = '{0}/{1}_f{2}_uwnd{3}hPa_ens.nc'.format(config['locations']['work_dir'],datea,fhrt,pres)
+      vensfile = '{0}/{1}_f{2}_vwnd{3}hPa_ens.nc'.format(config['locations']['work_dir'],datea,fhrt,pres)
       if os.path.isfile(uensfile) and os.path.isfile(vensfile):
 
          efile = nc.Dataset(uensfile)
@@ -193,12 +193,12 @@ def ComputeSensitivity(datea, fhr, metname, config):
          sens, sigv = computeSens(ens, emea, evar, metric)
          sens[:,:] = sens[:,:] * np.sqrt(evar[:,:])
 
-         outdir = '{0}/{1}/sens/a{2}hPa'.format(config['figure_dir'],metname,pres)
+         outdir = '{0}/{1}/sens/a{2}hPa'.format(config['locations']['figure_dir'],metname,pres)
          if not os.path.isdir(outdir):
             os.makedirs(outdir, exist_ok=True)
 
          if plotDict.get('output_sens', 'False')=='True':
-            writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_a{4}hPa_sens.nc'.format(config['figure_dir'],metname,datea,fhrt,pres), plotDict) 
+            writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_a{4}hPa_sens.nc'.format(config['locations']['figure_dir'],metname,datea,fhrt,pres), plotDict) 
 
          plotDict['plotTitle'] = '{0} F{1} {4} hPa a wind{2}{3}'.format(datea,fhrt,metstring,timestr,pres) 
          plotVecSens(lat, lon, sens, umea, vmea, sigv, '{0}/{1}_f{2}_a{3}hPa_sens.png'.format(outdir,datea,fhrt,pres), plotDict)
@@ -212,12 +212,12 @@ def ComputeSensitivity(datea, fhr, metname, config):
          sens, sigv = computeSens(ens, emea, evar, metric)
          sens[:,:] = sens[:,:] * np.sqrt(evar[:,:])
 
-         outdir = '{0}/{1}/sens/x{2}hPa'.format(config['figure_dir'],metname,pres)
+         outdir = '{0}/{1}/sens/x{2}hPa'.format(config['locations']['figure_dir'],metname,pres)
          if not os.path.isdir(outdir):
             os.makedirs(outdir, exist_ok=True)
 
          if plotDict.get('output_sens', 'False')=='True':
-            writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_x{4}hPa_sens.nc'.format(config['figure_dir'],metname,datea,fhrt,pres), plotDict)
+            writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_x{4}hPa_sens.nc'.format(config['locations']['figure_dir'],metname,datea,fhrt,pres), plotDict)
 
          plotDict['plotTitle'] = '{0} F{1} {4} hPa x wind{2}{3}'.format(datea,fhrt,metstring,timestr,pres)
          plotVecSens(lat, lon, sens, umea, vmea, sigv, '{0}/{1}_f{2}_x{3}hPa_sens.png'.format(outdir,datea,fhrt,pres), plotDict)
@@ -226,23 +226,23 @@ def ComputeSensitivity(datea, fhr, metname, config):
          sens, sigv = computeSens(uens, umea, uvar, metric)
          sens[:,:] = sens[:,:] * np.sqrt(uvar[:,:])
 
-         outdir = '{0}/{1}/sens/u{2}hPa'.format(config['figure_dir'],metname,pres)
+         outdir = '{0}/{1}/sens/u{2}hPa'.format(config['locations']['figure_dir'],metname,pres)
          if not os.path.isdir(outdir):
             os.makedirs(outdir, exist_ok=True)
 
          if plotDict.get('output_sens', 'False')=='True':
-            writeSensFile(lat, lon, fhr, umea, sens, sigv, '{0}/{1}/{2}_f{3}_u{4}hPa_sens.nc'.format(config['figure_dir'],metname,datea,fhrt,pres), plotDict)
+            writeSensFile(lat, lon, fhr, umea, sens, sigv, '{0}/{1}/{2}_f{3}_u{4}hPa_sens.nc'.format(config['locations']['figure_dir'],metname,datea,fhrt,pres), plotDict)
 
 
          sens, sigv = computeSens(vens, vmea, vvar, metric)
          sens[:,:] = sens[:,:] * np.sqrt(vvar[:,:])
 
-         outdir = '{0}/{1}/sens/v{2}hPa'.format(config['figure_dir'],metname,pres)
+         outdir = '{0}/{1}/sens/v{2}hPa'.format(config['locations']['figure_dir'],metname,pres)
          if not os.path.isdir(outdir):
             os.makedirs(outdir, exist_ok=True)
 
          if plotDict.get('output_sens', 'False')=='True':
-            writeSensFile(lat, lon, fhr, vmea, sens, sigv, '{0}/{1}/{2}_f{3}_v{4}hPa_sens.nc'.format(config['figure_dir'],metname,datea,fhrt,pres), plotDict)
+            writeSensFile(lat, lon, fhr, vmea, sens, sigv, '{0}/{1}/{2}_f{3}_v{4}hPa_sens.nc'.format(config['locations']['figure_dir'],metname,datea,fhrt,pres), plotDict)
 
 
    #  Read theta-e, compute sensitivity to that field
@@ -253,7 +253,7 @@ def ComputeSensitivity(datea, fhr, metname, config):
 
    for pres in plist:
 
-      ensfile = '{0}/{1}_f{2}_e{3}hPa_ens.nc'.format(config['work_dir'],datea,fhrt,pres)
+      ensfile = '{0}/{1}_f{2}_e{3}hPa_ens.nc'.format(config['locations']['work_dir'],datea,fhrt,pres)
       if os.path.isfile(ensfile):
 
          efile = nc.Dataset(ensfile)
@@ -267,12 +267,12 @@ def ComputeSensitivity(datea, fhr, metname, config):
          sens, sigv = computeSens(ens, emea, evar, metric)
          sens[:,:] = sens[:,:] * np.sqrt(evar[:,:])
 
-         outdir = '{0}/{1}/sens/e{2}hPa'.format(config['figure_dir'],metname,pres)
+         outdir = '{0}/{1}/sens/e{2}hPa'.format(config['locations']['figure_dir'],metname,pres)
          if not os.path.isdir(outdir):
             os.makedirs(outdir, exist_ok=True)
 
          if eval(config['sens'].get('output_sens', 'False')) and 'e{0}hPa'.format(pres) in flist:
-            writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_e{4}hPa_sens.nc'.format(config['figure_dir'],metname,datea,fhrt,pres), plotDict)
+            writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_e{4}hPa_sens.nc'.format(config['locations']['figure_dir'],metname,datea,fhrt,pres), plotDict)
 
          plotDict['meanCntrs'] = np.array(range(270,390,3))
          plotDict['plotTitle'] = '{0} F{1} {4} hPa $\\theta_e${2}{3}'.format(datea,fhrt,metstring,timestr,pres)
@@ -282,7 +282,7 @@ def ComputeSensitivity(datea, fhr, metname, config):
    plist = [1000, 925, 850, 700, 500, 300, 250, 200]
    for pres in plist:
 
-      ensfile = '{0}/{1}_f{2}_qvap{3}hPa_ens.nc'.format(config['work_dir'],datea,fhrt,pres)
+      ensfile = '{0}/{1}_f{2}_qvap{3}hPa_ens.nc'.format(config['locations']['work_dir'],datea,fhrt,pres)
       if os.path.isfile(ensfile):
 
          efile = nc.Dataset(ensfile)
@@ -296,12 +296,12 @@ def ComputeSensitivity(datea, fhr, metname, config):
          sens, sigv = computeSens(ens, emea, evar, metric)
          sens[:,:] = sens[:,:] * np.sqrt(evar[:,:])
 
-         outdir = '{0}/{1}/sens/qvap{2}hPa'.format(config['figure_dir'],metname,pres)
+         outdir = '{0}/{1}/sens/qvap{2}hPa'.format(config['locations']['figure_dir'],metname,pres)
          if not os.path.isdir(outdir):
             os.makedirs(outdir, exist_ok=True)
 
          if eval(config['sens'].get('output_sens', 'False')) and 'qvap{0}hPa'.format(pres) in flist:
-            writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_qvap{4}hPa_sens.nc'.format(config['figure_dir'],metname,datea,fhrt,pres), plotDict)
+            writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_qvap{4}hPa_sens.nc'.format(config['locations']['figure_dir'],metname,datea,fhrt,pres), plotDict)
 
          plotDict['meanCntrs'] = np.array([0.25, 0.50, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25])
          plotDict['plotTitle'] = '{0} F{1} {4} hPa qvapor{2}{3}'.format(datea,fhrt,metstring,timestr,pres)
@@ -323,7 +323,7 @@ def ComputeSensitivity(datea, fhr, metname, config):
 
    for pres in plist:
 
-      ensfile = '{0}/{1}_f{2}_pv{3}hPa_ens.nc'.format(config['work_dir'],datea,fhrt,pres)
+      ensfile = '{0}/{1}_f{2}_pv{3}hPa_ens.nc'.format(config['locations']['work_dir'],datea,fhrt,pres)
       if os.path.isfile(ensfile): 
 
          ds = xr.open_dataset(ensfile)
@@ -337,12 +337,12 @@ def ComputeSensitivity(datea, fhr, metname, config):
          sens, sigv = computeSens(ens, emea, evar, metric)
          sens[:,:] = sens[:,:] * np.sqrt(evar[:,:])
 
-         outdir = '{0}/{1}/sens/pv{2}hPa'.format(config['figure_dir'],metname,pres)
+         outdir = '{0}/{1}/sens/pv{2}hPa'.format(config['locations']['figure_dir'],metname,pres)
          if not os.path.isdir(outdir):
             os.makedirs(outdir, exist_ok=True)
 
          if eval(config['sens'].get('output_sens', 'False')) and 'pv{0}hPa'.format(pres) in flist:
-            writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_pv{4}hPa_sens.nc'.format(config['figure_dir'],metname,datea,fhrt,pres), plotDict)
+            writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_pv{4}hPa_sens.nc'.format(config['locations']['figure_dir'],metname,datea,fhrt,pres), plotDict)
 
          if pres >= 500.:
             plotDict['clabel_fmt'] = "%2.1f" 
@@ -364,7 +364,7 @@ def ComputeSensitivity(datea, fhr, metname, config):
 
       for k in range(len(pres)):
 
-         sensfile = '{0}/{1}/{2}_f{3}_pv{4}hPa_sens.nc'.format(config['figure_dir'],metname,datea,fhrt,pres[k])
+         sensfile = '{0}/{1}/{2}_f{3}_pv{4}hPa_sens.nc'.format(config['locations']['figure_dir'],metname,datea,fhrt,pres[k])
          if os.path.isfile(sensfile):
 
             efile = nc.Dataset(sensfile)
@@ -374,9 +374,9 @@ def ComputeSensitivity(datea, fhr, metname, config):
                mpv = np.squeeze(efile.variables['ensemble_mean'][:])
 
 
-         elif os.path.isfile('{0}/{1}_f{2}_pv{3}hPa_ens.nc'.format(config['work_dir'],datea,fhrt,pres[k])):
+         elif os.path.isfile('{0}/{1}_f{2}_pv{3}hPa_ens.nc'.format(config['locations']['work_dir'],datea,fhrt,pres[k])):
 
-            ds = xr.open_dataset('{0}/{1}_f{2}_pv{3}hPa_ens.nc'.format(config['work_dir'],datea,fhrt,pres[k]))
+            ds = xr.open_dataset('{0}/{1}_f{2}_pv{3}hPa_ens.nc'.format(config['locations']['work_dir'],datea,fhrt,pres[k]))
             ens = ds.ensemble_data.values
             emea  = np.mean(ens, axis=0)
             evar = np.var(ens, axis=0)
@@ -407,16 +407,16 @@ def ComputeSensitivity(datea, fhr, metname, config):
 
       for k in range(len(pres)):
 
-         sensfile = '{0}/{1}/{2}_f{3}_e{4}hPa_sens.nc'.format(config['figure_dir'],metname,datea,fhrt,pres[k])
+         sensfile = '{0}/{1}/{2}_f{3}_e{4}hPa_sens.nc'.format(config['locations']['figure_dir'],metname,datea,fhrt,pres[k])
          if os.path.isfile(sensfile):
 
             efile = nc.Dataset(sensfile)
             senslev.append(np.squeeze(efile.variables['sensitivity'][:]))
             preslev.append(pres[k])
 
-         elif os.path.isfile('{0}/{1}_f{2}_e{3}hPa_ens.nc'.format(config['work_dir'],datea,fhrt,pres[k])):
+         elif os.path.isfile('{0}/{1}_f{2}_e{3}hPa_ens.nc'.format(config['locations']['work_dir'],datea,fhrt,pres[k])):
 
-            ds = xr.open_dataset('{0}/{1}_f{2}_e{3}hPa_ens.nc'.format(config['work_dir'],datea,fhrt,pres[k]))
+            ds = xr.open_dataset('{0}/{1}_f{2}_e{3}hPa_ens.nc'.format(config['locations']['work_dir'],datea,fhrt,pres[k]))
             ens = ds.ensemble_data.values
             emea  = np.mean(ens, axis=0)
             evar = np.var(ens, axis=0)
@@ -435,7 +435,7 @@ def ComputeSensitivity(datea, fhr, metname, config):
       esens[:,:] = esens[:,:] / abs(preslev[-1]-preslev[0])
 
 
-      outdir = '{0}/{1}/sens/summ'.format(config['figure_dir'],metname)
+      outdir = '{0}/{1}/sens/summ'.format(config['locations']['figure_dir'],metname)
       if not os.path.isdir(outdir):
          os.makedirs(outdir, exist_ok=True)
 
@@ -444,7 +444,7 @@ def ComputeSensitivity(datea, fhr, metname, config):
 
 
    #  Read 300 hPa divergence, compute sensitivity to that field, if the file exists
-   ensfile = '{0}/{1}_f{2}_div300hPa_ens.nc'.format(config['work_dir'],datea,fhrt)
+   ensfile = '{0}/{1}_f{2}_div300hPa_ens.nc'.format(config['locations']['work_dir'],datea,fhrt)
    if os.path.isfile(ensfile):
 
       efile = nc.Dataset(ensfile)
@@ -458,7 +458,7 @@ def ComputeSensitivity(datea, fhr, metname, config):
       sens, sigv = computeSens(ens, emea, evar, metric)
       sens[:,:] = sens[:,:] * np.sqrt(evar[:,:])
 
-      outdir = '{0}/{1}/sens/div300hPa'.format(config['figure_dir'],metname)
+      outdir = '{0}/{1}/sens/div300hPa'.format(config['locations']['figure_dir'],metname)
       if not os.path.isdir(outdir):
          os.makedirs(outdir, exist_ok=True)
 
@@ -479,7 +479,7 @@ def ComputeSensitivity(datea, fhr, metname, config):
    #  Read height on various pressure levels, compute sensitivity to that field
    for pres in [500, 700, 850]:
 
-      ensfile = '{0}/{1}_f{2}_h{3}hPa_ens.nc'.format(config['work_dir'],datea,fhrt,pres)
+      ensfile = '{0}/{1}_f{2}_h{3}hPa_ens.nc'.format(config['locations']['work_dir'],datea,fhrt,pres)
       if os.path.isfile(ensfile):
 
          ds = xr.open_dataset(ensfile)
@@ -493,12 +493,12 @@ def ComputeSensitivity(datea, fhr, metname, config):
          sens, sigv = computeSens(ens, emea, evar, metric)
          sens[:,:] = sens[:,:] * np.sqrt(evar[:,:])
 
-         outdir = '{0}/{1}/sens/h{2}hPa'.format(config['figure_dir'],metname,pres)
+         outdir = '{0}/{1}/sens/h{2}hPa'.format(config['locations']['figure_dir'],metname,pres)
          if not os.path.isdir(outdir):
             os.makedirs(outdir, exist_ok=True)
 
          if eval(config['sens'].get('output_sens', 'False')) and 'h{0}hPa'.format(pres) in flist:
-            writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_h{4}hPa_sens.nc'.format(config['figure_dir'],metname,datea,fhrt,pres), plotDict)
+            writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_h{4}hPa_sens.nc'.format(config['locations']['figure_dir'],metname,datea,fhrt,pres), plotDict)
 
          plotDict['meanCntrs'] = np.array(hghtd['h{0}hPa'.format(pres)])
          plotDict['plotTitle'] = '{0} F{1} {4} hPa height{2}{3}'.format(datea,fhrt,metstring,timestr,pres)
@@ -512,7 +512,7 @@ def ComputeSensitivity(datea, fhr, metname, config):
    #  Read GPS RO refractivity on pressure levels, compute sensitivity to that field
    for pres in [850, 500, 200]:
 
-      ensfile = '{0}/{1}_f{2}_ref{3}hPa_ens.nc'.format(config['work_dir'],datea,fhrt,pres)
+      ensfile = '{0}/{1}_f{2}_ref{3}hPa_ens.nc'.format(config['locations']['work_dir'],datea,fhrt,pres)
       if os.path.isfile(ensfile):
 
          ds = xr.open_dataset(ensfile)
@@ -526,19 +526,19 @@ def ComputeSensitivity(datea, fhr, metname, config):
          sens, sigv = computeSens(ens, emea, evar, metric)
          sens[:,:] = sens[:,:] * np.sqrt(evar[:,:])
 
-         outdir = '{0}/{1}/sens/ref{2}hPa'.format(config['figure_dir'],metname,pres)
+         outdir = '{0}/{1}/sens/ref{2}hPa'.format(config['locations']['figure_dir'],metname,pres)
          if not os.path.isdir(outdir):
             os.makedirs(outdir, exist_ok=True)
 
          if eval(config['sens'].get('output_sens', 'False')) and 'ref{0}hPa'.format(pres) in flist:
-            writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_ref{4}hPa_sens.nc'.format(config['figure_dir'],metname,datea,fhrt,pres), plotDict)
+            writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_ref{4}hPa_sens.nc'.format(config['locations']['figure_dir'],metname,datea,fhrt,pres), plotDict)
 
          plotDict['meanCntrs'] = np.array(refd['ref{0}hPa'.format(pres)])
          plotDict['plotTitle'] = '{0} F{1} {4} hPa refract.{2}{3}'.format(datea,fhrt,metstring,timestr,pres)
          plotScalarSens(lat, lon, sens, emea, sigv, '{0}/{1}_f{2}_ref{3}hPa_sens.png'.format(outdir,datea,fhrt,pres), plotDict)
 
 
-   ensfile = '{0}/{1}_f{2}_mslp_ens.nc'.format(config['work_dir'],datea,fhrt)
+   ensfile = '{0}/{1}_f{2}_mslp_ens.nc'.format(config['locations']['work_dir'],datea,fhrt)
    if os.path.isfile(ensfile):
 
       ds = xr.open_dataset(ensfile)
@@ -552,12 +552,12 @@ def ComputeSensitivity(datea, fhr, metname, config):
       sens, sigv = computeSens(ens, emea, evar, metric)
       sens[:,:] = sens[:,:] * np.sqrt(evar[:,:])
 
-      outdir = '{0}/{1}/sens/mslp'.format(config['figure_dir'],metname)
+      outdir = '{0}/{1}/sens/mslp'.format(config['locations']['figure_dir'],metname)
       if not os.path.isdir(outdir):
          os.makedirs(outdir, exist_ok=True)
 
       if eval(config['sens'].get('output_sens', 'False')) and 'mslp' in flist:
-         writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_mslp_sens.nc'.format(config['figure_dir'],metname,datea,fhrt), plotDict)
+         writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_mslp_sens.nc'.format(config['locations']['figure_dir'],metname,datea,fhrt), plotDict)
 
       for key in ['buoy1_file', 'buoy2_file']:
          if key in config['sens']:
