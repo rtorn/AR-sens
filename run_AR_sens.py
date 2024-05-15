@@ -37,9 +37,6 @@ def read_config(datea, filename):
     config['metric']      = confin['metric']
     config['fields']      = confin['fields']
     config['sens']        = confin['sens']
-#    config['display']     = confin['display']
-    config.update(confin['model'])
-    config.update(confin['locations'])
 
     #  Modify work and output directory for specific case/time
     config['locations']['work_dir']   = '{0}/{1}'.format(config['locations']['work_dir'],datea)
