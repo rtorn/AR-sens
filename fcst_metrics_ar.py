@@ -183,6 +183,7 @@ class ComputeForecastMetrics:
               lat2 = float(conf['definition'].get('latitude_max'))
               lon1 = float(conf['definition'].get('longitude_min'))
               lon2 = float(conf['definition'].get('longitude_max'))
+              vecmet = eval(conf['definition'].get('vector',self.config['metric'].get('ivt_land_vector','False')))
            except IOError:
               logging.warning('{0} does not exist.  Cannot compute IVT EOF'.format(infull))
               return None
@@ -199,38 +200,51 @@ class ComputeForecastMetrics:
                     'description': 'Integrated Water Vapor Transport', 'units': 'kg s-1', '_FillValue': -9999.}
            vDict = g1.set_var_bounds('temperature', vDict)
 
-           ivtu, ivtv, ensmat = read_ivt(self.datea_str, fhr, self.config, vDict)
+           ivtu, ivtv, ivtm = read_ivt(self.datea_str, fhr, self.config, vDict)
+           ivtm_mean = np.mean(ivtm, axis=0)
 
-           e_mean = np.mean(ensmat, axis=0)
-           for n in range(g1.nens):
-              ensmat[n,:,:] = ensmat[n,:,:] - e_mean[:,:]
+           if vecmet:
 
-           #  Compute the EOF of the precipitation pattern and then the PCs
-           if self.config['model'].get('grid_type','LatLon') == 'LatLon':
-
-              coslat = np.cos(np.deg2rad(ensmat.latitude.values)).clip(0., 1.)
-              wgts = np.sqrt(coslat)[..., np.newaxis]
-              solver = Eof_xarray(ensmat.rename({'ensemble': 'time'}), weights=wgts)
+              print('implement')
 
            else:
 
-              solver = Eof_xarray(ensmat.rename({'ensemble': 'time'}))
+              ivtm_mean = np.mean(ivtm, axis=0)
+              for n in range(g1.nens):
+                 ivtm[n,:,:] = ivtm[n,:,:] - ivtm_mean[:,:]
+
+              #  Compute the EOF of the precipitation pattern and then the PCs
+              if self.config['model'].get('grid_type','LatLon') == 'LatLon':
+
+                 coslat = np.cos(np.deg2rad(ivtm.latitude.values)).clip(0., 1.)
+                 wgts = np.sqrt(coslat)[..., np.newaxis]
+                 solver = Eof_xarray(ivtm.rename({'ensemble': 'time'}), weights=wgts)
+
+              else:
+
+                 solver = Eof_xarray(ivtm.rename({'ensemble': 'time'}))
 
            pcout  = solver.pcs(npcs=eofn, pcscaling=1)
            pc1 = np.squeeze(pcout[:,eofn-1])
            pc1[:] = pc1[:] / np.std(pc1)
 
            #  Compute the IVT pattern associated with a 1 PC perturbation
-           divt = np.zeros(e_mean.shape)
+           if vecmet:
 
-           for n in range(g1.nens):
-              divt[:,:] = divt[:,:] + ensmat[n,:,:] * pc1[n]
+              print('implement')
+           
+           else:
 
-           divt[:,:] = divt[:,:] / float(g1.nens)
+              divm = np.zeros(ivtm_mean.shape)
 
-           if np.sum(divt) < 0.0:
-              divt[:,:] = -divt[:,:]
-              pc1[:]    = -pc1[:]
+              for n in range(g1.nens):
+                 divm[:,:] = divm[:,:] + ivtm[n,:,:] * pc1[n]
+
+              divm[:,:] = divm[:,:] / float(g1.nens)
+
+              if np.sum(divm) < 0.0:
+                 divm[:,:] = -divm[:,:]
+                 pc1[:]    = -pc1[:]
 
            #  Create basic figure, including political boundaries and grid lines
            fig = plt.figure(figsize=(8.5,11))
@@ -247,18 +261,24 @@ class ComputeForecastMetrics:
 
            mivt = [0.0, 250., 300., 400., 500., 600., 700., 800., 1000., 1200., 1400., 1600., 2000.]
            norm = matplotlib.colors.BoundaryNorm(mivt,len(mivt))
-           pltf = plt.contourf(ensmat.longitude.values,ensmat.latitude.values,e_mean,mivt,transform=ccrs.PlateCarree(), \
+           pltf = plt.contourf(ivtm.longitude.values,ivtm.latitude.values,ivtm_mean,mivt,transform=ccrs.PlateCarree(), \
                                 cmap=matplotlib.colors.ListedColormap(colorlist), norm=norm, extend='max')
 
-           ivtfac = np.floor(np.log10(np.max(np.abs(divt))))
-           cntrs = np.array([-9., -8., -7., -6., -5., -4., -3., -2., -1.5, -1., -0.8, -0.6, 0.6, 0.8, 1., 1.5, 2., 3., 4., 5., 6., 7., 8., 9.]) * (10**ivtfac)
-           pltm = plt.contour(ensmat.longitude.values,ensmat.latitude.values,divt,cntrs,linewidths=1.5, \
-                                transform=ccrs.PlateCarree(),colors='k',zorder=10)
+           if vecmet:
+
+              print('implement')
+
+           else:
+
+              ivtfac = np.floor(np.log10(np.max(np.abs(divm))))
+              cntrs = np.array([-9., -8., -7., -6., -5., -4., -3., -2., -1.5, -1., -0.8, -0.6, 0.6, 0.8, 1., 1.5, 2., 3., 4., 5., 6., 7., 8., 9.]) * (10**ivtfac)
+              pltm = plt.contour(ivtm.longitude.values,ivtm.latitude.values,divm,cntrs,linewidths=1.5, \
+                                   transform=ccrs.PlateCarree(),colors='k',zorder=10)
+              cb = plt.clabel(pltm, inline_spacing=0.0, fontsize=12, fmt="%1.0f")
 
            #  Add colorbar to the plot
            cbar = plt.colorbar(pltf, fraction=0.15, aspect=45., pad=0.04, orientation='horizontal', ticks=mivt)
            cbar.set_ticks(mivt[1:(len(mivt)-1)])
-           cb = plt.clabel(pltm, inline_spacing=0.0, fontsize=12, fmt="%1.0f")
 
            fracvar = '%4.3f' % solver.varianceFraction(neigs=1)
            plt.title("{0} {1} hour IVT, {2} of variance".format(str(self.datea_str),fhr,fracvar))
@@ -274,7 +294,7 @@ class ComputeForecastMetrics:
            plt.close(fig)
 
            fmetatt = {'FORECAST_METRIC_LEVEL': '', 'FORECAST_METRIC_NAME': 'IVT PC', 'FORECAST_METRIC_SHORT_NAME': 'ivteof', 'FORECAST_HOUR': int(fhr), \
-                      'LATITUDE1': lat1, 'LATITUDE2': lat2, 'LONGITUDE1': lon1, 'LONGITUDE2': lon2, 'EOF_NUMBER': int(eofn)}
+                      'LATITUDE1': lat1, 'LATITUDE2': lat2, 'LONGITUDE1': lon1, 'LONGITUDE2': lon2, 'VECTOR': str(vecmet), 'EOF_NUMBER': int(eofn)}
 
            f_met = {'coords': {}, 'attrs': fmetatt, 'dims': {'num_ens': g1.nens}, \
                     'data_vars': {'fore_met_init': {'dims': ('num_ens',), 'attrs': {'units': '', \
@@ -520,7 +540,7 @@ class ComputeForecastMetrics:
 
            fmetatt = {'FORECAST_METRIC_LEVEL': '', 'FORECAST_METRIC_NAME': 'IVT Landfall PC', 'FORECAST_METRIC_SHORT_NAME': 'ivtleof', \
                       'FORECAST_HOUR1': int(fhr1), 'FORECAST_HOUR2': int(fhr2), 'LATITUDE1': lat1, 'LATITUDE2': lat2, \
-                      'ADAPT': str(adapt), 'ADAPT_IVT_MIN': ivtmin, 'EOF_NUMBER': int(eofn)}
+                      'ADAPT': str(adapt), 'ADAPT_IVT_MIN': ivtmin, 'VECTOR': str(vecmet), 'EOF_NUMBER': int(eofn)}
 
            f_met = {'coords': {}, 'attrs': fmetatt, 'dims': {'num_ens': g1.nens, 'locations': len(latlist)}, \
                     'data_vars': {'fore_met_init': {'dims': ('num_ens',), 'attrs': {'units': '', 'description': 'IVT Landfall PC'}, 'data': pc1.data},
