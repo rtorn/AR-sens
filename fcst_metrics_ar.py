@@ -205,11 +205,30 @@ class ComputeForecastMetrics:
 
            if vecmet:
 
-              print('implement')
+              ivt = xr.DataArray(name='ensemble_data', data=np.zeros([g1.nens, 2, len(ivtm_mean[:,0]), len(ivtm_mean[0,:])]), \
+                                 dims=['ensemble', 'component', 'latitude', 'longitude'], \
+                                 coords={'ensemble': [i for i in range(g1.nens)], 'latitude': ivtm_mean.latitude.values, 'longitude': ivtm_mean.longitude.values})
+
+              ivt[:,0,:,:] = ivtu[:,:,:]
+              ivt[:,1,:,:] = ivtv[:,:,:]           
+   
+              ivt_mean = np.mean(ivt, axis=0)
+              for n in range(g1.nens):
+                 ivt[n,:,:,:] = ivt[n,:,:,:] - ivt_mean[:,:,:]
+
+              #  Compute the EOF of the precipitation pattern and then the PCs
+              if self.config['model'].get('grid_type','LatLon') == 'LatLon':
+
+                 coslat = np.cos(np.deg2rad(ivtm.latitude.values)).clip(0., 1.)
+                 wgts = np.sqrt(coslat)[..., np.newaxis]
+                 solver = Eof_xarray(ivt.rename({'ensemble': 'time'}), weights=wgts)
+
+              else:
+
+                 solver = Eof_xarray(ivt.rename({'ensemble': 'time'}))
 
            else:
 
-              ivtm_mean = np.mean(ivtm, axis=0)
               for n in range(g1.nens):
                  ivtm[n,:,:] = ivtm[n,:,:] - ivtm_mean[:,:]
 
@@ -231,7 +250,20 @@ class ComputeForecastMetrics:
            #  Compute the IVT pattern associated with a 1 PC perturbation
            if vecmet:
 
-              print('implement')
+              divu = np.zeros(ivtm_mean.shape)
+              divv = np.zeros(ivtm_mean.shape)
+
+              for n in range(g1.nens):
+                 divu[:,:] = divu[:,:] + ivt[n,0,:,:] * pc1[n]
+                 divv[:,:] = divv[:,:] + ivt[n,1,:,:] * pc1[n]
+
+              divu[:,:] = divu[:,:] / float(g1.nens)
+              divv[:,:] = divv[:,:] / float(g1.nens)
+
+              if np.sum(divu+divv) < 0.0:
+                 divu[:,:] = -divu[:,:]
+                 divv[:,:] = -divv[:,:]
+                 pc1[:]    = -pc1[:]
            
            else:
 
@@ -266,7 +298,14 @@ class ComputeForecastMetrics:
 
            if vecmet:
 
-              print('implement')
+              divm[:,:] = np.sqrt(divu**2+divv**2)
+              divu[:,:] = np.where(divm >= 30.0, divu, np.nan)
+              divv[:,:] = np.where(divm >= 30.0, divv, np.nan)
+              sout = (2500./30.) * (np.max(ivtm.latitude.values)-np.min(ivtm.latitude.values))
+              qo1 = ax.quiver(ivtm.longitude.values,ivtm.latitude.values,divu,divv, \
+                         scale_units='height', scale=sout, width=0.005, pivot='mid', color='black', minlength=0)
+              l, b, w, h = ax.get_position().bounds
+              qk = ax.quiverkey(qo1, l+w-0.05, b+0.07, 100, '100', labelpos='E', coordinates='figure')
 
            else:
 
