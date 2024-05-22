@@ -34,7 +34,7 @@ def ComputeFields(datea, fhr, config):
    dateadt = dt.datetime.strptime(datea, '%Y%m%d%H')
    fff = str(fhr + 1000)[1:]
 
-   dpp = importlib.import_module(config['io_module'])
+   dpp = importlib.import_module(config['model']['io_module'])
 
    logging.warning("Computing hour {0} ensemble fields".format(fff))
 
@@ -45,7 +45,7 @@ def ComputeFields(datea, fhr, config):
               'longitude': {'dtype': 'float32'}, 'ensemble': {'dtype': 'int32'}}
 
    #  Compute the IVT (if desired and file is missing)
-   outfile='{0}/{1}_f{2}_ivt_ens.nc'.format(config['work_dir'],datea,fff)
+   outfile='{0}/{1}_f{2}_ivt_ens.nc'.format(config['locations']['work_dir'],datea,fff)
    if (not os.path.isfile(outfile) and config['fields'].get('calc_ivt','True') == 'True'):
 
       logging.warning("  Computing IVT")
@@ -109,7 +109,7 @@ def ComputeFields(datea, fhr, config):
       for level in height_list:
 
          levstr = '%0.3i' % int(level)
-         outfile='{0}/{1}_f{2}_h{3}hPa_ens.nc'.format(config['work_dir'],datea,fff,levstr)
+         outfile='{0}/{1}_f{2}_h{3}hPa_ens.nc'.format(config['locations']['work_dir'],datea,fff,levstr)
 
          if not os.path.isfile(outfile):
 
@@ -135,7 +135,7 @@ def ComputeFields(datea, fhr, config):
    #  Read geopotential height from file, if ensemble file is not present
    if eval(config['fields'].get('calc_mslp','True')):
 
-      outfile='{0}/{1}_f{2}_mslp_ens.nc'.format(config['work_dir'],datea,fff)
+      outfile='{0}/{1}_f{2}_mslp_ens.nc'.format(config['locations']['work_dir'],datea,fff)
 
       if not os.path.isfile(outfile):
 
@@ -169,7 +169,7 @@ def ComputeFields(datea, fhr, config):
       for level in qvapor_list:
 
          levstr = '%0.3i' % int(level)
-         outfile='{0}/{1}_f{2}_qvap{3}hPa_ens.nc'.format(config['work_dir'],datea,fff,levstr)
+         outfile='{0}/{1}_f{2}_qvap{3}hPa_ens.nc'.format(config['locations']['work_dir'],datea,fff,levstr)
 
          if not os.path.isfile(outfile):
 
@@ -216,7 +216,7 @@ def ComputeFields(datea, fhr, config):
       for level in thetae_list:
 
          levstr = '%0.3i' % int(level)
-         outfile='{0}/{1}_f{2}_e{3}hPa_ens.nc'.format(config['work_dir'],datea,fff,levstr)
+         outfile='{0}/{1}_f{2}_e{3}hPa_ens.nc'.format(config['locations']['work_dir'],datea,fff,levstr)
 
          if not os.path.isfile(outfile):
 
@@ -267,8 +267,8 @@ def ComputeFields(datea, fhr, config):
       for level in wind_list:
 
          levstr = '%0.3i' % int(level)
-         ufile='{0}/{1}_f{2}_uwnd{3}hPa_ens.nc'.format(config['work_dir'],datea,fff,levstr)
-         vfile='{0}/{1}_f{2}_vwnd{3}hPa_ens.nc'.format(config['work_dir'],datea,fff,levstr)
+         ufile='{0}/{1}_f{2}_uwnd{3}hPa_ens.nc'.format(config['locations']['work_dir'],datea,fff,levstr)
+         vfile='{0}/{1}_f{2}_vwnd{3}hPa_ens.nc'.format(config['locations']['work_dir'],datea,fff,levstr)
 
          if (not os.path.isfile(ufile)) or (not os.path.isfile(vfile)):
 
@@ -315,7 +315,7 @@ def ComputeFields(datea, fhr, config):
       for level in div_list:
 
          levstr = '%0.3i' % int(level)
-         outfile='{0}/{1}_f{2}_div{3}hPa_ens.nc'.format(config['work_dir'],datea,fff,levstr)
+         outfile='{0}/{1}_f{2}_div{3}hPa_ens.nc'.format(config['locations']['work_dir'],datea,fff,levstr)
 
          if not os.path.isfile(outfile):
 
@@ -366,7 +366,7 @@ def ComputeFields(datea, fhr, config):
       for level in refrac_list:
 
          levstr = '%0.3i' % int(level)
-         outfile='{0}/{1}_f{2}_ref{3}hPa_ens.nc'.format(config['work_dir'],datea,fff,levstr)
+         outfile='{0}/{1}_f{2}_ref{3}hPa_ens.nc'.format(config['locations']['work_dir'],datea,fff,levstr)
 
          if not os.path.isfile(outfile):
 
@@ -417,7 +417,7 @@ def ComputeFields(datea, fhr, config):
       for level in pv_list:
 
          levstr = '%0.3i' % int(level)
-         outfile='{0}/{1}_f{2}_pv{3}hPa_ens.nc'.format(config['work_dir'],datea,fff,levstr)
+         outfile='{0}/{1}_f{2}_pv{3}hPa_ens.nc'.format(config['locations']['work_dir'],datea,fff,levstr)
 
          if not os.path.isfile(outfile):
 
@@ -454,7 +454,7 @@ def ComputeFields(datea, fhr, config):
                dx = np.maximum(dx, 1.0 * units('m'))
 
                #  Compute PV and place in ensemble array
-               if config.get('grid_type','LatLon') == 'LatLon':
+               if config['model'].get('grid_type','LatLon') == 'LatLon':
 
                   pvout = mpcalc.potential_vorticity_baroclinic(thta, pres[:, None, None], uwnd, vwnd,
                                                 dx[None, :, :], dy[None, :, :], lats[None, :, None])
