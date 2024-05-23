@@ -34,7 +34,7 @@ def ComputeSensitivity(datea, fhr, metname, config):
    plotDict = {}
 
    for key in config['model']:
-      plotDict[key] = config[key]
+      plotDict[key] = config['model'][key]
 
    for key in config['sens']:
       plotDict[key] = config['sens'][key]

@@ -129,7 +129,7 @@ def precipitation_ens_maps(datea, fhr1, fhr2, config):
         config (dict.):  dictionary that contains configuration options (read from file)
     '''
 
-    dpp = importlib.import_module(config['io_module'])
+    dpp = importlib.import_module(config['model']['io_module'])
 
     lat1 = float(config['fcst_diag'].get('min_lat_precip','30.'))
     lat2 = float(config['fcst_diag'].get('max_lat_precip','52.'))

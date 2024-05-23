@@ -487,7 +487,7 @@ def ComputeFields(datea, fhr, config):
 
 def read_precip(datea, fhr1, fhr2, conf, vDict):
 
-   dpp = importlib.import_module(conf['io_module'])
+   dpp = importlib.import_module(conf['model']['io_module'])
 
    g2 = dpp.ReadGribFiles(datea, fhr2, conf)
    vDict = g2.set_var_bounds('precipitation', vDict)
