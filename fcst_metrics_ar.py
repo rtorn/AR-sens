@@ -377,9 +377,11 @@ class ComputeForecastMetrics:
               eofn = int(conf['definition'].get('eof_number',1))
               latcoa1 = float(conf['definition'].get('latitude_min',self.config['metric'].get('ivt_land_latitude_min',25.)))
               latcoa2 = float(conf['definition'].get('latitude_max',self.config['metric'].get('ivt_land_latitude_max',55.)))
+              vecmet = eval(conf['definition'].get('vector',self.config['metric'].get('ivt_land_vector','False')))
               adapt = eval(conf['definition'].get('adapt',self.config['metric'].get('ivt_land_adapt','False')))
               ivtmin = float(conf['definition'].get('adapt_ivt_min',self.config['metric'].get('ivt_land_adapt_min',225.)))
-              vecmet = eval(conf['definition'].get('vector',self.config['metric'].get('ivt_land_vector','False')))
+              latbuff = float(conf['definition'].get('adapt_ivt_lat_buff',self.config['metric'].get('ivt_land_adapt_lat_buff',0.)))
+              timebuff = int(conf['definition'].get('adapt_ivt_hour_buff',self.config['metric'].get('ivt_land_adapt_hour_buff',0)))
            except IOError:
               logging.warning('{0} does not exist.  Cannot compute IVT Landfall EOF'.format(infull))
               continue
@@ -466,6 +468,10 @@ class ComputeForecastMetrics:
                  logging.error('  IVT landfall metric does not have any points above minimum.  Skipping metric.')
                  continue
 
+              fhr1 = max(fhr1-timebuff, min(e_mean.fcst_hour.values))
+              fhr2 = min(fhr2+timebuff, max(e_mean.fcst_hour.values))
+              lat1 = max(lat1-latbuff,  min(e_mean.latitude.values))
+              lat2 = min(lat2+latbuff,  max(e_mean.latitude.values))
               ivtarr = ivtarr.sel(latitude=slice(lat2,lat1), fcst_hour=slice(fhr1,fhr2))
               e_mean = e_mean.sel(latitude=slice(lat2,lat1), fcst_hour=slice(fhr1,fhr2))
 
@@ -1327,16 +1333,25 @@ class ComputeForecastMetrics:
 
            if auto_domain:
 
+              mean_min = 12.7
+              bmea = np.mean(np.sum(ds.precip.sel(hour=slice(fhr1, fhr2)).squeeze().load(), axis=0), axis=0)
               bstd = np.std(np.sum(ds.precip.sel(hour=slice(fhr1, fhr2)).squeeze().load(), axis=0), axis=0)
-              imax = np.argmax(bstd.values)
 
+              brat = bstd[:] / np.fmax(bmea, mean_min)
+              imax = np.argmax(brat.values)
+#              imax = np.argmax(bstd.values)
 #              print('max point',bstd[imax].values)
+
+              if bmea[imax] < mean_min:
+                 logging.error('  basin precipitation metric center point is below minimum.  Skipping metric.')
+                 continue
 
               hucid_list = []
               basin_list = []
               index_list = []
-              for basin in range(len(bstd)):
-                 if bstd[basin] >= auto_sdmin * bstd[imax]:
+
+              for basin in range(len(brat)):
+                 if brat[basin] >= auto_sdmin * brat[imax]:
                     hucid = ds.HUCID[basin]
                     hucid_list.append(int(hucid))
                     basin_list.append(db[db['ID'] == int(hucid)]['Name'].values)
