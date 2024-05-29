@@ -64,13 +64,13 @@ max_lat=65
 #min_lon=-140
 #max_lon=-60
 min_lon=-150
-max_lon=-70
+max_lon=-60
 
 [sens]
 zero_non_sig_sens=True
 grid_interval=10.
 barb_interval=6
-pv_levels=[250, 500, 700, 850]
+pv_levels=[250, 300, 500, 700, 850]
 thetae_levels=[850]
 dropsonde_file=./2019083100_drop_info.txt
 drop_mark_size=6
