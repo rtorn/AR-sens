@@ -567,7 +567,10 @@ class ComputeForecastMetrics:
 
            ax1.plot(loncoa, latcoa, 'o', color='black', markersize=6, transform=ccrs.PlateCarree())
 
-           fracvar = '%4.3f' % solver.varianceFraction(neigs=1)
+           if eofn == 1:
+              fracvar = '%4.3f' % solver.varianceFraction(neigs=1)
+           else:
+              fracvar = '%4.3f' % solver.varianceFraction(neigs=eofn)[-1]
            plt.suptitle("{0} {1}-{2} hour IVT, {3} of variance".format(str(self.datea_str),fhr1,fhr2,fracvar))
 
            cbar = plt.colorbar(pltf, fraction=0.15, aspect=45., pad=0.13, orientation='horizontal', cax=fig.add_axes([0.15, 0.01, 0.7, 0.025]))
