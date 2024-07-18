@@ -949,7 +949,7 @@ class ComputeForecastMetrics:
               vDict = {'latitude': (lat1-0.00001, lat2), 'longitude': (lon1-0.00001, lon2),
                        'description': 'precipitation', 'units': 'mm', '_FillValue': -9999.}
               vDict = g1.set_var_bounds('precipitation', vDict)
-              lmask = g1.read_static_field(self.config['metric'].get('static_fields_file'), 'landmask', vDict)
+              lmask = g1.read_static_field(self.config['metric'].get('static_fields_file'), 'landmask', vDict).values
 
               #  Read precipitation over the default window, calculate SD, search for maximum value
               ensmat = self.__read_precip(fhr1, fhr2, self.config, vDict)
@@ -966,7 +966,7 @@ class ComputeForecastMetrics:
                                                                 np.squeeze(pcp[n,:,:]), 0.0)
 
               e_std = np.std(ensmat, axis=0)
-              estd_mask = e_std.values[:,:] * lmask.values[:,:]
+              estd_mask = e_std.values[:,:] * lmask[:,:]
 
               maxloc = np.where(estd_mask == estd_mask.max())
               lonc   = ensmat.longitude.values[int(maxloc[1])]
@@ -1013,7 +1013,7 @@ class ComputeForecastMetrics:
 
            if mask_land:
               g1 = self.dpp.ReadGribFiles(self.datea_str, fhr2, self.config)
-              lmask = g1.read_static_field(self.config['metric'].get('static_fields_file'), 'landmask', vDict)
+              lmask = g1.read_static_field(self.config['metric'].get('static_fields_file'), 'landmask', vDict).values
            else:
               lmask      = np.ones(e_mean.shape)
               lmask[:,:] = 1.0
@@ -1030,11 +1030,11 @@ class ComputeForecastMetrics:
               nlat  = len(e_mean.latitude.values)
 
               # Search for maximum in ensemble precipitation SD 
-              if np.amax(lmask.values) < lmaskmin:
+              if np.amax(lmask) < lmaskmin:
                  logging.error('  precipitation metric does not have any land points.  Skipping metric.')
                  continue
 
-              estd_mask = e_mean.values[:,:] * lmask.values[:,:]
+              estd_mask = e_mean.values[:,:] * lmask[:,:]
 #              estd_mask = e_std.values[:,:] * lmask.values[:,:]
 
               stdmax = estd_mask.max()
