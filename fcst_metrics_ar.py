@@ -567,7 +567,10 @@ class ComputeForecastMetrics:
 
            ax1.plot(loncoa, latcoa, 'o', color='black', markersize=6, transform=ccrs.PlateCarree())
 
-           fracvar = '%4.3f' % solver.varianceFraction(neigs=1)
+           if eofn == 1:
+              fracvar = '%4.3f' % solver.varianceFraction(neigs=1)
+           else:
+              fracvar = '%4.3f' % solver.varianceFraction(neigs=eofn)[-1]
            plt.suptitle("{0} {1}-{2} hour IVT, {3} of variance".format(str(self.datea_str),fhr1,fhr2,fracvar))
 
            cbar = plt.colorbar(pltf, fraction=0.15, aspect=45., pad=0.13, orientation='horizontal', cax=fig.add_axes([0.15, 0.01, 0.7, 0.025]))
@@ -943,10 +946,10 @@ class ComputeForecastMetrics:
            #  Now figure out the 24 h after landfall, so we can set the appropriate 24 h period.
            if time_adapt:
 
-              vDict = {'latitude': (lat1-0.00001, lat2), 'longitude': (lon1-0.00001, lon2),
+              vDict = {'latitude': (lat1-0.00001, lat2+0.00001), 'longitude': (lon1-0.00001, lon2+0.00001),
                        'description': 'precipitation', 'units': 'mm', '_FillValue': -9999.}
               vDict = g1.set_var_bounds('precipitation', vDict)
-              lmask = g1.read_static_field(self.config['metric'].get('static_fields_file'), 'landmask', vDict)
+              lmask = g1.read_static_field(self.config['metric'].get('static_fields_file'), 'landmask', vDict).values
 
               #  Read precipitation over the default window, calculate SD, search for maximum value
               ensmat = self.__read_precip(fhr1, fhr2, self.config, vDict)
@@ -963,7 +966,7 @@ class ComputeForecastMetrics:
                                                                 np.squeeze(pcp[n,:,:]), 0.0)
 
               e_std = np.std(ensmat, axis=0)
-              estd_mask = e_std.values[:,:] * lmask.values[:,:]
+              estd_mask = e_std.values[:,:] * lmask[:,:]
 
               maxloc = np.where(estd_mask == estd_mask.max())
               lonc   = ensmat.longitude.values[int(maxloc[1])]
@@ -985,7 +988,7 @@ class ComputeForecastMetrics:
 
 
            #  Read the total precipitation, scale to a 24 h value 
-           vDict = {'latitude': (lat1-0.00001, lat2), 'longitude': (lon1-0.00001, lon2),
+           vDict = {'latitude': (lat1-0.00001, lat2+0.00001), 'longitude': (lon1-0.00001, lon2+0.00001),
                        'description': 'precipitation', 'units': 'mm', '_FillValue': -9999.}
            ensmat = self.__read_precip(fhr1, fhr2, self.config, vDict)
            ensmat[:,:,:] = ensmat[:,:,:] * 24. / float(fhr2-fhr1)
@@ -1010,7 +1013,7 @@ class ComputeForecastMetrics:
 
            if mask_land:
               g1 = self.dpp.ReadGribFiles(self.datea_str, fhr2, self.config)
-              lmask = g1.read_static_field(self.config['metric'].get('static_fields_file'), 'landmask', vDict)
+              lmask = g1.read_static_field(self.config['metric'].get('static_fields_file'), 'landmask', vDict).values
            else:
               lmask      = np.ones(e_mean.shape)
               lmask[:,:] = 1.0
@@ -1027,11 +1030,11 @@ class ComputeForecastMetrics:
               nlat  = len(e_mean.latitude.values)
 
               # Search for maximum in ensemble precipitation SD 
-              if np.amax(lmask.values) < lmaskmin:
+              if np.amax(lmask) < lmaskmin:
                  logging.error('  precipitation metric does not have any land points.  Skipping metric.')
                  continue
 
-              estd_mask = e_mean.values[:,:] * lmask.values[:,:]
+              estd_mask = e_mean.values[:,:] * lmask[:,:]
 #              estd_mask = e_std.values[:,:] * lmask.values[:,:]
 
               stdmax = estd_mask.max()
