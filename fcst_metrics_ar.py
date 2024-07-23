@@ -602,7 +602,9 @@ class ComputeForecastMetrics:
            if vecmet:
               print('implement')
            else:
-              f_met['data_vars']['EOF_pattern'] = {'dims': ('locations', 'forecast_hour'), 'attrs': {'units': 'kg m**-1 s**-1', 'description': 'IVT Landfall EOF Pattern'}, 'data': divt}
+              f_met['data_vars']['ensemble_mean'] = {'dims': ('locations', 'forecast_hour'), 'attrs': {'units': 'kg m**-1 s**-1', 'description': 'IVT Landfall ensemble mean'}, 'data': np.squeeze(e_mean[2,:,:].data)}
+              endict['ensemble_mean'] = {'dtype': 'float32'}
+              f_met['data_vars']['EOF_pattern'] = {'dims': ('locations', 'forecast_hour'), 'attrs': {'units': 'kg m**-1 s**-1', 'description': 'IVT Landfall EOF pattern'}, 'data': divt}
               endict['EOF_pattern'] = {'dtype': 'float32'}
 
            xr.Dataset.from_dict(f_met).to_netcdf(
