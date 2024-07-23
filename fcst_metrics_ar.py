@@ -590,18 +590,23 @@ class ComputeForecastMetrics:
                       'FORECAST_HOUR1': int(fhr1), 'FORECAST_HOUR2': int(fhr2), 'LATITUDE1': lat1, 'LATITUDE2': lat2, \
                       'ADAPT': str(adapt), 'ADAPT_IVT_MIN': ivtmin, 'VECTOR': str(vecmet), 'EOF_NUMBER': int(eofn)}
 
-           f_met = {'coords': {}, 'attrs': fmetatt, 'dims': {'num_ens': g1.nens, 'locations': len(latlist), 'forecast_hour': ivtarr.fcst_hour.values}, \
+           f_met = {'coords': {'forecast_hour': {'dims': ('forecast_hour'), 'attrs': {'units': 'hr', 'description': 'forecast hour'}, 'data': ivtarr.fcst_hour.values}, \
+                               'locations': {'dims': ('locations'), 'attrs': {'units': 'degrees', 'description': 'latitude of landfall points'}, 'data': latlist}}, \
+                    'attrs': fmetatt, 'dims': {'num_ens': g1.nens, 'locations': len(latlist), 'forecast_hour': len(ivtarr.fcst_hour.values)}, \
                     'data_vars': {'fore_met_init': {'dims': ('num_ens',), 'attrs': {'units': '', 'description': 'IVT Landfall PC'}, 'data': pc1.data},
                                   'metric_lat': {'dims': ('locations',), 'attrs': {'units': 'degrees', 'description': 'metric latitude bounds'}, 'data': latlist},
                                   'metric_lon': {'dims': ('locations',), 'attrs': {'units': 'degrees', 'description': 'metric longitude bounds'}, 'data': lonlist}}}
 
+           endict = {'forecast_hour': {'dtype': 'int32'}, 'locations': {'dtype': 'float32'}, 'fore_met_init': {'dtype': 'float32'}, \
+                     'metric_lat': {'dtype': 'float32'}, 'metric_lon': {'dtype': 'float32'}}
            if vecmet:
               print('implement')
            else:
               f_met['data_vars']['EOF_pattern'] = {'dims': ('locations', 'forecast_hour'), 'attrs': {'units': 'kg m**-1 s**-1', 'description': 'IVT Landfall EOF Pattern'}, 'data': divt}
+              endict['EOF_pattern'] = {'dtype': 'float32'}
 
            xr.Dataset.from_dict(f_met).to_netcdf(
-               "{0}/{1}_f{2}_{3}.nc".format(self.config['locations']['work_dir'],str(self.datea_str),'%0.3i' % fhr2,metname), encoding={'fore_met_init': {'dtype': 'float32'}})
+               "{0}/{1}_f{2}_{3}.nc".format(self.config['locations']['work_dir'],str(self.datea_str),'%0.3i' % fhr2,metname), encoding=endict)
 
            self.metlist.append('f{0}_{1}'.format('%0.3i' % fhr2, metname))
 
