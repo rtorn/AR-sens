@@ -591,8 +591,8 @@ class ComputeForecastMetrics:
                       'ADAPT': str(adapt), 'ADAPT_IVT_MIN': ivtmin, 'VECTOR': str(vecmet), 'EOF_NUMBER': int(eofn), 'VAR_FRACTION': fracvar}
 
            f_met = {'coords': {'forecast_hour': {'dims': ('forecast_hour'), 'attrs': {'units': 'hr', 'description': 'forecast hour'}, 'data': ivtarr.fcst_hour.values}, \
-                               'locations': {'dims': ('locations'), 'attrs': {'units': 'degrees', 'description': 'latitude of landfall points'}, 'data': latlist}}, \
-                    'attrs': fmetatt, 'dims': {'num_ens': g1.nens, 'locations': len(latlist), 'forecast_hour': len(ivtarr.fcst_hour.values)}, \
+                               'locations': {'dims': ('locations'), 'attrs': {'units': 'degrees', 'description': 'latitude of landfall points'}, 'data': ivtarr.latitude.values}}, \
+                    'attrs': fmetatt, 'dims': {'num_ens': g1.nens, 'locations': len(ivtarr.latitude.values), 'forecast_hour': len(ivtarr.fcst_hour.values)}, \
                     'data_vars': {'fore_met_init': {'dims': ('num_ens',), 'attrs': {'units': '', 'description': 'IVT Landfall PC'}, 'data': pc1.data},
                                   'metric_lat': {'dims': ('locations',), 'attrs': {'units': 'degrees', 'description': 'metric latitude bounds'}, 'data': latlist},
                                   'metric_lon': {'dims': ('locations',), 'attrs': {'units': 'degrees', 'description': 'metric longitude bounds'}, 'data': lonlist}}}
