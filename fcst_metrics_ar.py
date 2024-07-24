@@ -568,10 +568,10 @@ class ComputeForecastMetrics:
            ax1.plot(loncoa, latcoa, 'o', color='black', markersize=6, transform=ccrs.PlateCarree())
 
            if eofn == 1:
-              fracvar = '%4.3f' % solver.varianceFraction(neigs=1)
+              fracvar = solver.varianceFraction(neigs=1).data
            else:
-              fracvar = '%4.3f' % solver.varianceFraction(neigs=eofn)[-1]
-           plt.suptitle("{0} {1}-{2} hour IVT, {3} of variance".format(str(self.datea_str),fhr1,fhr2,fracvar))
+              fracvar = solver.varianceFraction(neigs=eofn)[-1].data
+           plt.suptitle("{0} {1}-{2} hour IVT, {3} of variance".format(str(self.datea_str),fhr1,fhr2,'%4.3f' % fracvar))
 
            cbar = plt.colorbar(pltf, fraction=0.15, aspect=45., pad=0.13, orientation='horizontal', cax=fig.add_axes([0.15, 0.01, 0.7, 0.025]))
            cbar.set_ticks(mivt[1:(len(mivt)-1)])
@@ -588,7 +588,7 @@ class ComputeForecastMetrics:
 
            fmetatt = {'FORECAST_METRIC_LEVEL': '', 'FORECAST_METRIC_NAME': 'IVT Landfall PC', 'FORECAST_METRIC_SHORT_NAME': 'ivtleof', \
                       'FORECAST_HOUR1': int(fhr1), 'FORECAST_HOUR2': int(fhr2), 'LATITUDE1': lat1, 'LATITUDE2': lat2, \
-                      'ADAPT': str(adapt), 'ADAPT_IVT_MIN': ivtmin, 'VECTOR': str(vecmet), 'EOF_NUMBER': int(eofn)}
+                      'ADAPT': str(adapt), 'ADAPT_IVT_MIN': ivtmin, 'VECTOR': str(vecmet), 'EOF_NUMBER': int(eofn), 'VAR_FRACTION': fracvar}
 
            f_met = {'coords': {'forecast_hour': {'dims': ('forecast_hour'), 'attrs': {'units': 'hr', 'description': 'forecast hour'}, 'data': ivtarr.fcst_hour.values}, \
                                'locations': {'dims': ('locations'), 'attrs': {'units': 'degrees', 'description': 'latitude of landfall points'}, 'data': latlist}}, \
@@ -1223,10 +1223,10 @@ class ComputeForecastMetrics:
            cb = plt.clabel(pltm, inline_spacing=0.0, fontsize=12, fmt="%1.0f")
 
            if eofn == 1:
-              fracvar = '%4.3f' % solver.varianceFraction(neigs=1)
+              fracvar = solver.varianceFraction(neigs=1).data
            else:
-              fracvar = '%4.3f' % solver.varianceFraction(neigs=eofn)[-1]
-           plt.title("{0} {1}-{2} hour Precipitation, {3} of variance".format(str(self.datea_str),fhr1,fhr2,fracvar))
+              fracvar = solver.varianceFraction(neigs=eofn)[-1].data
+           plt.title("{0} {1}-{2} hour Precipitation, {3} of variance".format(str(self.datea_str),fhr1,fhr2,'%4.3f' % fracvar))
 
            outdir = '{0}/f{1}_{2}'.format(self.config['locations']['figure_dir'],'%0.3i' % fhr2,metname)
            if not os.path.isdir(outdir):
@@ -1241,7 +1241,7 @@ class ComputeForecastMetrics:
            fmetatt = {'FORECAST_METRIC_LEVEL': '', 'FORECAST_METRIC_NAME': 'precipitation PC', 'FORECAST_METRIC_SHORT_NAME': 'pcpeof', \
                       'FORECAST_HOUR1': int(fhr1), 'FORECAST_HOUR2': int(fhr2), 'LATITUDE1': lat1, 'LATITUDE2': lat2, 'LONGITUDE1': lon1, \
                       'LONGITUDE2': lon2, 'LAND_MASK_MINIMUM': lmaskmin, 'ADAPT': str(adapt), 'TIME_ADAPT': str(time_adapt), \
-                      'TIME_ADAPT_DOMAIN': time_dbuff, 'TIME_ADAPT_FREQ': time_freq, 'ADAPT_PCP_MIN': pcpmin, 'EOF_NUMBER': int(eofn)}
+                      'TIME_ADAPT_DOMAIN': time_dbuff, 'TIME_ADAPT_FREQ': time_freq, 'ADAPT_PCP_MIN': pcpmin, 'EOF_NUMBER': int(eofn), 'VAR_FRACTION': fracvar}
 
            f_met = {'coords': {'longitude': {'dims': ('longitude'), 'attrs': {'units': 'degrees', 'description': 'longitude of grid points'}, 'data': ensmat.longitude.values}, \
                                'latitude':  {'dims': ('latitude'), 'attrs': {'units': 'degrees', 'description': 'latitude of grid points'}, 'data': ensmat.latitude.values}}, \
