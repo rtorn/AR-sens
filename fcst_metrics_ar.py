@@ -1243,12 +1243,19 @@ class ComputeForecastMetrics:
                       'LONGITUDE2': lon2, 'LAND_MASK_MINIMUM': lmaskmin, 'ADAPT': str(adapt), 'TIME_ADAPT': str(time_adapt), \
                       'TIME_ADAPT_DOMAIN': time_dbuff, 'TIME_ADAPT_FREQ': time_freq, 'ADAPT_PCP_MIN': pcpmin, 'EOF_NUMBER': int(eofn)}
 
-           f_met = {'coords': {}, 'attrs': fmetatt, 'dims': {'num_ens': nens}, \
-                    'data_vars': {'fore_met_init': {'dims': ('num_ens',), 'attrs': {'units': '', \
-                                                    'description': 'precipitation PC'}, 'data': pc1.data}}}
+           f_met = {'coords': {'longitude': {'dims': ('longitude'), 'attrs': {'units': 'degrees', 'description': 'longitude of grid points'}, 'data': ensmat.longitude.values}, \
+                               'latitude':  {'dims': ('latitude'), 'attrs': {'units': 'degrees', 'description': 'latitude of grid points'}, 'data': ensmat.latitude.values}}, \
+                    'attrs': fmetatt, 'dims': {'num_ens': nens, 'latitude': len(ensmat.latitude.values), 'longitude': len(ensmat.longitude.values)}, \
+                    'data_vars': {'fore_met_init': {'dims': ('num_ens',), 'attrs': {'units': '', 'description': 'precipitation PC'}, 'data': pc1.data}}}
+
+           endict = {'latitude': {'dtype': 'float32'}, 'longitude': {'dtype': 'float32'}, 'fore_met_init': {'dtype': 'float32'}}
+           f_met['data_vars']['ensemble_mean'] = {'dims': ('latitude', 'longitude'), 'attrs': {'units': 'mm', 'description': 'precipitation ensemble mean'}, 'data': e_mean.data}
+           endict['ensemble_mean'] = {'dtype': 'float32'}
+           f_met['data_vars']['EOF_pattern'] = {'dims': ('latitude', 'longitude'), 'attrs': {'units': 'mm', 'description': 'precipitation EOF pattern'}, 'data': dpcp}
+           endict['EOF_pattern'] = {'dtype': 'float32'}
 
            xr.Dataset.from_dict(f_met).to_netcdf(
-               "{0}/{1}_f{2}_{3}.nc".format(self.config['locations']['work_dir'],str(self.datea_str),'%0.3i' % fhr2,metname), encoding={'fore_met_init': {'dtype': 'float32'}})
+               "{0}/{1}_f{2}_{3}.nc".format(self.config['locations']['work_dir'],str(self.datea_str),'%0.3i' % fhr2,metname), encoding=endict)
 
            self.metlist.append('f{0}_{1}'.format('%0.3i' % fhr2, metname))
 
