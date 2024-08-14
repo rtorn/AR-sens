@@ -475,6 +475,13 @@ class ComputeForecastMetrics:
               ivtarr = ivtarr.sel(latitude=slice(lat2,lat1), fcst_hour=slice(fhr1,fhr2))
               e_mean = e_mean.sel(latitude=slice(lat2,lat1), fcst_hour=slice(fhr1,fhr2))
 
+              latlist = []
+              lonlist = []
+              for i in range(len(latcoa)):
+                 if latcoa[i] >= lat1 and latcoa[i] <= lat2:
+                    latlist.append(latcoa[i])
+                    lonlist.append(loncoa[i])
+
            for n in range(g1.nens):
               ivtarr[n,:,:,:] = ivtarr[n,:,:,:] - e_mean[:,:,:]
 
