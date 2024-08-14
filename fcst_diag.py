@@ -145,7 +145,7 @@ def precipitation_ens_maps(datea, fhr1, fhr2, config):
     fint      = int(config['model'].get('fcst_hour_int','12'))
     g1        = dpp.ReadGribFiles(datea, fhr1, config)
 
-    vDict = {'latitude': (lat1-0.00001, lat2), 'longitude': (lon1-0.00001, lon2),
+    vDict = {'latitude': (lat1-0.00001, lat2+0.00001), 'longitude': (lon1-0.00001, lon2+0.00001),
              'description': 'precipitation', 'units': 'mm', '_FillValue': -9999.}
     vDict = g1.set_var_bounds('precipitation', vDict)
 

@@ -456,19 +456,19 @@ def ComputeFields(datea, fhr, config):
                #  Compute PV and place in ensemble array
                if config['model'].get('grid_type','LatLon') == 'LatLon':
 
-                  pvout = mpcalc.potential_vorticity_baroclinic(thta, pres[:, None, None], uwnd, vwnd,
-                                                dx[None, :, :], dy[None, :, :], lats[None, :, None])
+                  pvout = np.abs(mpcalc.potential_vorticity_baroclinic(thta, pres[:, None, None], uwnd, vwnd,
+                                                dx[None, :, :], dy[None, :, :], lats[None, :, None]))
 
                   ensmat[n,:,:] = grid_calc.calc_circ_llgrid(np.squeeze(pvout[np.where(pres == level * units('hPa'))[0],:,:]), \
                                                              300., lats, lons, eval(config['fields'].get('global','False')), len(lons), len(lats)) * 1.0e6
 
                else: 
 
-                  pvout = mpcalc.potential_vorticity_baroclinic(thta, pres[:, None, None], uwnd, vwnd,
-                                                dx[None, :, :], dy[None, :, :], lats[None, :, :])
+                  pvout = np.abs(mpcalc.potential_vorticity_baroclinic(thta, pres[:, None, None], uwnd, vwnd,
+                                                dx[None, :, :], dy[None, :, :], lats[None, :, :]))
 
                   ensmat[n,:,:] = grid_calc.calc_circ(np.squeeze(pvout[np.where(pres == level * units('hPa'))[0],:,:]), \
-                                                       300000., g1.dx, len(lats[0,:]), len(lats[:,0])) * 1.0e6
+                                                             300000., g1.dx, len(lats[0,:]), len(lats[:,0])) * 1.0e6
 
                del lats,lons,pres,thta,uwnd,vwnd,dx,dy,pvout 
 
