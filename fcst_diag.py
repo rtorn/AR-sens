@@ -1,4 +1,4 @@
-import os
+import os, copy
 import numpy as np
 import datetime as dt
 import pandas as pd
@@ -242,24 +242,27 @@ def read_ivt(datea, fhr, config, vDict):
 
    else:
 
-      fDict = vDict.copy()
-      fDict['isobaricInhPa'] = (300, 1000)
-      fDict = gf.set_var_bounds('temperature', fDict)
+      tDict = copy.deepcopy(vDict)
+      tDict['isobaricInhPa'] = (300, 1000)
+      tDict = gf.set_var_bounds('temperature', tDict)
+      wDict = copy.deepcopy(vDict)
+      wDict['isobaricInhPa'] = (300, 1000)
+      wDict = gf.set_var_bounds('zonal_wind', wDict)
 
       for n in range(gf.nens):
 
          #  Read wind/temperature data 
-         uwnd = gf.read_grib_field('zonal_wind', n, fDict) * units('m / sec')
-         vwnd = gf.read_grib_field('meridional_wind', n, fDict) * units('m / sec')
+         uwnd = gf.read_grib_field('zonal_wind', n, wDict) * units('m / sec')
+         vwnd = gf.read_grib_field('meridional_wind', n, wDict) * units('m / sec')
 
-         tmpk = np.squeeze(gf.read_grib_field('temperature', n, fDict)) * units('K')
+         tmpk = np.squeeze(gf.read_grib_field('temperature', n, tDict)) * units('K')
          pres = (tmpk.isobaricInhPa.values * units.hPa).to(units.Pa)
 
          #  Read or calculate specific humidity based on what is in the original
          if gf.has_specific_humidity:
-            qvap = np.squeeze(gf.read_grib_field('specific_humidity', n, fDict)) * units('dimensionless')
+            qvap = np.squeeze(gf.read_grib_field('specific_humidity', n, tDict)) * units('dimensionless')
          else:
-            relh = np.minimum(np.maximum(gf.read_grib_field('relative_humidity', n, fDict), 0.01), 100.0) * units('percent')
+            relh = np.minimum(np.maximum(gf.read_grib_field('relative_humidity', n, tDict), 0.01), 100.0) * units('percent')
             qvap = mpcalc.mixing_ratio_from_relative_humidity(pres[:,None,None], tmpk, relh)
 
          #  Integrate water vapor over the pressure levels
