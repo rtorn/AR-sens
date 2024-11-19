@@ -379,7 +379,7 @@ class ComputeForecastMetrics:
               latcoa2 = float(conf['definition'].get('latitude_max',self.config['metric'].get('ivt_land_latitude_max',55.)))
               vecmet = eval(conf['definition'].get('vector',self.config['metric'].get('ivt_land_vector','False')))
               adapt = eval(conf['definition'].get('adapt',self.config['metric'].get('ivt_land_adapt','False')))
-              ivtmin = float(conf['definition'].get('adapt_ivt_min',self.config['metric'].get('ivt_land_adapt_min',225.)))
+              ivtmin = float(conf['definition'].get('adapt_ivt_min',self.config['metric'].get('ivt_land_adapt_min',200.)))
               latbuff = float(conf['definition'].get('adapt_ivt_lat_buff',self.config['metric'].get('ivt_land_adapt_lat_buff',0.)))
               timebuff = int(conf['definition'].get('adapt_ivt_hour_buff',self.config['metric'].get('ivt_land_adapt_hour_buff',0)))
            except IOError:
@@ -418,7 +418,7 @@ class ComputeForecastMetrics:
               ntime = len(e_mean.fcst_hour.values)
               nlat  = len(e_mean.latitude.values)
 
-              estd   = np.mean(ivtarr[:,0,:,:], axis=0)
+              estd   = np.mean(ivtarr[:,2,:,:], axis=0)
               stdmax = estd.max()
               maxloc = np.where(estd == stdmax)
               icen   = int(maxloc[1])
@@ -426,7 +426,7 @@ class ComputeForecastMetrics:
               timec  = e_mean.fcst_hour.values[icen]
               latc   = e_mean.latitude.values[jcen]
 
-              if e_mean[2,jcen,icen] < ivtmin: 
+              if np.amax(e_mean[2,:,:]) < ivtmin and e_mean[2,jcen,icen] < ivtmin:
                  logging.error('  IVT landfall metric center point is below minimum.  Skipping metric.')
                  continue
 
@@ -1645,7 +1645,7 @@ class ComputeForecastMetrics:
                                 cmap=matplotlib.colors.ListedColormap(colorlist), extend='both')
 
            #  Plot the ensemble-mean SLP field in contours
-           mslp = [976, 980, 984, 988, 992, 996, 1000, 1004, 1008, 1012, 1016, 1020, 1024, 1028, 1032, 1036, 1040]
+           mslp = [948, 952, 956, 960, 964, 968, 972, 976, 980, 984, 988, 992, 996, 1000, 1004, 1008, 1012, 1016, 1020, 1024, 1028, 1032, 1036, 1040]
            pltm = plt.contour(ensmat.longitude.values,ensmat.latitude.values,e_mean,mslp, \
                                linewidths=1.5,colors='k',zorder=10,transform=ccrs.PlateCarree())
 
