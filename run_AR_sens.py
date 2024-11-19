@@ -116,7 +116,8 @@ def main():
     logging.warning("STARTING SENSITIVITIES for {0}".format(str(datea)))
 
     #  Copy grib data to the work directory
-    dpp.stage_grib_files(datea, config)
+    if eval(config['metric'].get('compute_metrics','True')) or eval(config['fields'].get('compute_fields','True')):
+       dpp.stage_grib_files(datea, config)
 
 
     #  Plot the precipitation forecast
@@ -142,8 +143,15 @@ def main():
 
 
     #  Compute precipitation-related forecast metrics
-    met = fmet.ComputeForecastMetrics(datea, config)
-    metlist = met.get_metlist()
+    if eval(config['metric'].get('compute_metrics','True')):
+       met = fmet.ComputeForecastMetrics(datea, config)
+       metlist = met.get_metlist()
+    else:
+       fid = open('{0}/metric_list'.format(config['locations']['work_dir']), 'r')
+       metlist = fid.read().split("\n")
+       metlist = [x for x in metlist if x]
+    print(metlist)
+
 
     #  Exit if there are no metrics
     if len(metlist) < 1:
@@ -153,16 +161,17 @@ def main():
 
     #  Compute forecast fields at each desired time to use in sensitivity calculation
     fmaxfld = int(config['fields'].get('fields_hour_max',config['model']['fcst_hour_max']))
-    if eval(config['fields'].get('multiprocessor','False')):
+    if eval(config['fields'].get('compute_fields','True')):
+       if eval(config['fields'].get('multiprocessor','False')):
 
-       arglist = [(datea, fhr, config) for fhr in range(0,fmaxfld+int(config['model']['fcst_hour_int']),int(config['model']['fcst_hour_int']))]
-       with Pool() as pool:       
-          results = pool.map(ComputeFieldsParallel, arglist)
+          arglist = [(datea, fhr, config) for fhr in range(0,fmaxfld+int(config['model']['fcst_hour_int']),int(config['model']['fcst_hour_int']))]
+          with Pool() as pool:       
+             results = pool.map(ComputeFieldsParallel, arglist)
 
-    else:
+       else:
 
-       for fhr in range(0,fmaxfld+int(config['model']['fcst_hour_int']),int(config['model']['fcst_hour_int'])):
-          ComputeFields(datea, fhr, config)
+          for fhr in range(0,fmaxfld+int(config['model']['fcst_hour_int']),int(config['model']['fcst_hour_int'])):
+             ComputeFields(datea, fhr, config)
 
 
     #  Compute sensitivity of each metric to forecast fields at earlier times
