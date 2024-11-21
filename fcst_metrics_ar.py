@@ -1367,9 +1367,10 @@ class ComputeForecastMetrics:
               bstd = np.std(np.sum(ds.precip.sel(hour=slice(fhr1, fhr2)).squeeze().load(), axis=0), axis=0)
 
               brat = bstd[:] / np.fmax(bmea, mean_min)
-              imax = np.argmax(brat.values)
-#              imax = np.argmax(bstd.values)
-#              print('max point',bstd[imax].values)
+#              imax = np.argmax(brat.values)
+              imax = np.argmax(bstd.values)
+
+              print(bmea[imax].values,bstd[imax].values,brat[imax].values)
 
               if bmea[imax] < mean_min:
                  logging.error('  basin precipitation metric center point is below minimum.  Skipping metric.')
@@ -1380,7 +1381,8 @@ class ComputeForecastMetrics:
               index_list = []
 
               for basin in range(len(brat)):
-                 if brat[basin] >= auto_sdmin * brat[imax]:
+                 if bstd[basin] >= auto_sdmin * bstd[imax]:
+#                 if brat[basin] >= auto_sdmin * brat[imax]:
                     hucid = ds.HUCID[basin]
                     hucid_list.append(int(hucid))
                     basin_list.append(db[db['ID'] == int(hucid)]['Name'].values)
