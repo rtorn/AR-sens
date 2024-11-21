@@ -66,15 +66,16 @@ def read_config(datea, filename):
     return(config)
 
 
-def main():
+def run_ens_sensitivity(datea, paramfile):
     '''
     This is the main routine that calls all of the steps needed to compute ensemble-based
-    sensitivity for AR Recon.  The script can be called from the command line, where the
+    sensitivity for AR Recon.  The script can be either called from the command line, where the
     user inputs the forecast initialization date, and storm name.  The user can also add the
-    path to the parameter file.
+    path to the parameter file.  The alternative is to run this from within a python script
+    by calling this command.
 
     Important:  within the parameter file, the user needs to set the variable io_module, which
-    contains information for how to read and use grib and ATCF data from a specific source and
+    contains information for how to read and use grib data from a specific source and
     model.  The module specified in this variable will be used to get all input data.
 
     From command line:
@@ -86,20 +87,6 @@ def main():
         -init is the initialization date in yyyymmddhh format
         -param is the parameter file path (optional, otherwise goes to default values in precip.parm)
     '''
-
-    #  Read the initialization time and storm from the command line
-    exp_parser = argparse.ArgumentParser()
-    exp_parser.add_argument('--init',  action='store', type=str, required=True)
-    exp_parser.add_argument('--param', action='store', type=str)
-
-    args = exp_parser.parse_args()
-
-    datea = args.init
-
-    if args.param:
-       paramfile = args.param
-    else:
-       paramfile = 'precip.parm'
 
     #  Read the configuration file and set up for usage later
     config = read_config(datea, paramfile)
@@ -257,4 +244,17 @@ def ComputeSensitivityParallel(args):
 
 if __name__ == '__main__':
 
-   main()
+    #  Read the initialization time and storm from the command line
+    exp_parser = argparse.ArgumentParser()
+    exp_parser.add_argument('--init',  action='store', type=str, required=True)
+    exp_parser.add_argument('--param', action='store', type=str)
+
+    args = exp_parser.parse_args()
+
+    #  use default parameter file if one is not passed from the command line
+    if args.param:
+       paramfile = args.param
+    else:
+       paramfile = 'precip.parm'
+
+    run_ens_sensitivity(args.init, paramfile)
