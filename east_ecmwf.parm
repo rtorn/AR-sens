@@ -65,6 +65,7 @@ max_lat=65
 #max_lon=-60
 min_lon=-150
 max_lon=-60
+multiprocessor=True
 
 [sens]
 zero_non_sig_sens=True

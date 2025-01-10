@@ -2,7 +2,7 @@
 [model]
 model_src=GEFS
 num_ens=30
-io_module=gefs_aws
+io_module=gefs_aws_down
 fcst_hour_int=12
 fcst_hour_max=168
 tigge_forecast_time=0/12/24/36/48/60/72/84/96/108/120/132/144/156
@@ -11,53 +11,41 @@ tigge_surface_area=55/-165/5/-15
 
 [locations]
 atcf_dir=/ct12/abrammer/graphics/ecmf_tc_data/data
-model_dir=https://nomads.ncep.noaa.gov/dods/gefs
+model_dir=/tornlab_rit/torn/ecmwf
 
-work_dir=/rt11/torn/ar_sens/work_gefs
+work_dir=/rt11/torn/ar_sens/east_gefs
 output_dir=/rt11/torn/ar_sens/output_gefs
 script_dir=/home11/staff/torn/JHT-python
-figure_dir=/rt11/torn/html/AR-Sens/GEFS
-outgrid_dir=/rt11/torn/html/AR-Sens/GEFS
-log_dir=/rt11/torn/ar_sens/log_gefs
+figure_dir=/home11/staff/torn/html/AR-East/GEFS
+outgrid_dir=/home11/staff/torn/html/AR-East/GEFS
+log_dir=/rt11/torn/ar_sens/log_geeast
 
 save_work_dir=True
 
 [fcst_diag]
-basin_hour_1=48, 60, 72,  84,  96, 108, 120, 132, 144
-basin_hour_2=72, 84, 96, 108, 120, 132, 144, 156, 168
 precip_hour_1=36, 48, 60, 72,  84,  96, 108, 120, 132, 144
 precip_hour_2=60, 72, 84, 96, 108, 120, 132, 144, 156, 168
-#min_lat_precip=30
-#max_lat_precip=45
-#min_lon_precip=-115
-#max_lon_precip=-80
+min_lat_precip=25
+#min_lon_precip=-90
+#max_lon_precip=-65
+min_lon_precip=-94
+max_lon_precip=-67
 
 [metric]
-fcst_int=6
 static_fields_file=/rt11/torn/JHT/landmask_gefs_0p5.grb2
+fcst_int=6
 precipitation_mean_metric=False
 precipitation_eof_metric=True
-precip_metric_loc=/rt11/torn/ar_sens/metrics_epac/pcp
-precip_eof_time_adapt_freq=12
+precip_metric_loc=/rt11/torn/ar_sens/metrics_east/pcp
 ivt_eof_metric=True
-ivt_metric_loc=/rt11/torn/ar_sens/metrics_epac/ivt
+ivt_metric_loc=/rt11/torn/ar_sens/metrics_east/ivt
 slp_eof_metric=True
-slp_metric_loc=/rt11/torn/ar_sens/metrics_epac/slp
-hght_eof_metric=True
-hght_metric_loc=/rt11/torn/ar_sens/metrics_epac/hght
+slp_metric_loc=/rt11/torn/ar_sens/metrics_east/slp
 temp_eof_metric=True
-temp_metric_loc=/rt11/torn/ar_sens/metrics_epac/t850
-ivt_landfall_metric=True
-ivt_land_metric_loc=/rt11/torn/ar_sens/metrics_epac/ivtl
+temp_metric_loc=/rt11/torn/ar_sens/metrics_east/t850
+ivt_landfall_metric=False
+ivt_land_metric_loc=/rt11/torn/ar_sens/metrics_east/ivtl
 coast_points_file=/home11/staff/torn/JHT-python/latlon_coast_1p0.txt
-basin_metric=True
-basin_metric_loc=/rt11/torn/ar_sens/metrics_epac/rbasin
-basin_huc_file=/home11/staff/torn/ens-sens/AR-sens/watershedinfo.csv
-basin_shape_file=/rt11/torn/ar_sens/template/HUC8_West_simplify22.shp
-#min_lat_precip=30
-#max_lat_precip=45
-#min_lon_precip=-115
-#max_lon_precip=-80
 
 [fields]
 fields_hour_max=120
@@ -73,6 +61,12 @@ calc_theta-e=True
 calc_qvapor=True
 calc_winds=False
 calc_refractivity=True
+min_lat=15
+max_lat=65
+#min_lon=-140
+#max_lon=-60
+min_lon=-150
+max_lon=-60
 multiprocessor=True
 
 [sens]
@@ -81,16 +75,13 @@ grid_interval=10.
 barb_interval=6
 pv_levels=[250, 300, 500, 700, 850]
 thetae_levels=[850]
-drop_file_type=cw3e
-dropsonde_file=/rt11/torn/ar_sens/dropsondes/{0}_drops.txt
-drop_mark_size=10
-drop_mark_color=lime
+dropsonde_file=./2019083100_drop_info.txt
+drop_mark_size=6
+drop_mark_color=black
 drop_mark_type=+
 rawinsonde_file=/free/torn/SHOUT/pynew/rawindsondes.tx
 rawin_mark_size=6
 rawin_mark_color=gray
-buoy1_file=arr_buoys.txt
-buoy2_file=other_buoys.txt
 range_rings=False
 output_sens=True
 output_list=ivt, e850hPa, pv250hPa, pv500hPa
