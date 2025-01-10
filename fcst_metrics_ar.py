@@ -962,6 +962,11 @@ class ComputeForecastMetrics:
 
            g1 = self.dpp.ReadGribFiles(self.datea_str, fhr2, self.config)
 
+           #  Skip frozen precipitation for GEFS for now.  Can be removed when this is solved.
+           if frozen and not (g1.has_precip_category or g1.has_frozen_fraction):
+              logging.warning('  This model does not support frozen precipitation metrics.  Skipping {0} metric'.format(metname))
+              continue
+
            #  Now figure out the 24 h after landfall, so we can set the appropriate 24 h period.
            if time_adapt:
 
@@ -980,9 +985,16 @@ class ComputeForecastMetrics:
                  for fhr in range(fhr1+fint, fhr2+fint, fint):
                     pcp = self.__read_precip(fhr-fint, fhr, self.config, vDict)
                     g1 = self.dpp.ReadGribFiles(self.datea_str, fhr, self.config)
-                    for n in range(g1.nens):
-                       ensmat[n,:,:] = ensmat[n,:,:] + np.where(np.squeeze(g1.read_grib_field('precip_type', n, vDict)) >= 2.0, \
-                                                                np.squeeze(pcp[n,:,:]), 0.0)
+
+                    if g1.has_precip_category:
+                       for n in range(g1.nens):
+                          ensmat[n,:,:] = ensmat[n,:,:] + np.where(np.squeeze(g1.read_grib_field('precip_type', n, vDict)) >= 2.0, \
+                                                                   np.squeeze(pcp[n,:,:]), 0.0)
+                    elif g1.has_frozen_fraction:
+                       for n in range(g1.nens):
+                          frfrac = g1.read_grib_field('snow_fraction', n, vDict) + g1.read_grib_field('freeze_rain_fraction', n, vDict)
+                          ensmat[n,:,:] = ensmat[n,:,:] + frfrac[:,:] * np.squeeze(pcp[n,:,:])
+
 
               e_std = np.std(ensmat, axis=0)
               estd_mask = e_std.values[:,:] * lmask[:,:]
@@ -1019,9 +1031,15 @@ class ComputeForecastMetrics:
               for fhr in range(fhr1+fint, fhr2+fint, fint):
                  pcp = self.__read_precip(fhr-fint, fhr, self.config, vDict)
                  g1 = self.dpp.ReadGribFiles(self.datea_str, fhr, self.config)
-                 for n in range(g1.nens):
-                    ensmat[n,:,:] = ensmat[n,:,:] + np.where(np.squeeze(g1.read_grib_field('precip_type', n, vDict)) >= 2.0, \
-                                                             np.squeeze(pcp[n,:,:]), 0.0)
+                    
+                 if g1.has_precip_category:
+                    for n in range(g1.nens):
+                       ensmat[n,:,:] = ensmat[n,:,:] + np.where(np.squeeze(g1.read_grib_field('precip_type', n, vDict)) >= 2.0, \
+                                                                   np.squeeze(pcp[n,:,:]), 0.0)
+                 elif g1.has_frozen_fraction:
+                    for n in range(g1.nens):
+                       frfrac = g1.read_grib_field('snow_fraction', n, vDict) + g1.read_grib_field('freeze_rain_fraction', n, vDict)
+                       ensmat[n,:,:] = ensmat[n,:,:] + frfrac[:,:] * np.squeeze(pcp[n,:,:])
 
               ensmat[:,:,:] = ensmat[:,:,:] * 24. / float(fhr2-fhr1)
 
