@@ -28,6 +28,7 @@ from eofs.xarray import Eof as Eof_xarray
 
 from SensPlotRoutines import background_map
 from fcst_diag import read_ivt
+import grid_calc
 
 def great_circle(lon1, lat1, lon2, lat2):
     '''
@@ -108,6 +109,10 @@ class ComputeForecastMetrics:
         #  Compute Height EOF metric
         if self.config['metric'].get('hght_eof_metric', 'False') == 'True':
            self.__hght_eof()
+
+        #  Compute PV EOF metric
+        if self.config['metric'].get('pvort_eof_metric', 'False') == 'True':
+           self.__pvort_eof()
 
         #  Compute temperature EOF metric
         if self.config['metric'].get('temp_eof_metric', 'False') == 'True':
@@ -1830,6 +1835,175 @@ class ComputeForecastMetrics:
            f_met = {'coords': {}, 'attrs': fmetatt, 'dims': {'num_ens': g1.nens}, \
                     'data_vars': {'fore_met_init': {'dims': ('num_ens',), 'attrs': {'units': '', \
                                                     'description': 'height PC'}, 'data': pc1.data}}}
+
+           xr.Dataset.from_dict(f_met).to_netcdf(
+               "{0}/{1}_f{2}_{3}.nc".format(self.config['locations']['work_dir'],str(self.datea_str),'%0.3i' % fhr,metname), encoding={'fore_met_init': {'dtype': 'float32'}})
+
+           self.metlist.append('f{0}_{1}'.format('%0.3i' % fhr, metname))
+
+
+    def __pvort_eof(self):
+        '''
+        Function that computes SLP EOF metric, which is calculated by taking the EOF of 
+        the ensemble SLP forecast over a domain defined by the user in a text file.  
+        The resulting forecast metric is the principal component of the
+        EOF.  The function also plots a figure showing the ensemble-mean SLP pattern 
+        along with the SLP perturbation that is consistent with the first EOF. 
+        '''
+
+        for infull in glob.glob('{0}/{1}_*'.format(self.config['metric'].get('pvort_metric_loc'),self.datea_str)):
+
+           try:
+              conf = configparser.ConfigParser()
+              conf.read(infull)
+              fhr   = int(conf['definition'].get('forecast_hour'))
+              lat1  = float(conf['definition'].get('latitude_min'))
+              lat2  = float(conf['definition'].get('latitude_max'))
+              lon1  = float(conf['definition'].get('longitude_min'))
+              lon2  = float(conf['definition'].get('longitude_max'))
+              eofn  = int(conf['definition'].get('eof_number',1))
+              level = float(conf['definition'].get('pressure', 250))
+              metname = conf['definition'].get('metric_name','pv{0}hPa'.format(int(level)))
+           except IOError:
+              logging.warning('{0} does not exist.  Cannot compute PV EOF'.format(infull))
+              return None
+
+           if eval(self.config['model'].get('flip_lon','False')):
+              lon1 = (lon1 + 360.) % 360.
+              lon2 = (lon2 + 360.) % 360.
+
+           inpath, infile = infull.rsplit('/', 1)
+           fff = '%0.3i' % fhr
+
+           g1 = self.dpp.ReadGribFiles(self.datea_str, fhr, self.config)
+
+           pvec = g1.read_pressure_levels('temperature')
+           idx  = np.where(pvec==level)
+           lev1 = np.min(pvec[(int(idx[0])-1):(int(idx[0])+2)])
+           lev2 = np.max(pvec[(int(idx[0])-1):(int(idx[0])+2)])
+
+           vDict = g1.set_var_bounds('zonal_wind', {'latitude': (lat1, lat2), 'longitude': (lon1, lon2), 'isobaricInhPa': (lev1, lev2), \
+                                                    'description': '{0} hPa Potential Vorticity'.format(level), 'units': 'PVU', '_FillValue': -9999.})
+           tDict = g1.set_var_bounds('temperature', {'latitude': (lat1, lat2), 'longitude': (lon1, lon2), 'isobaricInhPa': (lev1, lev2), \
+                                                     'description': '{0} hPa Potential Vorticity'.format(level), 'units': 'PVU', '_FillValue': -9999.})
+
+           ensmat = g1.create_ens_array('zonal_wind', g1.nens, vDict)
+           lats = ensmat.latitude.values * units('degrees')
+           lons = ensmat.longitude.values * units('degrees')
+
+           dx, dy = mpcalc.lat_lon_grid_deltas(lons, lats, x_dim=-1, y_dim=-2, geod=None)
+           dx = np.maximum(dx, 1.0 * units('m'))
+
+           for n in range(g1.nens):
+
+              #  Read all the necessary files from file, smooth fields, so sensitivities are useful
+              tmpk = g1.read_grib_field('temperature', n, tDict) * units('K')
+              pres = tmpk.isobaricInhPa.values * units('hPa')
+              thta = mpcalc.potential_temperature(pres[:, None, None], tmpk)
+
+              uwnd = g1.read_grib_field('zonal_wind', n, vDict) * units('m/s')
+              vwnd = g1.read_grib_field('meridional_wind', n, vDict) * units('m/s')
+
+              #  Compute PV and place in ensemble array
+              if self.config['model'].get('grid_type','LatLon') == 'LatLon':
+
+                 pvout = np.abs(mpcalc.potential_vorticity_baroclinic(thta, pres[:, None, None], uwnd, vwnd,
+                                                dx[None, :, :], dy[None, :, :], lats[None, :, None]))
+
+                 ensmat[n,:,:] = grid_calc.calc_circ_llgrid(np.squeeze(pvout[np.where(pres == level * units('hPa'))[0],:,:]), \
+                                                             300., lats, lons, eval(self.config['fields'].get('global','False')), len(lons), len(lats)) * 1.0e6
+
+              else:
+
+                 pvout = np.abs(mpcalc.potential_vorticity_baroclinic(thta, pres[:, None, None], uwnd, vwnd,
+                                                dx[None, :, :], dy[None, :, :], lats[None, :, :]))
+
+                 ensmat[n,:,:] = grid_calc.calc_circ(np.squeeze(pvout[np.where(pres == level * units('hPa'))[0],:,:]), \
+                                                            300000., g1.dx, len(lats[0,:]), len(lats[:,0])) * 1.0e6
+
+              del pres,thta,uwnd,vwnd,pvout
+
+           e_mean = np.mean(ensmat, axis=0)
+           for n in range(g1.nens):
+              ensmat[n,:,:] = ensmat[n,:,:] - e_mean[:,:]
+
+           #  Compute the EOF of the precipitation pattern and then the PCs
+           if self.config['model'].get('grid_type','LatLon') == 'LatLon':
+
+              coslat = np.cos(np.deg2rad(ensmat.latitude.values)).clip(0., 1.)
+              wgts = np.sqrt(coslat)[..., np.newaxis]
+              solver = Eof_xarray(ensmat.rename({'ensemble': 'time'}), weights=wgts)
+
+           else:
+
+              solver = Eof_xarray(ensmat.rename({'ensemble': 'time'}))
+
+           pcout  = np.squeeze(solver.pcs(npcs=3, pcscaling=1))
+           pc1 = np.squeeze(pcout[:,eofn-1])
+           pc1[:] = pc1[:] / np.std(pc1)
+
+           #  Compute the SLP pattern associated with a 1 PC perturbation
+           dpvort = np.zeros(e_mean.shape)
+
+           for n in range(g1.nens):
+              dpvort[:,:] = dpvort[:,:] + ensmat[n,:,:] * pc1[n]
+
+           dpvort[:,:] = dpvort[:,:] / float(g1.nens)
+
+           if np.sum(dpvort) < 0.:
+              pc1[:]      = -pc1[:]
+              dpvort[:,:] = -dpvort[:,:]
+
+           #  Create basic figure, including political boundaries and grid lines
+           fig = plt.figure(figsize=(8.5,11))
+
+           colorlist = ("#9A32CD","#00008B","#3A5FCD","#00BFFF","#B0E2FF","#FFFFFF","#FFEC8B","#FFA500","#FF4500","#B22222","#FF82AB")
+
+           ax = plt.axes(projection=ccrs.PlateCarree())
+           ax = self.__background_map(ax, lat1, lon1, lat2, lon2)
+
+           #  Plot the SLP EOF pattern in shading
+           hfac = np.ceil((np.max(dpvort) / 5.0)*10.) / 10.
+           cntrs = np.array([-5., -4., -3., -2., -1., 1., 2., 3., 4., 5]) * hfac
+           pltf = plt.contourf(ensmat.longitude.values,ensmat.latitude.values,dpvort,cntrs,transform=ccrs.PlateCarree(), \
+                                   cmap=matplotlib.colors.ListedColormap(colorlist), extend='both')
+           print('max',np.max(dpvort),hfac)
+
+           #  Plot the ensemble-mean PV field in contours
+           if level <= 500.:
+              mpvort = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0]
+           else:
+              mpvort = [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 1.0, 1.2, 1.4]
+           pltm = plt.contour(ensmat.longitude.values,ensmat.latitude.values,e_mean,mpvort,\
+                              transform=ccrs.PlateCarree(),linewidths=1.5,colors='k',zorder=10)
+
+           #  Add colorbar to the plot
+           cbar = plt.colorbar(pltf, fraction=0.15, aspect=45., pad=0.04, orientation='horizontal', ticks=cntrs)
+           cbar.set_ticks(cntrs[1:(len(cntrs)-1)])
+           cb = plt.clabel(pltm, inline_spacing=0.0, fontsize=12, fmt="%1.0f")
+
+           if eofn == 1:
+              fracvar = '%4.3f' % solver.varianceFraction(neigs=1)
+           else:
+              fracvar = '%4.3f' % solver.varianceFraction(neigs=eofn)[-1]
+           plt.title("{0} {1} hour PV, {2} of variance".format(str(self.datea_str),fhr,fracvar))
+
+           outdir = '{0}/f{1}_{2}'.format(self.config['locations']['figure_dir'],fff,metname)
+           if not os.path.isdir(outdir):
+              try:
+                 os.makedirs(outdir)
+              except OSError as e:
+                 raise e
+
+           plt.savefig('{0}/metric.png'.format(outdir), format='png', dpi=120, bbox_inches='tight')
+           plt.close(fig)
+
+           fmetatt = {'FORECAST_METRIC_LEVEL': '', 'FORECAST_METRIC_NAME': 'Potential Vorticity PC', 'FORECAST_METRIC_SHORT_NAME': 'pveof', 'FORECAST_HOUR': int(fhr), \
+                      'LATITUDE1': lat1, 'LATITUDE2': lat2, 'LONGITUDE1': lon1, 'LONGITUDE2': lon2, 'PRESSURE': level, 'EOF_NUMBER': int(eofn)}
+
+           f_met = {'coords': {}, 'attrs': fmetatt, 'dims': {'num_ens': g1.nens}, \
+                    'data_vars': {'fore_met_init': {'dims': ('num_ens',), 'attrs': {'units': '', \
+                                                    'description': 'PV PC'}, 'data': pc1.data}}}
 
            xr.Dataset.from_dict(f_met).to_netcdf(
                "{0}/{1}_f{2}_{3}.nc".format(self.config['locations']['work_dir'],str(self.datea_str),'%0.3i' % fhr,metname), encoding={'fore_met_init': {'dtype': 'float32'}})
