@@ -1683,7 +1683,7 @@ class ComputeForecastMetrics:
               fracvar = '%4.3f' % solver.varianceFraction(neigs=1)
            else:
               fracvar = '%4.3f' % solver.varianceFraction(neigs=eofn)[-1]
-           plt.title("{0} {1} hour Precipitation, {2} of variance".format(str(self.datea_str),fhr,fracvar))
+           plt.title("{0} {1} hour SLP, {2} of variance".format(str(self.datea_str),fhr,fracvar))
 
            #  Create a output directory with the metric file
            outdir = '{0}/f{1}_{2}'.format(self.config['locations']['figure_dir'],fff,metname)
