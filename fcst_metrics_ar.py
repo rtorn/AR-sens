@@ -1959,8 +1959,12 @@ class ComputeForecastMetrics:
 
            colorlist = ("#9A32CD","#00008B","#3A5FCD","#00BFFF","#B0E2FF","#FFFFFF","#FFEC8B","#FFA500","#FF4500","#B22222","#FF82AB")
 
-           ax = plt.axes(projection=ccrs.PlateCarree())
-           ax = self.__background_map(ax, lat1, lon1, lat2, lon2)
+           plotBase = self.config.copy()
+           plotBase['grid_interval'] = self.config['fcst_diag'].get('grid_interval', 5)
+           plotBase['left_labels'] = 'True'
+           plotBase['right_labels'] = 'None'
+
+           ax = background_map(self.config['model'].get('projection', 'PlateCarree'), lon1, lon2, lat1, lat2, plotBase)
 
            #  Plot the SLP EOF pattern in shading
            hfac = np.ceil((np.max(dpvort) / 5.0)*10.) / 10.
