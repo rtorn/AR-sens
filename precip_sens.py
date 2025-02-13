@@ -88,8 +88,8 @@ def ComputeSensitivity(datea, fhr, metname, config):
       plotDict['metric_lon'] = mfile.variables['metric_lon'][:]
 
    if 'ring_center_lat' in config['sens'] and 'ring_center_lon' in config['sens']:
-      plotDict['ring_center_lat'] = float(config['sens']['ring_center_lat'])
-      plotDict['ring_center_lon'] = float(config['sens']['ring_center_lon'])
+      plotDict['ring_center_lat'] = [float(i) for i in [e.strip() for e in config['sens']['ring_center_lat'].split(',')]]
+      plotDict['ring_center_lon'] = [float(i) for i in [e.strip() for e in config['sens']['ring_center_lon'].split(',')]]
 
    metric = mfile.variables['fore_met_init'][:]
    nens   = len(metric)
@@ -274,7 +274,7 @@ def ComputeSensitivity(datea, fhr, metname, config):
          if eval(config['sens'].get('output_sens', 'False')) and 'e{0}hPa'.format(pres) in flist:
             writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_e{4}hPa_sens.nc'.format(config['locations']['figure_dir'],metname,datea,fhrt,pres), plotDict)
 
-         plotDict['meanCntrs'] = np.array(range(270,390,3))
+         plotDict['meanCntrs'] = np.array(range(240,390,3))
          plotDict['plotTitle'] = '{0} F{1} {4} hPa $\\theta_e${2}{3}'.format(datea,fhrt,metstring,timestr,pres)
          plotScalarSens(lat, lon, sens, emea, sigv, '{0}/{1}_f{2}_e{3}hPa_sens.png'.format(outdir,datea,fhrt,pres), plotDict)
 
