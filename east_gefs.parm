@@ -50,6 +50,7 @@ coast_points_file=/home11/staff/torn/JHT-python/latlon_coast_1p0.txt
 [fields]
 fields_hour_max=120
 calc_ivt=True
+calc_iwv=True
 calc_height=True
 #height_levels=[1000, 925, 850, 700, 500, 300, 250, 200]
 thetae_levels=[1000, 925, 850, 700]

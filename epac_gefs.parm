@@ -64,6 +64,7 @@ basin_shape_file=/rt11/torn/ar_sens/template/HUC8_West_simplify22.shp
 [fields]
 fields_hour_max=120
 calc_ivt=True
+calc_iwv=True
 calc_height=True
 #height_levels=[1000, 925, 850, 700, 500, 300, 250, 200]
 thetae_levels=[1000, 925, 850, 700]
