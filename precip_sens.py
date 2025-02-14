@@ -153,6 +153,37 @@ def ComputeSensitivity(datea, fhr, metname, config):
       sivt = sens[:,:]
 
 
+   #  Read IWV, compute sensitivity to that field, if the file exists
+   ensfile = '{0}/{1}_f{2}_iwv_ens.nc'.format(config['locations']['work_dir'],datea,fhrt)
+   if os.path.isfile(ensfile):
+
+      efile = nc.Dataset(ensfile)
+      lat   = efile.variables['latitude'][:]
+      lon   = efile.variables['longitude'][:]
+      ens   = np.squeeze(efile.variables['ensemble_data'][:])
+      emea  = np.mean(ens, axis=0)
+      emea.units = efile.variables['ensemble_data'].units
+      evar = np.var(ens, axis=0)
+
+      plotDict['plotTitle']    = '{0} F{1} IWV{2}{3}'.format(datea,fhrt,metstring,timestr)
+      plotDict['projinfo'] = set_projection(plotDict.get('projection', 'PlateCarree'), \
+                                            float(plotDict.get('min_lon', np.amin(lon))), \
+                                            float(plotDict.get('max_lon', np.amax(lon))), plotDict)
+
+      sens, sigv = computeSens(ens, emea, evar, metric)
+      sens[:,:] = sens[:,:] * np.sqrt(evar[:,:])
+
+      outdir = '{0}/{1}/sens/iwv'.format(config['locations']['figure_dir'],metname)
+      if not os.path.isdir(outdir):
+         os.makedirs(outdir, exist_ok=True)
+
+      if eval(config['sens'].get('output_sens', 'False')) and ('iwv' in flist):
+         writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_iwv_sens.nc'.format(config['locations']['figure_dir'],metname,datea,fhrt), plotDict)
+
+      plotDict['meanCntrs'] = np.array([4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64, 68])
+      plotScalarSens(lat, lon, sens, emea, sigv, '{0}/{1}_f{2}_iwv_sens.png'.format(outdir,datea,fhrt), plotDict)
+
+
    if 'wind_levels' in config['sens']: 
       plist = json.loads(config['sens'].get('wind_levels'))
    else:
