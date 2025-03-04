@@ -146,7 +146,7 @@ def ComputeSensitivity(datea, fhr, metname, config):
       if eval(config['sens'].get('output_sens', 'False')) and ('ivt' in flist):
          writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_ivt_sens.nc'.format(config['locations']['figure_dir'],metname,datea,fhrt), plotDict)
 
-      plotDict['meanCntrs'] = np.array([200., 400., 600., 800., 1000., 1300., 1600.])
+      plotDict['meanCntrs'] = np.array([250., 400., 600., 800., 1000., 1200., 1400., 1600., 2000.])
       plotScalarSens(lat, lon, sens, emea, sigv, '{0}/{1}_f{2}_ivt_sens.png'.format(outdir,datea,fhrt), plotDict)
 
       mivt = emea[:,:]
