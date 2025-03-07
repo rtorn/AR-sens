@@ -89,6 +89,7 @@ pv_levels=[250, 300, 500, 700, 850]
 thetae_levels=[850]
 drop_file_type=cw3e
 dropsonde_file=/rt11/torn/ar_sens/dropsondes/{0}_drops.txt
+turns_file=/rt11/torn/ar_sens/dropsondes/{0}_turns.txt
 drop_mark_size=10
 drop_mark_color=lime
 drop_mark_type=+

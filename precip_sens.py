@@ -105,6 +105,8 @@ def ComputeSensitivity(datea, fhr, metname, config):
    datef_s = datef.strftime("%Y%m%d%H")
    if 'dropsonde_file' in plotDict:
       plotDict['dropsonde_file'] = plotDict['dropsonde_file'].format(datef_s)
+   if 'turns_file' in plotDict:
+      plotDict['turns_file'] = plotDict['turns_file'].format(datef_s)
 
    if 'output_list' in config['sens']:
       flist = [e.strip() for e in config['sens']['output_list'].split(',')]
