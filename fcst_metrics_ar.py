@@ -602,25 +602,27 @@ class ComputeForecastMetrics:
                       'FORECAST_HOUR1': int(fhr1), 'FORECAST_HOUR2': int(fhr2), 'LATITUDE1': lat1, 'LATITUDE2': lat2, \
                       'ADAPT': str(adapt), 'ADAPT_IVT_MIN': ivtmin, 'VECTOR': str(vecmet), 'EOF_NUMBER': int(eofn), 'VAR_FRACTION': fracvar}
 
-           f_met = {'coords': {'forecast_hour': {'dims': ('forecast_hour'), 'attrs': {'units': 'hr', 'description': 'forecast hour'}, 'data': ivtarr.fcst_hour.values}, \
-                               'locations': {'dims': ('locations'), 'attrs': {'units': 'degrees', 'description': 'latitude of landfall points'}, 'data': ivtarr.latitude.values}}, \
-                    'attrs': fmetatt, 'dims': {'num_ens': g1.nens, 'locations': len(ivtarr.latitude.values), 'forecast_hour': len(ivtarr.fcst_hour.values)}, \
-                    'data_vars': {'fore_met_init': {'dims': ('num_ens',), 'attrs': {'units': '', 'description': 'IVT Landfall PC'}, 'data': pc1.data},
-                                  'metric_lat': {'dims': ('locations',), 'attrs': {'units': 'degrees', 'description': 'metric latitude bounds'}, 'data': latlist},
-                                  'metric_lon': {'dims': ('locations',), 'attrs': {'units': 'degrees', 'description': 'metric longitude bounds'}, 'data': lonlist}}}
+           endict = {'fore_met_init': {'dtype': 'float32'}}
 
-           endict = {'forecast_hour': {'dtype': 'int32'}, 'locations': {'dtype': 'float32'}, 'fore_met_init': {'dtype': 'float32'}, \
-                     'metric_lat': {'dtype': 'float32'}, 'metric_lon': {'dtype': 'float32'}}
+           f_met = {'coords': {}, 'attrs': fmetatt, 'dims': {'num_ens': g1.nens}, 'data_vars': {}}
+           f_met['coords']['forecast_hour'] = {'dims': ('forecast_hour'), 'attrs': {'units': 'hr', 'description': 'forecast hour'}, 'data': ivtarr.fcst_hour.values}
+           endict['longitude'] = {'dtype': 'float32'}
+           f_met['coords']['latitude']  = {'dims': ('latitude'), 'attrs': {'units': 'degrees', 'description': 'latitude of landfall points'}, 'data': ivtarr.latitude.values}
+           endict['latitude'] = {'dtype': 'float32'}
+           f_met['data_vars']['longitude'] = {'dims': ('locations',), 'attrs': {'units': 'degrees', 'description': 'longitude of landfall points'}, 'data': lonlist}
+           endict['longitude'] = {'dtype': 'float32'}
+
            if vecmet:
               print('implement')
            else:
-              f_met['data_vars']['ensemble_mean'] = {'dims': ('locations', 'forecast_hour'), 'attrs': {'units': 'kg m**-1 s**-1', 'description': 'IVT Landfall ensemble mean'}, 'data': np.squeeze(e_mean[2,:,:].data)}
+              f_met['data_vars']['ensemble_mean'] = {'dims': ('latitude', 'forecast_hour'), 'attrs': {'units': 'kg m**-1 s**-1', 'description': 'IVT Landfall ensemble mean'}, 'data': np.squeeze(e_mean[2,:,:].data)}
               endict['ensemble_mean'] = {'dtype': 'float32'}
-              f_met['data_vars']['EOF_pattern'] = {'dims': ('locations', 'forecast_hour'), 'attrs': {'units': 'kg m**-1 s**-1', 'description': 'IVT Landfall EOF pattern'}, 'data': divt}
-              endict['EOF_pattern'] = {'dtype': 'float32'}
+              f_met['data_vars']['EOF_pattern'] = {'dims': ('latitude', 'forecast_hour'), 'attrs': {'units': 'kg m**-1 s**-1', 'description': 'IVT Landfall EOF pattern'}, 'data': divt}
+              endict['EOF_pattern'] = {'dtype': 'float32'}       
+ 
+           f_met['data_vars']['fore_met_init'] = {'dims': ('num_ens',), 'attrs': {'units': '', 'description': 'precipitation PC'}, 'data': pc1.data}
 
-           xr.Dataset.from_dict(f_met).to_netcdf(
-               "{0}/{1}_f{2}_{3}.nc".format(self.config['locations']['work_dir'],str(self.datea_str),'%0.3i' % fhr2,metname), encoding=endict)
+           xr.Dataset.from_dict(f_met).to_netcdf("{0}/{1}_f{2}_{3}.nc".format(self.config['locations']['work_dir'],str(self.datea_str),'%0.3i' % fhr2,metname), encoding=endict)
 
            self.metlist.append('f{0}_{1}'.format('%0.3i' % fhr2, metname))
 
@@ -1250,16 +1252,19 @@ class ComputeForecastMetrics:
                       'LONGITUDE2': lon2, 'LAND_MASK_MINIMUM': lmaskmin, 'ADAPT': str(adapt), 'TIME_ADAPT': str(time_adapt), \
                       'TIME_ADAPT_DOMAIN': time_dbuff, 'TIME_ADAPT_FREQ': time_freq, 'ADAPT_PCP_MIN': pcpmin, 'EOF_NUMBER': int(eofn), 'VAR_FRACTION': fracvar}
 
-           f_met = {'coords': {'longitude': {'dims': ('longitude'), 'attrs': {'units': 'degrees', 'description': 'longitude of grid points'}, 'data': ensmat.longitude.values}, \
-                               'latitude':  {'dims': ('latitude'), 'attrs': {'units': 'degrees', 'description': 'latitude of grid points'}, 'data': ensmat.latitude.values}}, \
-                    'attrs': fmetatt, 'dims': {'num_ens': nens, 'latitude': len(ensmat.latitude.values), 'longitude': len(ensmat.longitude.values)}, \
-                    'data_vars': {'fore_met_init': {'dims': ('num_ens',), 'attrs': {'units': '', 'description': 'precipitation PC'}, 'data': pc1.data}}}
+           endict = {'fore_met_init': {'dtype': 'float32'}}
 
-           endict = {'latitude': {'dtype': 'float32'}, 'longitude': {'dtype': 'float32'}, 'fore_met_init': {'dtype': 'float32'}}
+           f_met = {'coords': {}, 'attrs': fmetatt, 'dims': {'num_ens': nens}, 'data_vars': {}}
+           f_met['coords']['longitude'] = {'dims': ('longitude'), 'attrs': {'units': 'degrees', 'description': 'longitude of grid points'}, 'data': ensmat.longitude.values}
+           endict['longitude'] = {'dtype': 'float32'}
+           f_met['coords']['latitude']  = {'dims': ('latitude'), 'attrs': {'units': 'degrees', 'description': 'latitude of grid points'}, 'data': ensmat.latitude.values}
+           endict['latitude'] = {'dtype': 'float32'}
+
            f_met['data_vars']['ensemble_mean'] = {'dims': ('latitude', 'longitude'), 'attrs': {'units': 'mm', 'description': 'precipitation ensemble mean'}, 'data': e_mean.data}
            endict['ensemble_mean'] = {'dtype': 'float32'}
            f_met['data_vars']['EOF_pattern'] = {'dims': ('latitude', 'longitude'), 'attrs': {'units': 'mm', 'description': 'precipitation EOF pattern'}, 'data': dpcp}
            endict['EOF_pattern'] = {'dtype': 'float32'}
+           f_met['data_vars']['fore_met_init'] = {'dims': ('num_ens',), 'attrs': {'units': '', 'description': 'precipitation PC'}, 'data': pc1.data}
 
            xr.Dataset.from_dict(f_met).to_netcdf(
                "{0}/{1}_f{2}_{3}.nc".format(self.config['locations']['work_dir'],str(self.datea_str),'%0.3i' % fhr2,metname), encoding=endict)
