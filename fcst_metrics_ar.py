@@ -602,25 +602,27 @@ class ComputeForecastMetrics:
                       'FORECAST_HOUR1': int(fhr1), 'FORECAST_HOUR2': int(fhr2), 'LATITUDE1': lat1, 'LATITUDE2': lat2, \
                       'ADAPT': str(adapt), 'ADAPT_IVT_MIN': ivtmin, 'VECTOR': str(vecmet), 'EOF_NUMBER': int(eofn), 'VAR_FRACTION': fracvar}
 
-           f_met = {'coords': {'forecast_hour': {'dims': ('forecast_hour'), 'attrs': {'units': 'hr', 'description': 'forecast hour'}, 'data': ivtarr.fcst_hour.values}, \
-                               'locations': {'dims': ('locations'), 'attrs': {'units': 'degrees', 'description': 'latitude of landfall points'}, 'data': ivtarr.latitude.values}}, \
-                    'attrs': fmetatt, 'dims': {'num_ens': g1.nens, 'locations': len(ivtarr.latitude.values), 'forecast_hour': len(ivtarr.fcst_hour.values)}, \
-                    'data_vars': {'fore_met_init': {'dims': ('num_ens',), 'attrs': {'units': '', 'description': 'IVT Landfall PC'}, 'data': pc1.data},
-                                  'metric_lat': {'dims': ('locations',), 'attrs': {'units': 'degrees', 'description': 'metric latitude bounds'}, 'data': latlist},
-                                  'metric_lon': {'dims': ('locations',), 'attrs': {'units': 'degrees', 'description': 'metric longitude bounds'}, 'data': lonlist}}}
+           endict = {'fore_met_init': {'dtype': 'float32'}}
 
-           endict = {'forecast_hour': {'dtype': 'int32'}, 'locations': {'dtype': 'float32'}, 'fore_met_init': {'dtype': 'float32'}, \
-                     'metric_lat': {'dtype': 'float32'}, 'metric_lon': {'dtype': 'float32'}}
+           f_met = {'coords': {}, 'attrs': fmetatt, 'dims': {'num_ens': g1.nens}, 'data_vars': {}}
+           f_met['coords']['forecast_hour'] = {'dims': ('forecast_hour'), 'attrs': {'units': 'hr', 'description': 'forecast hour'}, 'data': ivtarr.fcst_hour.values}
+           endict['longitude'] = {'dtype': 'float32'}
+           f_met['coords']['latitude']  = {'dims': ('latitude'), 'attrs': {'units': 'degrees', 'description': 'latitude of landfall points'}, 'data': ivtarr.latitude.values}
+           endict['latitude'] = {'dtype': 'float32'}
+           f_met['data_vars']['longitude'] = {'dims': ('locations',), 'attrs': {'units': 'degrees', 'description': 'longitude of landfall points'}, 'data': lonlist}
+           endict['longitude'] = {'dtype': 'float32'}
+
            if vecmet:
               print('implement')
            else:
-              f_met['data_vars']['ensemble_mean'] = {'dims': ('locations', 'forecast_hour'), 'attrs': {'units': 'kg m**-1 s**-1', 'description': 'IVT Landfall ensemble mean'}, 'data': np.squeeze(e_mean[2,:,:].data)}
+              f_met['data_vars']['ensemble_mean'] = {'dims': ('latitude', 'forecast_hour'), 'attrs': {'units': 'kg m**-1 s**-1', 'description': 'IVT Landfall ensemble mean'}, 'data': np.squeeze(e_mean[2,:,:].data)}
               endict['ensemble_mean'] = {'dtype': 'float32'}
-              f_met['data_vars']['EOF_pattern'] = {'dims': ('locations', 'forecast_hour'), 'attrs': {'units': 'kg m**-1 s**-1', 'description': 'IVT Landfall EOF pattern'}, 'data': divt}
-              endict['EOF_pattern'] = {'dtype': 'float32'}
+              f_met['data_vars']['EOF_pattern'] = {'dims': ('latitude', 'forecast_hour'), 'attrs': {'units': 'kg m**-1 s**-1', 'description': 'IVT Landfall EOF pattern'}, 'data': divt}
+              endict['EOF_pattern'] = {'dtype': 'float32'}       
+ 
+           f_met['data_vars']['fore_met_init'] = {'dims': ('num_ens',), 'attrs': {'units': '', 'description': 'precipitation PC'}, 'data': pc1.data}
 
-           xr.Dataset.from_dict(f_met).to_netcdf(
-               "{0}/{1}_f{2}_{3}.nc".format(self.config['locations']['work_dir'],str(self.datea_str),'%0.3i' % fhr2,metname), encoding=endict)
+           xr.Dataset.from_dict(f_met).to_netcdf("{0}/{1}_f{2}_{3}.nc".format(self.config['locations']['work_dir'],str(self.datea_str),'%0.3i' % fhr2,metname), encoding=endict)
 
            self.metlist.append('f{0}_{1}'.format('%0.3i' % fhr2, metname))
 
@@ -722,77 +724,56 @@ class ComputeForecastMetrics:
 
         search_max = 150.
 
-        for infull in glob.glob('{0}/{1}_*'.format(self.config['metric'].get('precip_metric_loc'),self.datea_str)):
+        logging.warning('  Mean Precipitation Metrics:')
+
+        for infile in glob.glob('{0}/{1}_*'.format(self.config['metric'].get('precip_metric_loc'),self.datea_str)):
+
+           fint = int(self.config['metric'].get('fcst_int',self.config['model']['fcst_hour_int']))
 
            try:
-              f = open(infull, 'r')
-           except IOError:
-              logging.warning('{0} does not exist.  Cannot compute precip EOF'.format(infull))
-              return None
-
-           #  Read the text file that contains information on the precipitation metric
-           fhr1 = int(f.readline())
-           fhr2 = int(f.readline())
-           latc = float(f.readline())
-           lonc = float(f.readline())
-           maxf = float(f.readline())
-#           lat1 = float(f.readline())
-#           lon1 = float(f.readline())
-#           lat2 = float(f.readline())
-#           lon2 = float(f.readline())
-
-           f.close()
-
-           lat1 = float(self.config['metric'].get('min_lat_precip','30.'))
-           lat2 = float(self.config['metric'].get('max_lat_precip','52.'))
-           lon1 = float(self.config['metric'].get('min_lon_precip','-130.'))
-           lon2 = float(self.config['metric'].get('max_lon_precip','-108.'))
+              conf = configparser.ConfigParser()
+              conf.read(infile)
+              fhr1 = int(conf['definition'].get('forecast_hour1',self.config['metric'].get('precip_mean_forecast_hour1','48')))
+              fhr2 = int(conf['definition'].get('forecast_hour2',self.config['metric'].get('precip_mean_forecast_hour2','120')))
+              lat1 = float(conf['definition'].get('latitude_min',30))
+              lat2 = float(conf['definition'].get('latitude_max',52))
+              lon1 = float(conf['definition'].get('longitude_min',-130))
+              lon2 = float(conf['definition'].get('longitude_max',-108))
+              latc = float(conf['definition'].get('latitude_center'))
+              latc = float(conf['definition'].get('longitude_center'))
+              adapt = eval(conf['definition'].get('adapt',self.config['metric'].get('precip_mean_adapt','False')))
+              time_adapt = eval(conf['definition'].get('time_adapt',self.config['metric'].get('precip_mean_time_adapt','False')))
+              time_dbuff = float(conf['definition'].get('time_adapt_domain',self.config['metric'].get('precip_mean_time_adapt_domain',2.0)))
+              time_freq = int(conf['definition'].get('time_adapt_freq',self.config['metric'].get('precip_mean_time_adapt_freq',6)))
+              pcpmin = float(conf['definition'].get('adapt_pcp_min',self.config['metric'].get('precip_mean_adapt_pcp_min','12.7')))
+              lmaskmin = float(conf['definition'].get('land_mask_minimum',self.config['metric'].get('land_mask_minimum','0.2')))
+              mask_land = eval(conf['definition'].get('land_mask',self.config['metric'].get('precip_mean_land_mask','False')))
+              frozen = eval(conf['definition'].get('frozen_mask',self.config['metric'].get('precip_mean_frozen_mask','False')))
+              metname = conf['definition'].get('metric_name','pcp')
+           except:
+              logging.warning('  {0} does not exist.  Using parameter and/or default values'.format(infile))
 
            if eval(self.config['model'].get('flip_lon','False')):
               lon1 = (lon1 + 360.) % 360.
               lon2 = (lon2 + 360.) % 360.
-              lonc = (lonc + 360.) % 360.
 
-           inpath, infile = infull.rsplit('/', 1)
-           infile1, metname = infile.split('_', 1)
-           fff1 = '%0.3i' % fhr1
-           fff2 = '%0.3i' % fhr2
+#           maxf = float(f.readline())
+
            datea_1   = self.datea + dt.timedelta(hours=fhr1)
            date1_str = datea_1.strftime("%Y%m%d%H")
            datea_2   = self.datea + dt.timedelta(hours=fhr2)
            date2_str = datea_2.strftime("%Y%m%d%H")
 
-           #  Read the total precipitation for the two times that make up the window
-           g1 = self.dpp.ReadGribFiles(self.datea_str, fhr1, self.config)
+           #  Read the total precipitation, scale to a 24 h value 
+           vDict = {'latitude': (lat1-0.00001, lat2+0.00001), 'longitude': (lon1-0.00001, lon2+0.00001),
+                       'description': 'precipitation', 'units': 'mm', '_FillValue': -9999.}
+           ensmat = self.__read_precip(fhr1, fhr2, self.config, vDict)
+           ensmat[:,:,:] = ensmat[:,:,:] * 24. / float(fhr2-fhr1)
 
-           vDict = {'latitude': (lat1, lat2), 'longitude': (lon1, lon2),
-                    'description': 'precipitation', 'units': 'mm', '_FillValue': -9999.}
-           vDict = g1.set_var_bounds('precipitation', vDict)
-
-           g2 = self.dpp.ReadGribFiles(self.datea_str, fhr2, self.config)
-
-           ensmat = g2.create_ens_array('precipitation', g2.nens, vDict)
-
-           for n in range(g2.nens):
-              ens1 = np.squeeze(g1.read_grib_field('precipitation', n, vDict))
-              ens2 = np.squeeze(g2.read_grib_field('precipitation', n, vDict))
-              ensmat[n,:,:] = ens2[:,:] - ens1[:,:]
-
-           if hasattr(ens2, 'units'):
-              if ens2.units == "m":
-                 vscale = 1000.
-              else:
-                 vscale = 1.
-           else:
-              vscale = 1.
-
-           #  Scale all of the rainfall to mm and to a 24 h precipitation
-           ensmat[:,:,:] = ensmat[:,:,:] * vscale * 24. / float(fhr2-fhr1)
-
-           lonarr, latarr = np.meshgrid(ens2.longitude.values, ens2.latitude.values)
+           lonarr, latarr = np.meshgrid(ensmat.longitude.values, ensmat.latitude.values)
            cdist = great_circle(lonc, latc, lonarr, latarr)
-           nlon  = len(ens2.longitude.values)
-           nlat  = len(ens2.latitude.values)
+           nlon  = len(ensmat.longitude.values)
+           nlat  = len(ensmat.latitude.values)
 
            e_mean = np.mean(ensmat, axis=0)
            e_std  = np.std(ensmat, axis=0)
@@ -811,53 +792,30 @@ class ComputeForecastMetrics:
            fmgrid = np.zeros(e_mean.shape)
            fmgrid[jcen,icen] = 1.0
 
-           #  start from location of max. SD, search for contiguous points above threshold
-           for r in range(1,max(nlon,nlat)):
+           iloc       = np.zeros(nlon*nlat, dtype=int)
+           jloc       = np.zeros(nlon*nlat, dtype=int)
+           nloc       = 0
+           iloc[nloc] = icen
+           jloc[nloc] = jcen
 
-              i1 = max(icen-r,0)
-              i2 = min(icen+r,nlon-1)
-              j1 = max(jcen-r,0)
-              j2 = min(jcen+r,nlat-1)
+           k = 0
+           while k <= nloc:
 
-              nring = 0
-              for i in range(i1+1, i2):
-                 if ( e_std[j1,i] >= stdmax and fmgrid[j1+1,i] == 1. ):
-                    nring = nring + 1
-                    fmgrid[j1,i] = 1.
-                 if ( e_std[j2,i] >= stdmax and fmgrid[j2-1,i] == 1. ):
-                    nring = nring + 1
-                    fmgrid[j2,i] = 1.
+              for i in range(max(iloc[k]-1,0), min(iloc[k]+2,nlon)):
+                 for j in range(max(jloc[k]-1,0), min(jloc[k]+2,nlat)):
+                    if e_std[j,i] >= stdmax and lmask[j,i] >= lmaskmin and fmgrid[j,i] < 1.0:
+                       nloc = nloc + 1
+                       iloc[nloc] = i
+                       jloc[nloc] = j
+                       fmgrid[j,i] = 1.0
 
-              for j in range(j1+1, j2):
-                 if ( e_std[j,i1] >= stdmax and fmgrid[j,i1+1] == 1. ):
-                    nring = nring + 1
-                    fmgrid[j,i1] = 1.
-                 if ( e_std[j,i2] >= stdmax and fmgrid[j,i2-1] == 1. ):
-                    nring = nring + 1
-                    fmgrid[j,i2] = 1.
-
-              if ( e_std[j1,i1] >= stdmax and (fmgrid[j1,i1+1] == 1. or fmgrid[j1+1,i1] == 1.)):
-                 nring = nring + 1
-                 fmgrid[j1,i1] = 1.
-
-              if ( e_std[j1,i2] >= stdmax and (fmgrid[j1,i2-1] == 1. or fmgrid[j1+1,i2] == 1.)):
-                 nring = nring + 1
-                 fmgrid[j1,i2] = 1.
-
-              if ( e_std[j2,i1] >= stdmax and (fmgrid[j2,i1+1] == 1. or fmgrid[j2-1,i1] == 1.)):
-                 nring = nring + 1
-                 fmgrid[j2,i1] = 1.
-
-              if ( e_std[j2,i2] >= stdmax and (fmgrid[j2,i2-1] == 1. or fmgrid[j2-1,i2] == 1.)):
-                 nring = nring + 1
-                 fmgrid[j2,i2] = 1.
+              k = k + 1
 
            fmout = np.zeros(g1.nens)
            npts  = np.sum(fmgrid)
 
            #  Average precipitation
            for n in range(g1.nens):
-
               fmout[n] = np.sum(fmgrid[:,:]*ensmat[n,:,:]) / npts
 
            #  Create basic figure, including political boundaries and grid lines
@@ -866,8 +824,16 @@ class ComputeForecastMetrics:
            colorlist = ("#FFFFFF", "#00ECEC", "#01A0F6", "#0000F6", "#00FF00", "#00C800", "#009000", "#FFFF00", \
                         "#E7C000", "#FF9000", "#FF0000", "#D60000", "#C00000", "#FF00FF", "#9955C9")
 
-           ax1 = plt.subplot(1, 2, 1, projection=ccrs.PlateCarree())
-           ax1 = self.__background_map(ax1, lat1, lon1, lat2, lon2)         
+           plotBase = self.config.copy()
+           plotBase['subplot']       = 'True'
+           plotBase['subrows']       = 1
+           plotBase['subcols']       = 2
+           plotBase['subnumber']     = 1
+           plotBase['grid_interval'] = config['fcst_diag'].get('grid_interval', 5)
+           plotBase['left_labels'] = 'None'
+           plotBase['right_labels'] = 'None'
+           plotBase['bottom_labels'] = 'None'
+           ax1 = background_map(config['model'].get('projection', 'PlateCarree'), lon1, lon2, lat1, lat2, plotBase)
 
            #  Plot the ensemble-mean precipitation on the left panel
            mpcp = [0.0, 0.25, 0.50, 1., 1.5, 2., 4., 6., 8., 12., 16., 24., 32., 64., 96., 97.]
@@ -880,8 +846,8 @@ class ComputeForecastMetrics:
 
            plt.title('Mean')
 
-           ax2 = plt.subplot(1, 2, 2, projection=ccrs.PlateCarree())
-           ax2 = self.__background_map(ax2, lat1, lon1, lat2, lon2) 
+           plotBase['subnumber']     = 2
+           ax2 = background_map(config['model'].get('projection', 'PlateCarree'), lon1, lon2, lat1, lat2, plotBase)
 
            #  Plot the ensemble standard deviation precipitation on the right panel
            spcp = [0., 3., 6., 9., 12., 15., 18., 21., 24., 27., 30., 33., 36., 39., 42., 43.]
@@ -896,32 +862,45 @@ class ComputeForecastMetrics:
 
            plt.title('Standard Deviation')
 
-           fig.suptitle('F{0}-F{1} Precipitation ({2}-{3})'.format(fff1, fff2, date1_str, date2_str), fontsize=16)
+           fig.suptitle('F{0}-F{1} Precipitation ({2}-{3})'.format('%0.3i' % fhr1, '%0.3i' % fhr2, date1_str, date2_str), fontsize=16)
 
-           outdir = '{0}/f{1}_{2}'.format(self.config['locations']['figure_dir'],fff2,metname)
+           outdir = '{0}/f{1}_{2}'.format(self.config['locations']['figure_dir'],'%0.3i' % fhr2,metname)
            if not os.path.isdir(outdir):
               try:
                  os.makedirs(outdir)
               except OSError as e:
                  raise e
 
-           plt.savefig('{0}/metric.png'.format(outdir),format='png',dpi=120,bbox_inches='tight')
+           plt.savefig('{0}/metric.png'.format(outdir), format='png', dpi=120, bbox_inches='tight')
            plt.close(fig)
 
-           f_metric = {'coords': {},
-                       'attrs': {'FORECAST_METRIC_LEVEL': '',
-                                 'FORECAST_METRIC_NAME': 'mean precipitation',
-                                 'FORECAST_METRIC_SHORT_NAME': 'pcp'},
-                       'dims': {'num_ens': g1.nens},
-                                'data_vars': {'fore_met_init': {'dims': ('num_ens',),
-                                                                'attrs': {'units': 'mm',
-                                                                         'description': 'precipitation'},
-                                                               'data': fmout}}}
+           fmetatt = {'FORECAST_METRIC_LEVEL': '', 'FORECAST_METRIC_NAME': 'precipitation', 'FORECAST_METRIC_SHORT_NAME': 'pcp', \
+                      'FORECAST_HOUR1': int(fhr1), 'FORECAST_HOUR2': int(fhr2), 'LATITUDE1': lat1, 'LATITUDE2': lat2, 'LONGITUDE1': lon1, \
+                      'LONGITUDE2': lon2, 'LAND_MASK_MINIMUM': lmaskmin, 'ADAPT': str(adapt), 'TIME_ADAPT': str(time_adapt), \
+                      'TIME_ADAPT_DOMAIN': time_dbuff, 'TIME_ADAPT_FREQ': time_freq, 'ADAPT_PCP_MIN': pcpmin}
 
-           xr.Dataset.from_dict(f_metric).to_netcdf(
-               "{0}/{1}_f{2}_{3}.nc".format(self.config['locations']['work_dir'], str(self.datea_str), fff2, metname), encoding={'fore_met_init': {'dtype': 'float32'}})
+           if 'lonc' in locals():
+              fmetatt.update({'LATITUDE_CENTER': latc, 'LONGITUDE_CENTER': lonc})
 
-           self.metlist.append('f{0}_{1}'.format(fff2,metname))
+           endict = {'fore_met_init': {'dtype': 'float32'}}
+
+           f_met = {'coords': {}, 'attrs': fmetatt, 'dims': {'num_ens': self.nens}, 'data_vars': {}}
+           f_met['coords']['longitude'] = {'dims': ('longitude'), 'attrs': {'units': 'degrees', 'description': 'longitude of grid points'}, 'data': ensmat.longitude.values}
+           endict['longitude'] = {'dtype': 'float32'}
+           f_met['coords']['latitude']  = {'dims': ('latitude'), 'attrs': {'units': 'degrees', 'description': 'latitude of grid points'}, 'data': ensmat.latitude.values}
+           endict['latitude'] = {'dtype': 'float32'}
+
+           f_met['data_vars']['ensemble_mean'] = {'dims': ('latitude', 'longitude'), 'attrs': {'units': 'mm', 'description': 'precipitation ensemble mean'}, 'data': e_mean.data}
+           endict['ensemble_mean'] = {'dtype': 'float32'}
+           f_met['data_vars']['metric_domain'] = {'dims': ('latitude', 'longitude'), 'attrs': {'units': '', 'description': ' precipitation metric domain'}, 'data': fmgrid.data}
+           endict['metric_domain'] = {'dtype': 'float32'}
+           f_met['data_vars']['fore_met_init'] = {'dims': ('num_ens',), 'attrs': {'units': 'mm', 'description': 'precipitation'}, 'data': pc1.data}
+
+           xr.Dataset.from_dict(f_met).to_netcdf("{0}/{1}_f{2}_{3}.nc".format(self.config['locations']['work_dir'],str(self.datea_str),'%0.3i' % fhr2,metname), encoding=endict)
+
+           self.metlist.append('f{0}_{1}'.format('%0.3i' % fhr2, metname))
+
+           del f_met
 
 
     def __precipitation_eof(self):
@@ -1273,16 +1252,19 @@ class ComputeForecastMetrics:
                       'LONGITUDE2': lon2, 'LAND_MASK_MINIMUM': lmaskmin, 'ADAPT': str(adapt), 'TIME_ADAPT': str(time_adapt), \
                       'TIME_ADAPT_DOMAIN': time_dbuff, 'TIME_ADAPT_FREQ': time_freq, 'ADAPT_PCP_MIN': pcpmin, 'EOF_NUMBER': int(eofn), 'VAR_FRACTION': fracvar}
 
-           f_met = {'coords': {'longitude': {'dims': ('longitude'), 'attrs': {'units': 'degrees', 'description': 'longitude of grid points'}, 'data': ensmat.longitude.values}, \
-                               'latitude':  {'dims': ('latitude'), 'attrs': {'units': 'degrees', 'description': 'latitude of grid points'}, 'data': ensmat.latitude.values}}, \
-                    'attrs': fmetatt, 'dims': {'num_ens': nens, 'latitude': len(ensmat.latitude.values), 'longitude': len(ensmat.longitude.values)}, \
-                    'data_vars': {'fore_met_init': {'dims': ('num_ens',), 'attrs': {'units': '', 'description': 'precipitation PC'}, 'data': pc1.data}}}
+           endict = {'fore_met_init': {'dtype': 'float32'}}
 
-           endict = {'latitude': {'dtype': 'float32'}, 'longitude': {'dtype': 'float32'}, 'fore_met_init': {'dtype': 'float32'}}
+           f_met = {'coords': {}, 'attrs': fmetatt, 'dims': {'num_ens': nens}, 'data_vars': {}}
+           f_met['coords']['longitude'] = {'dims': ('longitude'), 'attrs': {'units': 'degrees', 'description': 'longitude of grid points'}, 'data': ensmat.longitude.values}
+           endict['longitude'] = {'dtype': 'float32'}
+           f_met['coords']['latitude']  = {'dims': ('latitude'), 'attrs': {'units': 'degrees', 'description': 'latitude of grid points'}, 'data': ensmat.latitude.values}
+           endict['latitude'] = {'dtype': 'float32'}
+
            f_met['data_vars']['ensemble_mean'] = {'dims': ('latitude', 'longitude'), 'attrs': {'units': 'mm', 'description': 'precipitation ensemble mean'}, 'data': e_mean.data}
            endict['ensemble_mean'] = {'dtype': 'float32'}
            f_met['data_vars']['EOF_pattern'] = {'dims': ('latitude', 'longitude'), 'attrs': {'units': 'mm', 'description': 'precipitation EOF pattern'}, 'data': dpcp}
            endict['EOF_pattern'] = {'dtype': 'float32'}
+           f_met['data_vars']['fore_met_init'] = {'dims': ('num_ens',), 'attrs': {'units': '', 'description': 'precipitation PC'}, 'data': pc1.data}
 
            xr.Dataset.from_dict(f_met).to_netcdf(
                "{0}/{1}_f{2}_{3}.nc".format(self.config['locations']['work_dir'],str(self.datea_str),'%0.3i' % fhr2,metname), encoding=endict)
