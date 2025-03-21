@@ -620,7 +620,7 @@ class ComputeForecastMetrics:
               f_met['data_vars']['EOF_pattern'] = {'dims': ('latitude', 'forecast_hour'), 'attrs': {'units': 'kg m**-1 s**-1', 'description': 'IVT Landfall EOF pattern'}, 'data': divt}
               endict['EOF_pattern'] = {'dtype': 'float32'}       
  
-           f_met['data_vars']['fore_met_init'] = {'dims': ('num_ens',), 'attrs': {'units': '', 'description': 'precipitation PC'}, 'data': pc1.data}
+           f_met['data_vars']['fore_met_init'] = {'dims': ('num_ens',), 'attrs': {'units': '', 'description': 'IVT Landfall PC'}, 'data': pc1.data}
 
            xr.Dataset.from_dict(f_met).to_netcdf("{0}/{1}_f{2}_{3}.nc".format(self.config['locations']['work_dir'],str(self.datea_str),'%0.3i' % fhr2,metname), encoding=endict)
 
