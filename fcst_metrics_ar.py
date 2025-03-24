@@ -340,12 +340,21 @@ class ComputeForecastMetrics:
            fmetatt = {'FORECAST_METRIC_LEVEL': '', 'FORECAST_METRIC_NAME': 'IVT PC', 'FORECAST_METRIC_SHORT_NAME': 'ivteof', 'FORECAST_HOUR': int(fhr), \
                       'LATITUDE1': lat1, 'LATITUDE2': lat2, 'LONGITUDE1': lon1, 'LONGITUDE2': lon2, 'VECTOR': str(vecmet), 'EOF_NUMBER': int(eofn)}
 
-           f_met = {'coords': {}, 'attrs': fmetatt, 'dims': {'num_ens': g1.nens}, \
-                    'data_vars': {'fore_met_init': {'dims': ('num_ens',), 'attrs': {'units': '', \
-                                                    'description': 'IVT PC'}, 'data': pc1.data}}}
+           endict = {'fore_met_init': {'dtype': 'float32'}}
 
-           xr.Dataset.from_dict(f_met).to_netcdf(
-               "{0}/{1}_f{2}_{3}.nc".format(self.config['locations']['work_dir'],str(self.datea_str),'%0.3i' % fhr,metname), encoding={'fore_met_init': {'dtype': 'float32'}})
+           f_met = {'coords': {}, 'attrs': fmetatt, 'dims': {'num_ens': g1.nens}, 'data_vars': {}}
+           f_met['coords']['longitude'] = {'dims': ('longitude'), 'attrs': {'units': 'degrees', 'description': 'longitude of grid points'}, 'data': ivtm.longitude.values}
+           endict['longitude'] = {'dtype': 'float32'}
+           f_met['coords']['latitude']  = {'dims': ('latitude'), 'attrs': {'units': 'degrees', 'description': 'latitude of grid points'}, 'data': ivtm.latitude.values}
+           endict['latitude'] = {'dtype': 'float32'}
+
+           f_met['data_vars']['ensemble_mean'] = {'dims': ('latitude', 'longitude'), 'attrs': {'units': 'kg m**-1 s**-1', 'description': 'IVT ensemble mean'}, 'data': ivtm.data}
+           endict['ensemble_mean'] = {'dtype': 'float32'}
+           f_met['data_vars']['EOF_pattern'] = {'dims': ('latitude', 'longitude'), 'attrs': {'units': 'kg m**-1 s**-1', 'description': 'IVT EOF pattern'}, 'data': divm}
+           endict['EOF_pattern'] = {'dtype': 'float32'}
+           f_met['data_vars']['fore_met_init'] = {'dims': ('num_ens',), 'attrs': {'units': '', 'description': 'IVT PC'}, 'data': pc1.data}
+
+           xr.Dataset.from_dict(f_met).to_netcdf("{0}/{1}_f{2}_{3}.nc".format(self.config['locations']['work_dir'],str(self.datea_str),'%0.3i' % fhr,metname), encoding=endict)
 
            self.metlist.append('f{0}_{1}'.format('%0.3i' % fhr, metname))
 
@@ -1266,8 +1275,7 @@ class ComputeForecastMetrics:
            endict['EOF_pattern'] = {'dtype': 'float32'}
            f_met['data_vars']['fore_met_init'] = {'dims': ('num_ens',), 'attrs': {'units': '', 'description': 'precipitation PC'}, 'data': pc1.data}
 
-           xr.Dataset.from_dict(f_met).to_netcdf(
-               "{0}/{1}_f{2}_{3}.nc".format(self.config['locations']['work_dir'],str(self.datea_str),'%0.3i' % fhr2,metname), encoding=endict)
+           xr.Dataset.from_dict(f_met).to_netcdf("{0}/{1}_f{2}_{3}.nc".format(self.config['locations']['work_dir'],str(self.datea_str),'%0.3i' % fhr2,metname), encoding=endict)
 
            self.metlist.append('f{0}_{1}'.format('%0.3i' % fhr2, metname))
 
@@ -1540,13 +1548,22 @@ class ComputeForecastMetrics:
                       'FORECAST_HOUR1': int(fhr1), 'FORECAST_HOUR2': int(fhr2), 'AUTOMATED': str(auto_domain), \
                       'AUTOMATED_SD_MIN': auto_sdmin, 'ACCUMULATION': str(accumulated), 'EOF_NUMBER': int(eofn)} 
 
-           f_met = {'coords': {}, 'attrs': fmetatt, 'dims': {'num_ens': ensmat.shape[0], 'basin': len(hucid_list)}, \
-                    'data_vars': {'fore_met_init': {'dims': ('num_ens',), 'attrs': {'units': '', \
-                                                    'description': 'precipitation PC'}, 'data': pc1.data}, 
-                                  'huc_id': {'dims': ('basin',), 'attrs': {'description': 'HUC ID'}, 'data': hucid_list}}}
+           endict = {'fore_met_init': {'dtype': 'float32'}}
 
-           xr.Dataset.from_dict(f_met).to_netcdf(
-               "{0}/{1}_f{2}_{3}.nc".format(self.config['locations']['work_dir'],str(self.datea_str),'%0.3i' % fhr2,metname), encoding={'fore_met_init': {'dtype': 'float32'}})
+           f_met = {'coords': {}, 'attrs': fmetatt, 'dims': {'num_ens': ensmat.shape[0]}, 'data_vars': {}}
+           f_met['coords']['forecast_hour'] = {'dims': ('forecast_hour'), 'attrs': {'units': 'hr', 'description': 'forecast hour'}, 'data': ensmat.hour.values}
+           endict['forecast_hour'] = {'dtype': 'float32'}
+           f_met['coords']['huc_id'] = {'dims': ('huc_id',), 'attrs': {'description': 'HUC ID'}, 'data': hucid_list}
+           endict['huc_id'] = {'dtype': 'int'}
+
+           f_met['data_vars']['ensemble_mean'] = {'dims': ('forecast_hour'), 'attrs': {'units': 'mm', 'description': 'basin precipitation ensemble mean'}, 'data': e_mean.data}
+           endict['ensemble_mean'] = {'dtype': 'float32'}
+           f_met['data_vars']['EOF_pattern'] = {'dims': ('forecast_hour'), 'attrs': {'units': 'mm', 'description': 'basin precipitation EOF pattern'}, 'data': dpcp}
+           endict['EOF_pattern'] = {'dtype': 'float32'}
+
+           f_met['data_vars']['fore_met_init'] = {'dims': ('num_ens',), 'attrs': {'units': '', 'description': 'precipitation PC'}, 'data': pc1.data}
+
+           xr.Dataset.from_dict(f_met).to_netcdf("{0}/{1}_f{2}_{3}.nc".format(self.config['locations']['work_dir'],str(self.datea_str),'%0.3i' % fhr2,metname), encoding=endict)
 
            self.metlist.append('f{0}_{1}'.format('%0.3i' % fhr2, metname))
 
@@ -1681,12 +1698,21 @@ class ComputeForecastMetrics:
            fmetatt = {'FORECAST_METRIC_LEVEL': '', 'FORECAST_METRIC_NAME': 'SLP PC', 'FORECAST_METRIC_SHORT_NAME': 'slpeof', 'FORECAST_HOUR': int(fhr), \
                       'LATITUDE1': lat1, 'LATITUDE2': lat2, 'LONGITUDE1': lon1, 'LONGITUDE2': lon2, 'EOF_NUMBER': int(eofn)}
 
-           f_met = {'coords': {}, 'attrs': fmetatt, 'dims': {'num_ens': g1.nens}, \
-                    'data_vars': {'fore_met_init': {'dims': ('num_ens',), 'attrs': {'units': '', \
-                                                    'description': 'sea-level pressure PC'}, 'data': pc1.data}}}
+           endict = {'fore_met_init': {'dtype': 'float32'}}
 
-           xr.Dataset.from_dict(f_met).to_netcdf(
-               "{0}/{1}_f{2}_{3}.nc".format(self.config['locations']['work_dir'],str(self.datea_str),'%0.3i' % fhr,metname), encoding={'fore_met_init': {'dtype': 'float32'}})
+           f_met = {'coords': {}, 'attrs': fmetatt, 'dims': {'num_ens': g1.nens}, 'data_vars': {}}
+           f_met['coords']['longitude'] = {'dims': ('longitude'), 'attrs': {'units': 'degrees', 'description': 'longitude of grid points'}, 'data': ensmat.longitude.values}
+           endict['longitude'] = {'dtype': 'float32'}
+           f_met['coords']['latitude']  = {'dims': ('latitude'), 'attrs': {'units': 'degrees', 'description': 'latitude of grid points'}, 'data': ensmat.latitude.values}
+           endict['latitude'] = {'dtype': 'float32'}
+
+           f_met['data_vars']['ensemble_mean'] = {'dims': ('latitude', 'longitude'), 'attrs': {'units': 'hPa', 'description': 'sea-level pressure ensemble mean'}, 'data': e_mean.data}
+           endict['ensemble_mean'] = {'dtype': 'float32'}
+           f_met['data_vars']['EOF_pattern'] = {'dims': ('latitude', 'longitude'), 'attrs': {'units': 'hPa', 'description': 'sea-level pressure EOF pattern'}, 'data': dslp}
+           endict['EOF_pattern'] = {'dtype': 'float32'}
+           f_met['data_vars']['fore_met_init'] = {'dims': ('num_ens',), 'attrs': {'units': '', 'description': 'sea-level pressure PC'}, 'data': pc1.data}
+
+           xr.Dataset.from_dict(f_met).to_netcdf("{0}/{1}_f{2}_{3}.nc".format(self.config['locations']['work_dir'],str(self.datea_str),'%0.3i' % fhr,metname), encoding=endict)
 
            self.metlist.append('f{0}_{1}'.format('%0.3i' % fhr, metname))
 
@@ -1811,15 +1837,24 @@ class ComputeForecastMetrics:
            plt.savefig('{0}/metric.png'.format(outdir), format='png', dpi=120, bbox_inches='tight')
            plt.close(fig)
 
-           fmetatt = {'FORECAST_METRIC_LEVEL': '', 'FORECAST_METRIC_NAME': 'Height PC', 'FORECAST_METRIC_SHORT_NAME': 'hghteof', 'FORECAST_HOUR': int(fhr), \
+           fmetatt = {'FORECAST_METRIC_LEVEL': level, 'FORECAST_METRIC_NAME': 'Height PC', 'FORECAST_METRIC_SHORT_NAME': 'hghteof', 'FORECAST_HOUR': int(fhr), \
                       'LATITUDE1': lat1, 'LATITUDE2': lat2, 'LONGITUDE1': lon1, 'LONGITUDE2': lon2, 'PRESSURE': level, 'EOF_NUMBER': int(eofn)}
 
-           f_met = {'coords': {}, 'attrs': fmetatt, 'dims': {'num_ens': g1.nens}, \
-                    'data_vars': {'fore_met_init': {'dims': ('num_ens',), 'attrs': {'units': '', \
-                                                    'description': 'height PC'}, 'data': pc1.data}}}
+           endict = {'fore_met_init': {'dtype': 'float32'}}
 
-           xr.Dataset.from_dict(f_met).to_netcdf(
-               "{0}/{1}_f{2}_{3}.nc".format(self.config['locations']['work_dir'],str(self.datea_str),'%0.3i' % fhr,metname), encoding={'fore_met_init': {'dtype': 'float32'}})
+           f_met = {'coords': {}, 'attrs': fmetatt, 'dims': {'num_ens': g1.nens}, 'data_vars': {}}
+           f_met['coords']['longitude'] = {'dims': ('longitude'), 'attrs': {'units': 'degrees', 'description': 'longitude of grid points'}, 'data': ensmat.longitude.values}
+           endict['longitude'] = {'dtype': 'float32'}
+           f_met['coords']['latitude']  = {'dims': ('latitude'), 'attrs': {'units': 'degrees', 'description': 'latitude of grid points'}, 'data': ensmat.latitude.values}
+           endict['latitude'] = {'dtype': 'float32'}
+
+           f_met['data_vars']['ensemble_mean'] = {'dims': ('latitude', 'longitude'), 'attrs': {'units': 'm', 'description': '{0} hPa height ensemble mean'.format(level)}, 'data': e_mean.data}
+           endict['ensemble_mean'] = {'dtype': 'float32'}
+           f_met['data_vars']['EOF_pattern'] = {'dims': ('latitude', 'longitude'), 'attrs': {'units': 'm', 'description': '{0} hPa height EOF pattern'.format(level)}, 'data': dhght}
+           endict['EOF_pattern'] = {'dtype': 'float32'}
+           f_met['data_vars']['fore_met_init'] = {'dims': ('num_ens',), 'attrs': {'units': '', 'description': 'height PC'}, 'data': pc1.data}
+
+           xr.Dataset.from_dict(f_met).to_netcdf("{0}/{1}_f{2}_{3}.nc".format(self.config['locations']['work_dir'],str(self.datea_str),'%0.3i' % fhr,metname), encoding=endict)
 
            self.metlist.append('f{0}_{1}'.format('%0.3i' % fhr, metname))
 
@@ -1984,15 +2019,24 @@ class ComputeForecastMetrics:
            plt.savefig('{0}/metric.png'.format(outdir), format='png', dpi=120, bbox_inches='tight')
            plt.close(fig)
 
-           fmetatt = {'FORECAST_METRIC_LEVEL': '', 'FORECAST_METRIC_NAME': 'Potential Vorticity PC', 'FORECAST_METRIC_SHORT_NAME': 'pveof', 'FORECAST_HOUR': int(fhr), \
+           fmetatt = {'FORECAST_METRIC_LEVEL': level, 'FORECAST_METRIC_NAME': 'Potential Vorticity PC', 'FORECAST_METRIC_SHORT_NAME': 'pveof', 'FORECAST_HOUR': int(fhr), \
                       'LATITUDE1': lat1, 'LATITUDE2': lat2, 'LONGITUDE1': lon1, 'LONGITUDE2': lon2, 'PRESSURE': level, 'EOF_NUMBER': int(eofn)}
 
-           f_met = {'coords': {}, 'attrs': fmetatt, 'dims': {'num_ens': g1.nens}, \
-                    'data_vars': {'fore_met_init': {'dims': ('num_ens',), 'attrs': {'units': '', \
-                                                    'description': 'PV PC'}, 'data': pc1.data}}}
+           endict = {'fore_met_init': {'dtype': 'float32'}}
 
-           xr.Dataset.from_dict(f_met).to_netcdf(
-               "{0}/{1}_f{2}_{3}.nc".format(self.config['locations']['work_dir'],str(self.datea_str),'%0.3i' % fhr,metname), encoding={'fore_met_init': {'dtype': 'float32'}})
+           f_met = {'coords': {}, 'attrs': fmetatt, 'dims': {'num_ens': g1.nens}, 'data_vars': {}}
+           f_met['coords']['longitude'] = {'dims': ('longitude'), 'attrs': {'units': 'degrees', 'description': 'longitude of grid points'}, 'data': ensmat.longitude.values}
+           endict['longitude'] = {'dtype': 'float32'}
+           f_met['coords']['latitude']  = {'dims': ('latitude'), 'attrs': {'units': 'degrees', 'description': 'latitude of grid points'}, 'data': ensmat.latitude.values}
+           endict['latitude'] = {'dtype': 'float32'}
+
+           f_met['data_vars']['ensemble_mean'] = {'dims': ('latitude', 'longitude'), 'attrs': {'units': 'PVU', 'description': '{0} hPa PV ensemble mean'.format(level)}, 'data': e_mean.data}
+           endict['ensemble_mean'] = {'dtype': 'float32'}
+           f_met['data_vars']['EOF_pattern'] = {'dims': ('latitude', 'longitude'), 'attrs': {'units': 'PVU', 'description': '{0} hPa PV EOF pattern'.format(level)}, 'data': dpvort}
+           endict['EOF_pattern'] = {'dtype': 'float32'}
+           f_met['data_vars']['fore_met_init'] = {'dims': ('num_ens',), 'attrs': {'units': '', 'description': 'PV PC'}, 'data': pc1.data}
+
+           xr.Dataset.from_dict(f_met).to_netcdf("{0}/{1}_f{2}_{3}.nc".format(self.config['locations']['work_dir'],str(self.datea_str),'%0.3i' % fhr,metname), encoding=endict)
 
            self.metlist.append('f{0}_{1}'.format('%0.3i' % fhr, metname))
 
@@ -2145,16 +2189,25 @@ class ComputeForecastMetrics:
            plt.savefig('{0}/metric.png'.format(outdir), format='png', dpi=120, bbox_inches='tight')
            plt.close(fig)
 
-           fmetatt = {'FORECAST_METRIC_LEVEL': '', 'FORECAST_METRIC_NAME': 'Temperature PC', 'FORECAST_METRIC_SHORT_NAME': 'tempeof', 'FORECAST_HOUR': int(fhr), \
+           fmetatt = {'FORECAST_METRIC_LEVEL': level, 'FORECAST_METRIC_NAME': 'Temperature PC', 'FORECAST_METRIC_SHORT_NAME': 'tempeof', 'FORECAST_HOUR': int(fhr), \
                       'LATITUDE1': lat1, 'LATITUDE2': lat2, 'LONGITUDE1': lon1, 'LONGITUDE2': lon2, 'PRESSURE': level, \
                       'TEMPERATURE_MIN': tmin, 'TEMPERATURE_MAX': tmax, 'EOF_NUMBER': int(eofn)}
 
-           f_met = {'coords': {}, 'attrs': fmetatt, 'dims': {'num_ens': g1.nens}, \
-                    'data_vars': {'fore_met_init': {'dims': ('num_ens',), 'attrs': {'units': '', \
-                                                    'description': 'temperature PC'}, 'data': pc1.data}}}
+           endict = {'fore_met_init': {'dtype': 'float32'}}
 
-           xr.Dataset.from_dict(f_met).to_netcdf(
-               "{0}/{1}_f{2}_{3}.nc".format(self.config['locations']['work_dir'],str(self.datea_str),'%0.3i' % fhr,metname), encoding={'fore_met_init': {'dtype': 'float32'}})
+           f_met = {'coords': {}, 'attrs': fmetatt, 'dims': {'num_ens': g1.nens}, 'data_vars': {}}
+           f_met['coords']['longitude'] = {'dims': ('longitude'), 'attrs': {'units': 'degrees', 'description': 'longitude of grid points'}, 'data': ensmat.longitude.values}
+           endict['longitude'] = {'dtype': 'float32'}
+           f_met['coords']['latitude']  = {'dims': ('latitude'), 'attrs': {'units': 'degrees', 'description': 'latitude of grid points'}, 'data': ensmat.latitude.values}
+           endict['latitude'] = {'dtype': 'float32'}
+
+           f_met['data_vars']['ensemble_mean'] = {'dims': ('latitude', 'longitude'), 'attrs': {'units': 'K', 'description': '{0} hPa temp. ensemble mean'.format(level)}, 'data': e_mean.data}
+           endict['ensemble_mean'] = {'dtype': 'float32'}
+           f_met['data_vars']['EOF_pattern'] = {'dims': ('latitude', 'longitude'), 'attrs': {'units': 'K', 'description': '{0} hPa temp. EOF pattern'.format(level)}, 'data': dtemp}
+           endict['EOF_pattern'] = {'dtype': 'float32'}
+           f_met['data_vars']['fore_met_init'] = {'dims': ('num_ens',), 'attrs': {'units': '', 'description': 'temperature PC'}, 'data': pc1.data}
+
+           xr.Dataset.from_dict(f_met).to_netcdf("{0}/{1}_f{2}_{3}.nc".format(self.config['locations']['work_dir'],str(self.datea_str),'%0.3i' % fhr,metname), encoding=endict)
 
            self.metlist.append('f{0}_{1}'.format('%0.3i' % fhr, metname))
 
