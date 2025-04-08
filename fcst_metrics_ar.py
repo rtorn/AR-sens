@@ -348,7 +348,7 @@ class ComputeForecastMetrics:
            f_met['coords']['latitude']  = {'dims': ('latitude'), 'attrs': {'units': 'degrees', 'description': 'latitude of grid points'}, 'data': ivtm.latitude.values}
            endict['latitude'] = {'dtype': 'float32'}
 
-           f_met['data_vars']['ensemble_mean'] = {'dims': ('latitude', 'longitude'), 'attrs': {'units': 'kg m**-1 s**-1', 'description': 'IVT ensemble mean'}, 'data': ivtm.data}
+           f_met['data_vars']['ensemble_mean'] = {'dims': ('latitude', 'longitude'), 'attrs': {'units': 'kg m**-1 s**-1', 'description': 'IVT ensemble mean'}, 'data': ivtm_mean.data}
            endict['ensemble_mean'] = {'dtype': 'float32'}
            f_met['data_vars']['EOF_pattern'] = {'dims': ('latitude', 'longitude'), 'attrs': {'units': 'kg m**-1 s**-1', 'description': 'IVT EOF pattern'}, 'data': divm}
            endict['EOF_pattern'] = {'dtype': 'float32'}
