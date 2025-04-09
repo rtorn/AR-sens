@@ -46,13 +46,15 @@ def ComputeFields(datea, fhr, config):
               'longitude': {'dtype': 'float32'}, 'ensemble': {'dtype': 'int32'}}
 
    #  Compute the IVT (if desired and file is missing)
-   outfile='{0}/{1}_f{2}_ivt_ens.nc'.format(config['locations']['work_dir'],datea,fff)
-   if (not os.path.isfile(outfile) and config['fields'].get('calc_ivt','True') == 'True'):
+   outfileu='{0}/{1}_f{2}_ivtu_ens.nc'.format(config['locations']['work_dir'],datea,fff)
+   outfilev='{0}/{1}_f{2}_ivtv_ens.nc'.format(config['locations']['work_dir'],datea,fff)
+   outfilem='{0}/{1}_f{2}_ivt_ens.nc'.format(config['locations']['work_dir'],datea,fff)
+   if (not os.path.isfile(outfilem) and config['fields'].get('calc_ivt','True') == 'True'):
 
       logging.warning("  Computing IVT")
 
       vDict = {'latitude': (lat1, lat2), 'longitude': (lon1, lon2),
-               'description': 'Integrated Water Vapor Transport', 'units': 'kg s-1', '_FillValue': -9999.}
+               'description': 'Integrated Water Vapor Transport', 'units': 'kg m s-1', '_FillValue': -9999.}
       vDict = g1.set_var_bounds('temperature', vDict)
 
       ivtm = g1.create_ens_array('temperature', g1.nens, vDict)
@@ -66,13 +68,15 @@ def ComputeFields(datea, fhr, config):
 
          ivtu, ivtv, ivtm = read_ivt(datea, fhr, config, vDict)
 
-      ivtm.to_netcdf(outfile, encoding=dencode)
-      del ivtm
+      ivtu.to_netcdf(outfileu, encoding=dencode)
+      ivtv.to_netcdf(outfilev, encoding=dencode)
+      ivtm.to_netcdf(outfilem, encoding=dencode)
+      del ivtu,ivtv,ivtm
       gc.collect()
 
-   elif os.path.isfile(outfile):
+   elif os.path.isfile(outfilem):
 
-      logging.warning("  Obtaining integrated water vapor transport data from {0}".format(outfile))
+      logging.warning("  Obtaining integrated water vapor transport data from {0}".format(outfilem))
 
 
    #  Read IWV from file, if ensemble file is not present
@@ -85,7 +89,7 @@ def ComputeFields(datea, fhr, config):
          logging.warning('  Computing IWV')
 
          vDict = {'latitude': (lat1, lat2), 'longitude': (lon1, lon2),
-                  'description': 'MSLP', 'units': 'hPa', '_FillValue': -9999.}
+                  'description': 'IVW', 'units': 'mm', '_FillValue': -9999.}
          vDict = g1.set_var_bounds('iwv', vDict)
          ensmat = g1.create_ens_array('iwv', g1.nens, vDict)
 
@@ -487,6 +491,37 @@ def ComputeFields(datea, fhr, config):
 
    g1.close_files()
    del g1
+
+
+def SavePrecipitation(datea, fhr, config):
+
+   dencode = {'ensemble_data': {'dtype': 'float32'}, 'latitude': {'dtype': 'float32'},
+              'longitude': {'dtype': 'float32'}, 'ensemble': {'dtype': 'int32'}}
+
+   outfile='{0}/{1}_f{2}_precip_ens.nc'.format(config['locations']['work_dir'],datea,'%0.3i' % fhr)
+   if not os.path.isfile(outfile):
+
+      lat1 = float(config['fields'].get('min_lat_precip','30.'))
+      lat2 = float(config['fields'].get('max_lat_precip','52.'))
+      lon1 = float(config['fields'].get('min_lon_precip','-130.'))
+      lon2 = float(config['fields'].get('max_lon_precip','-108.'))
+
+      logging.warning('  Saving {0} h Precipitation'.format(fhr))
+
+      dpp = importlib.import_module(config['model']['io_module'])
+      g1 = dpp.ReadGribFiles(datea, fhr, config)
+
+      vDict = {'latitude': (lat1-0.00001, lat2+0.00001), 'longitude': (lon1-0.00001, lon2+0.00001),
+               'description': 'precipitation', 'units': 'mm', '_FillValue': -9999.}
+      vDict = g1.set_var_bounds('precipitation', vDict)
+      ensmat = g1.create_ens_array('precipitation', g1.nens, vDict)
+
+      for n in range(g1.nens):
+         ensmat[n,:,:] = np.squeeze(g1.read_grib_field('precipitation', n, vDict))
+
+      ensmat.to_netcdf(outfile, encoding=dencode)
+      del ensmat
+      gc.collect()
 
 
 def read_precip(datea, fhr1, fhr2, conf, vDict):

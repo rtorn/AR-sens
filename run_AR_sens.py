@@ -12,7 +12,7 @@ from multiprocessing import Pool
 sys.path.append('../esens-util')
 from fcst_diag import precipitation_ens_maps, basin_ens_maps
 import fcst_metrics_ar as fmet
-from compute_precip_fields import ComputeFields
+from compute_precip_fields import ComputeFields,SavePrecipitation
 from precip_sens import ComputeSensitivity
 
 #  Routine to read configuration file
@@ -161,6 +161,12 @@ def run_ens_sensitivity(datea, paramfile):
              ComputeFields(datea, fhr, config)
 
 
+    #  Save the precipitation fields, which could be used to re-compute metrics in future if wanted
+    if eval(config['fields'].get('save_precip','False')):
+       fhrlist = [e.strip() for e in config['fields'].get('save_precip_hours','').split(',')]
+       for fhr in fhrlist:
+          SavePrecipitation(datea, int(fhr), config)
+
     #  Compute sensitivity of each metric to forecast fields at earlier times
     if eval(config['sens'].get('multiprocessor','False')):    #  Use parallel processing
 
@@ -207,7 +213,8 @@ def run_ens_sensitivity(datea, paramfile):
        print("Add capability")
 
     if ( config['locations'].get('archive_fields','False') == 'True' ):
-       os.rename('{0}/\*_ens.nc'.format(config['locations']['work_dir']), '{0}/.'.format(config['locations']['output_dir']))
+       for ensfile in glob.glob('{0}/*_ens.nc'.format(config['locations']['work_dir'])):
+          shutil.move(ensfile, '{0}/.'.format(config['locations']['output_dir'])) 
 
 
     #  Create a tar file of gridded sensitivity files, if needed

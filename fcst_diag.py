@@ -227,9 +227,11 @@ def read_ivt(datea, fhr, config, vDict):
 
    dpp = importlib.import_module(config['model']['io_module'])
    gf = dpp.ReadGribFiles(datea, fhr, config)
-   ivtu = gf.create_ens_array('temperature', gf.nens, vDict)
-   ivtv = gf.create_ens_array('temperature', gf.nens, vDict)
    ivtt = gf.create_ens_array('temperature', gf.nens, vDict)
+   vDict['description'] = 'Zonal Integrated Water Vapor Transport'
+   ivtu = gf.create_ens_array('temperature', gf.nens, vDict)
+   vDict['description'] = 'Meridional Integrated Water Vapor Transport'
+   ivtv = gf.create_ens_array('temperature', gf.nens, vDict)
 
    if 'ivt' in gf.var_dict:
 
