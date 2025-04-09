@@ -9,6 +9,7 @@ import metpy.constants as mpcon
 import metpy.calc as mpcalc
 from metpy.units import units
 
+from fcst_diag import read_ivt
 import grid_calc
 
 '''
@@ -54,44 +55,19 @@ def ComputeFields(datea, fhr, config):
                'description': 'Integrated Water Vapor Transport', 'units': 'kg s-1', '_FillValue': -9999.}
       vDict = g1.set_var_bounds('temperature', vDict)
 
-      ensmat = g1.create_ens_array('temperature', g1.nens, vDict)
+      ivtm = g1.create_ens_array('temperature', g1.nens, vDict)
 
       if 'ivt' in g1.var_dict:
 
          for n in range(g1.nens):
-            ensmat[n,:,:] = g1.read_grib_field('ivt', n, vDict)      
+            ivtm[n,:,:] = g1.read_grib_field('ivt', n, vDict)      
 
       else:
 
-         vDict = g1.set_var_bounds('zonal_wind', {'latitude': (lat1, lat2), 'longitude': (lon1, lon2), 'isobaricInhPa': (400, 1000), \
-                                                  'description': 'Integrated Water Vapor Transport', 'units': 'hPa', '_FillValue': -9999.})
-         tDict = g1.set_var_bounds('temperature', {'latitude': (lat1, lat2), 'longitude': (lon1, lon2), 'isobaricInhPa': (400, 1000), \
-                                                   'description': 'Integrated Water Vapor Transport', 'units': 'hPa', '_FillValue': -9999.})
+         ivtu, ivtv, ivtm = read_ivt(datea, fhr, config, vDict)
 
-         for n in range(g1.nens):
-
-            #  Obtain the wind speeds
-            uwnd = g1.read_grib_field('zonal_wind', n, vDict)
-            vwnd = g1.read_grib_field('meridional_wind', n, vDict)
-            uwnd[:,:,:] = np.sqrt(uwnd[:,:,:]**2 + vwnd[:,:,:]**2) * units('m / sec')
-
-            #  Compute the mixing ratio
-            pres = (uwnd.isobaricInhPa.values * units.hPa).to(units.Pa)
-
-            if g1.has_specific_humidity:
-               qvap = g1.read_grib_field('specific_humidity', n, tDict) * units('dimensionless')
-            else:
-               tmpk = g1.read_grib_field('temperature', n, tDict) * units('K')
-               relh = np.minimum(np.maximum(g1.read_grib_field('relative_humidity', n, tDict), 0.01), 100.0) * units('percent')
-               qvap = mpcalc.mixing_ratio_from_relative_humidity(pres[:,None,None], tmpk, relh)
-               del tmpk, relh
-
-            #  Integrate water vapor over the pressure levels
-            ensmat[n,:,:] = np.abs(np.trapz(uwnd[:,:,:]*qvap[:,:,:], pres, axis=0)) / mpcon.earth_gravity
-            del uwnd,vwnd,qvap,pres
-
-      ensmat.to_netcdf(outfile, encoding=dencode)
-      del ensmat
+      ivtm.to_netcdf(outfile, encoding=dencode)
+      del ivtm
       gc.collect()
 
    elif os.path.isfile(outfile):

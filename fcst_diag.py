@@ -20,7 +20,6 @@ import metpy.constants as mpcon
 import metpy.calc as mpcalc
 from metpy.units import units
 
-from compute_precip_fields import read_precip
 from SensPlotRoutines import background_map
 
 def basin_ens_maps(datea, fhr1, fhr2, config):
@@ -271,3 +270,53 @@ def read_ivt(datea, fhr, config, vDict):
          ivtt[n,:,:] = np.sqrt(ivtu[n,:,:]**2 + ivtv[n,:,:]**2)
 
    return(ivtu, ivtv, ivtt)
+
+
+def read_precip(datea, fhr1, fhr2, conf, vDict):
+
+   dpp = importlib.import_module(conf['model']['io_module'])
+
+   g2 = dpp.ReadGribFiles(datea, fhr2, conf)
+   vDict = g2.set_var_bounds('precipitation', vDict)
+   ensmat = g2.create_ens_array('precipitation', g2.nens, vDict)
+
+   #  Calculate total precipitation for models that provide total precipitation over model run
+   if g2.has_total_precip:
+
+      if fhr1 > 0:
+         g1 = dpp.ReadGribFiles(datea, fhr1, conf)
+         for n in range(g2.nens):
+            ens1 = np.squeeze(g1.read_grib_field('precipitation', n, vDict))
+            ens2 = np.squeeze(g2.read_grib_field('precipitation', n, vDict))
+            ensmat[n,:,:] = ens2[:,:] - ens1[:,:]
+      else:
+         for n in range(g2.nens):
+            ensmat[n,:,:] = np.squeeze(g2.read_grib_field('precipitation', n, vDict))
+
+      if hasattr(ens2, 'units'):
+         if ens2.units == "m":
+            vscale = 1000.
+         else:
+            vscale = 1.
+      else:
+         vscale = 1.
+
+   #  Calculate total precipitaiton for models that output precipitation in time periods
+   else:
+
+      fint = int(conf['metric'].get('fcst_int',6))
+      for fhr in range(fhr1+fint, fhr2+fint, fint):
+         g1 = dpp.ReadGribFiles(datea, fhr, conf)
+         for n in range(g1.nens):
+            ensmat[n,:,:] = ensmat[n,:,:] + np.squeeze(g1.read_grib_field('precipitation', n, vDict))
+
+      if hasattr(g1.read_grib_field('precipitation', 0, vDict), 'units'):
+         if g1.read_grib_field('precipitation', 0, vDict).units == "m":
+            vscale = 1000.
+         else:
+            vscale = 1.
+      else:
+         vscale = 1.
+
+   return ensmat[:,:,:] * vscale
+

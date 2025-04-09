@@ -419,6 +419,7 @@ class ComputeForecastMetrics:
            lon2 = np.max(lonlist)
 
            g1 = self.dpp.ReadGribFiles(self.datea_str, fhr1, self.config)
+           nens = g1.nens
 
            vDict = {'latitude': (lat1, lat2), 'longitude': (lon1, lon2),
                     'description': 'Integrated Water Vapor Transport', 'units': 'kg s-1', '_FillValue': -9999.}
@@ -496,7 +497,7 @@ class ComputeForecastMetrics:
                     latlist.append(latcoa[i])
                     lonlist.append(loncoa[i])
 
-           for n in range(g1.nens):
+           for n in range(nens):
               ivtarr[n,:,:,:] = ivtarr[n,:,:,:] - e_mean[:,:,:]
 
            #  Compute the EOF of the precipitation pattern and then the PCs
@@ -510,21 +511,21 @@ class ComputeForecastMetrics:
 
            #  Compute the IVT pattern associated with a 1 PC perturbation
            divt = np.zeros(np.squeeze(e_mean[2,:,:]).shape)
-           for n in range(g1.nens):
+           for n in range(nens):
               divt[:,:] = divt[:,:] + ivtarr[n,2,:,:] * pc1[n]
 
-           divt[:,:] = divt[:,:] / float(g1.nens)
+           divt[:,:] = divt[:,:] / float(nens)
 
            if vecmet:
 
               divu = np.zeros(np.squeeze(e_mean[0,:,:]).shape)
               divv = np.zeros(np.squeeze(e_mean[1,:,:]).shape)
-              for n in range(g1.nens):
+              for n in range(nens):
                  divu[:,:] = divu[:,:] + ivtarr[n,0,:,:] * pc1[n]
                  divv[:,:] = divv[:,:] + ivtarr[n,1,:,:] * pc1[n]
 
-              divu[:,:] = divu[:,:] / float(g1.nens)
-              divv[:,:] = divv[:,:] / float(g1.nens)
+              divu[:,:] = divu[:,:] / float(nens)
+              divv[:,:] = divv[:,:] / float(nens)
 
               if np.sum(divu) + np.sum(divv) < 0.0:
                  divu[:,:] = -divu[:,:]
@@ -613,7 +614,7 @@ class ComputeForecastMetrics:
 
            endict = {'fore_met_init': {'dtype': 'float32'}}
 
-           f_met = {'coords': {}, 'attrs': fmetatt, 'dims': {'num_ens': g1.nens}, 'data_vars': {}}
+           f_met = {'coords': {}, 'attrs': fmetatt, 'dims': {'num_ens': nens}, 'data_vars': {}}
            f_met['coords']['forecast_hour'] = {'dims': ('forecast_hour'), 'attrs': {'units': 'hr', 'description': 'forecast hour'}, 'data': ivtarr.fcst_hour.values}
            endict['longitude'] = {'dtype': 'float32'}
            f_met['coords']['latitude']  = {'dims': ('latitude'), 'attrs': {'units': 'degrees', 'description': 'latitude of landfall points'}, 'data': ivtarr.latitude.values}
@@ -677,14 +678,16 @@ class ComputeForecastMetrics:
     def __ivt_landfall(self, fhr1, fhr2, latlist, lonlist, vDict, gf):
 
 
-        ensmat = gf.create_ens_array('temperature', gf.nens, vDict)
+        ensmat    = gf.create_ens_array('temperature', gf.nens, vDict)
+        latitude  = ensmat.latitude.values
+        longitude = ensmat.longitude.values
 
         fhrvec = np.arange(fhr1, fhr2+int(self.config['model']['fcst_hour_int']), int(self.config['model']['fcst_hour_int']))
 
         ivtarr = xr.DataArray(name='ensemble_data', data=np.zeros([gf.nens, 3, len(latlist), len(fhrvec)]), dims=['ensemble', 'component', 'latitude', 'fcst_hour'], \
                               coords={'ensemble': [i for i in range(gf.nens)], 'fcst_hour': fhrvec, 'latitude': latlist})
 
-        vecloc = len(np.shape(ensmat.latitude)) == 1
+        vecloc = len(np.shape(latitude)) == 1
 
         if not vecloc:
 
@@ -693,8 +696,8 @@ class ComputeForecastMetrics:
 
            for i in range(len(latlist)):
 
-              abslat = np.abs(ensmat.latitude-latlist[i])
-              abslon = np.abs(ensmat.longitude-lonlist[i])
+              abslat = np.abs(latitude-latlist[i])
+              abslon = np.abs(longitude-lonlist[i])
               c = np.maximum(abslon, abslat)
 
               ([yloc[i]], [xloc[i]]) = np.where(c == np.min(c))
@@ -719,6 +722,8 @@ class ComputeForecastMetrics:
                  ivtarr[:,0,i,t] = ivtu.sel(lat=yloc[i], lon=xloc[i]).squeeze().data
                  ivtarr[:,1,i,t] = ivtv.sel(lat=yloc[i], lon=xloc[i]).squeeze().data
                  ivtarr[:,2,i,t] = ivtm.sel(lat=yloc[i], lon=xloc[i]).squeeze().data
+
+        del latitude,longitude
 
         return(ivtarr)
 
