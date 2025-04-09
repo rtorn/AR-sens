@@ -514,7 +514,7 @@ def SavePrecipitation(datea, fhr, config):
       vDict = {'latitude': (lat1-0.00001, lat2+0.00001), 'longitude': (lon1-0.00001, lon2+0.00001),
                'description': 'precipitation', 'units': 'mm', '_FillValue': -9999.}
       vDict = g1.set_var_bounds('precipitation', vDict)
-      ensmat = g1.create_ens_array('precipitation', g1.nens, vDict)
+      ensmat = g1.create_ens_array('precipitation', g1.nens, vDict).assign_attrs(total_precip=str(g1.has_total_precip))
 
       for n in range(g1.nens):
          ensmat[n,:,:] = np.squeeze(g1.read_grib_field('precipitation', n, vDict))
