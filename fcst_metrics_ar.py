@@ -418,15 +418,23 @@ class ComputeForecastMetrics:
            lon1 = np.min(lonlist)
            lon2 = np.max(lonlist)
 
-           g1 = self.dpp.ReadGribFiles(self.datea_str, fhr1, self.config)
-           nens = g1.nens
-
            vDict = {'latitude': (lat1, lat2), 'longitude': (lon1, lon2),
                     'description': 'Integrated Water Vapor Transport', 'units': 'kg s-1', '_FillValue': -9999.}
-           vDict = g1.set_var_bounds('temperature', vDict)
+
+           if eval(self.config['metric'].get('metric_from_fields','False')) and \
+              os.path.exists('{0}/{1}_f{2}_ivt_ens.nc'.format(self.config['locations']['work_dir'],self.datea_str,'%0.3i' % fhr1)):
+
+              vDict['from_field'] = 'True'
+              g1 = []
+
+           else:
+
+              g1 = self.dpp.ReadGribFiles(self.datea_str, fhr1, self.config)
+              vDict = g1.set_var_bounds('temperature', vDict)
 
            ivtarr = self.__ivt_landfall(fhr1, fhr2, latlist, lonlist, vDict, g1)
            e_mean = np.mean(ivtarr, axis=0)
+           nens   = ivtarr.shape[0]
 
            if adapt:
 
@@ -677,15 +685,24 @@ class ComputeForecastMetrics:
 
     def __ivt_landfall(self, fhr1, fhr2, latlist, lonlist, vDict, gf):
 
+        if eval(vDict.get('from_field','False')):
 
-        ensmat    = gf.create_ens_array('temperature', gf.nens, vDict)
-        latitude  = ensmat.latitude.values
-        longitude = ensmat.longitude.values
+           ds = xr.open_dataset('{0}/{1}_f{2}_ivt_ens.nc'.format(self.config['locations']['work_dir'],self.datea_str,'%0.3i' % fhr1))
+           latitude  = ds.ensemble_data.latitude.values
+           longitude = ds.ensemble_data.longitude.values
+           nens      = ds.ensemble_data.shape[0]
+
+        else:
+
+           ensmat    = gf.create_ens_array('temperature', gf.nens, vDict)
+           latitude  = ensmat.latitude.values
+           longitude = ensmat.longitude.values
+           nens      = gf.nens
 
         fhrvec = np.arange(fhr1, fhr2+int(self.config['model']['fcst_hour_int']), int(self.config['model']['fcst_hour_int']))
 
-        ivtarr = xr.DataArray(name='ensemble_data', data=np.zeros([gf.nens, 3, len(latlist), len(fhrvec)]), dims=['ensemble', 'component', 'latitude', 'fcst_hour'], \
-                              coords={'ensemble': [i for i in range(gf.nens)], 'fcst_hour': fhrvec, 'latitude': latlist})
+        ivtarr = xr.DataArray(name='ensemble_data', data=np.zeros([nens, 3, len(latlist), len(fhrvec)]), dims=['ensemble', 'component', 'latitude', 'fcst_hour'], \
+                              coords={'ensemble': [i for i in range(nens)], 'fcst_hour': fhrvec, 'latitude': latlist})
 
         vecloc = len(np.shape(latitude)) == 1
 

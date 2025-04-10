@@ -225,51 +225,60 @@ def read_ivt(datea, fhr, config, vDict):
        vDict (dict.):   dictionary that contains domain-specific options
    '''
 
-   dpp = importlib.import_module(config['model']['io_module'])
-   gf = dpp.ReadGribFiles(datea, fhr, config)
-   ivtt = gf.create_ens_array('temperature', gf.nens, vDict)
-   vDict['description'] = 'Zonal Integrated Water Vapor Transport'
-   ivtu = gf.create_ens_array('temperature', gf.nens, vDict)
-   vDict['description'] = 'Meridional Integrated Water Vapor Transport'
-   ivtv = gf.create_ens_array('temperature', gf.nens, vDict)
+   if eval(vDict.get('from_field','False')):
 
-   if 'ivt' in gf.var_dict:
-
-      #  Read each ensemble member from file
-      for n in range(gf.nens):
-         ivtu[n,:,:] = gf.read_grib_field('ivtu', n, vDict)
-         ivtv[n,:,:] = gf.read_grib_field('ivtv', n, vDict)
-         ivtt[n,:,:] = gf.read_grib_field('ivt',  n, vDict)
+      ds = xr.open_dataset('{0}/{1}_f{2}_ivt_ens.nc'.format(config['locations']['work_dir'],datea,'%0.3i' % fhr))
+      ivtt = ds.ensemble_data
+      ivtu = ivtt.copy()
+      ivtv = ivtt.copy()
 
    else:
 
-      tDict = copy.deepcopy(vDict)
-      tDict['isobaricInhPa'] = (300, 1000)
-      tDict = gf.set_var_bounds('temperature', tDict)
-      wDict = copy.deepcopy(vDict)
-      wDict['isobaricInhPa'] = (300, 1000)
-      wDict = gf.set_var_bounds('zonal_wind', wDict)
+      dpp = importlib.import_module(config['model']['io_module'])
+      gf = dpp.ReadGribFiles(datea, fhr, config)
+      ivtt = gf.create_ens_array('temperature', gf.nens, vDict)
+      vDict['description'] = 'Zonal Integrated Water Vapor Transport'
+      ivtu = gf.create_ens_array('temperature', gf.nens, vDict)
+      vDict['description'] = 'Meridional Integrated Water Vapor Transport'
+      ivtv = gf.create_ens_array('temperature', gf.nens, vDict)
 
-      for n in range(gf.nens):
+      if 'ivt' in gf.var_dict:
 
-         #  Read wind/temperature data 
-         uwnd = gf.read_grib_field('zonal_wind', n, wDict) * units('m / sec')
-         vwnd = gf.read_grib_field('meridional_wind', n, wDict) * units('m / sec')
+         #  Read each ensemble member from file
+         for n in range(gf.nens):
+            ivtu[n,:,:] = gf.read_grib_field('ivtu', n, vDict)
+            ivtv[n,:,:] = gf.read_grib_field('ivtv', n, vDict)
+            ivtt[n,:,:] = gf.read_grib_field('ivt',  n, vDict)
 
-         tmpk = np.squeeze(gf.read_grib_field('temperature', n, tDict)) * units('K')
-         pres = (tmpk.isobaricInhPa.values * units.hPa).to(units.Pa)
+      else:
 
-         #  Read or calculate specific humidity based on what is in the original
-         if gf.has_specific_humidity:
-            qvap = np.squeeze(gf.read_grib_field('specific_humidity', n, tDict)) * units('dimensionless')
-         else:
-            relh = np.minimum(np.maximum(gf.read_grib_field('relative_humidity', n, tDict), 0.01), 100.0) * units('percent')
-            qvap = mpcalc.mixing_ratio_from_relative_humidity(pres[:,None,None], tmpk, relh)
+         tDict = copy.deepcopy(vDict)
+         tDict['isobaricInhPa'] = (300, 1000)
+         tDict = gf.set_var_bounds('temperature', tDict)
+         wDict = copy.deepcopy(vDict)
+         wDict['isobaricInhPa'] = (300, 1000)
+         wDict = gf.set_var_bounds('zonal_wind', wDict)
 
-         #  Integrate water vapor over the pressure levels
-         ivtu[n,:,:] = np.abs(np.trapz(uwnd[:,:,:]*qvap[:,:,:], pres, axis=0)) / mpcon.earth_gravity
-         ivtv[n,:,:] = np.abs(np.trapz(vwnd[:,:,:]*qvap[:,:,:], pres, axis=0)) / mpcon.earth_gravity
-         ivtt[n,:,:] = np.sqrt(ivtu[n,:,:]**2 + ivtv[n,:,:]**2)
+         for n in range(gf.nens):
+
+            #  Read wind/temperature data 
+            uwnd = gf.read_grib_field('zonal_wind', n, wDict) * units('m / sec')
+            vwnd = gf.read_grib_field('meridional_wind', n, wDict) * units('m / sec')
+
+            tmpk = np.squeeze(gf.read_grib_field('temperature', n, tDict)) * units('K')
+            pres = (tmpk.isobaricInhPa.values * units.hPa).to(units.Pa)
+
+            #  Read or calculate specific humidity based on what is in the original
+            if gf.has_specific_humidity:
+               qvap = np.squeeze(gf.read_grib_field('specific_humidity', n, tDict)) * units('dimensionless')
+            else:
+               relh = np.minimum(np.maximum(gf.read_grib_field('relative_humidity', n, tDict), 0.01), 100.0) * units('percent')
+               qvap = mpcalc.mixing_ratio_from_relative_humidity(pres[:,None,None], tmpk, relh)
+
+            #  Integrate water vapor over the pressure levels
+            ivtu[n,:,:] = np.abs(np.trapz(uwnd[:,:,:]*qvap[:,:,:], pres, axis=0)) / mpcon.earth_gravity
+            ivtv[n,:,:] = np.abs(np.trapz(vwnd[:,:,:]*qvap[:,:,:], pres, axis=0)) / mpcon.earth_gravity
+            ivtt[n,:,:] = np.sqrt(ivtu[n,:,:]**2 + ivtv[n,:,:]**2)
 
    return(ivtu, ivtv, ivtt)
 
