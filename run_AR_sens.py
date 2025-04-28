@@ -103,7 +103,8 @@ def run_ens_sensitivity(datea, paramfile):
     logging.warning("STARTING SENSITIVITIES for {0}".format(str(datea)))
 
     #  Copy grib data to the work directory
-    if eval(config['metric'].get('compute_metrics','True')) or eval(config['fields'].get('compute_fields','True')):
+    if (eval(config['metric'].get('compute_metrics','True')) and (not eval(config['metric'].get('metric_from_fields','False')))) or \
+          eval(config['fields'].get('compute_fields','True')):
        dpp.stage_grib_files(datea, config)
 
 

@@ -945,6 +945,13 @@ class ComputeForecastMetrics:
 
         logging.warning('  Precipitation EOF Metrics:')
 
+        if eval(self.config['metric'].get('metric_from_fields','False')):
+
+           for pfile in glob.glob('{0}/*pcp1.nc'.format(self.config['locations']['work_dir'])):
+              self.metlist.append('{0}_{1}'.format(pfile.split('_')[-2], pfile.split('_')[-1].split('.')[-2]))
+           return
+
+
         for infile in glob.glob('{0}/{1}_*'.format(self.config['metric'].get('precip_metric_loc'),self.datea_str)):
 
            fint = int(self.config['metric'].get('fcst_int',self.config['model']['fcst_hour_int']))
@@ -986,7 +993,7 @@ class ComputeForecastMetrics:
            if time_adapt:
 
               vDict = {'latitude': (lat1-0.00001, lat2+0.00001), 'longitude': (lon1-0.00001, lon2+0.00001),
-                       'description': 'precipitation', 'units': 'mm', '_FillValue': -9999.}
+                       'description': 'precipitation', 'units': 'mm', '_FillValue': -9999., 'flip_lon': self.config['model'].get('flip_lon','False')}
               vDict = g1.set_var_bounds('precipitation', vDict)
               lmask = g1.read_static_field(self.config['metric'].get('static_fields_file'), 'landmask', vDict).values
 
@@ -1065,6 +1072,7 @@ class ComputeForecastMetrics:
 
            if mask_land:
               g1 = self.dpp.ReadGribFiles(self.datea_str, fhr2, self.config)
+              vDict['flip_lon'] = self.config['model'].get('flip_lon','False')
               lmask = g1.read_static_field(self.config['metric'].get('static_fields_file'), 'landmask', vDict).values
            else:
               lmask      = np.ones(e_mean.shape)
