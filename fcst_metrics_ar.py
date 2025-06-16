@@ -757,7 +757,7 @@ class ComputeForecastMetrics:
 
         logging.warning('  Mean Precipitation Metrics:')
 
-        for infile in glob.glob('{0}/{1}_*'.format(self.config['metric'].get('precip_metric_loc'),self.datea_str)):
+        for infile in glob.glob('{0}/{1}_*'.format(self.config['metric'].get('precip_mean_loc'),self.datea_str)):
 
            fint = int(self.config['metric'].get('fcst_int',self.config['model']['fcst_hour_int']))
 
