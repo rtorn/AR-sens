@@ -81,9 +81,9 @@ def basin_ens_maps(datea, fhr1, fhr2, config):
     pltm = gdf.plot(ax=ax0, column='mean', cmap=matplotlib.colors.ListedColormap(colorlist), \
                     norm=matplotlib.colors.BoundaryNorm(mpcp,len(mpcp)), edgecolor='black', linewidth=0.5)
 
-    sm = plt.cm.ScalarMappable(cmap=matplotlib.colors.ListedColormap(colorlist), \
-                               norm=matplotlib.colors.BoundaryNorm(mpcp,len(mpcp)))
-    cbar = fig.colorbar(sm, fraction=0.15, aspect=45., pad=0.02, orientation='horizontal', ticks=mpcp, shrink=0.85, extend='max')
+    cbar = fig.colorbar(plt.cm.ScalarMappable(cmap=matplotlib.colors.ListedColormap(colorlist), \
+                                              norm=matplotlib.colors.BoundaryNorm(mpcp,len(mpcp))), \
+                        ax=ax0, fraction=0.15, aspect=45., pad=0.02, orientation='horizontal', ticks=mpcp, shrink=0.85, extend='max')
     cbar.set_ticks(mpcp[1:(len(mpcp)-1):2])
     plt.title('Mean')
 
@@ -98,9 +98,9 @@ def basin_ens_maps(datea, fhr1, fhr2, config):
     pltm = gdf.plot(ax=ax1, column='std', cmap=matplotlib.colors.ListedColormap(colorlist), \
                     norm=matplotlib.colors.BoundaryNorm(spcp,len(spcp)), edgecolor='black', linewidth=0.5)
 
-    sm = plt.cm.ScalarMappable(cmap=matplotlib.colors.ListedColormap(colorlist), \
-                               norm=matplotlib.colors.BoundaryNorm(spcp,len(spcp)))
-    cbar = fig.colorbar(sm, fraction=0.15, aspect=45., pad=0.02, orientation='horizontal', ticks=spcp, shrink=0.85, extend='max')
+    cbar = fig.colorbar(plt.cm.ScalarMappable(cmap=matplotlib.colors.ListedColormap(colorlist), \
+                                              norm=matplotlib.colors.BoundaryNorm(spcp,len(spcp))), \
+                        ax=ax1, fraction=0.15, aspect=45., pad=0.02, orientation='horizontal', ticks=spcp, shrink=0.85, extend='max')
     cbar.set_ticks(spcp[1:(len(spcp)-1):2])
     plt.title('Standard Deviation')
 
@@ -276,8 +276,8 @@ def read_ivt(datea, fhr, config, vDict):
                qvap = mpcalc.mixing_ratio_from_relative_humidity(pres[:,None,None], tmpk, relh)
 
             #  Integrate water vapor over the pressure levels
-            ivtu[n,:,:] = np.abs(np.trapz(uwnd[:,:,:]*qvap[:,:,:], pres, axis=0)) / mpcon.earth_gravity
-            ivtv[n,:,:] = np.abs(np.trapz(vwnd[:,:,:]*qvap[:,:,:], pres, axis=0)) / mpcon.earth_gravity
+            ivtu[n,:,:] = np.abs(np.trapz(uwnd[:,:,:].data*qvap[:,:,:].data, pres, axis=0)) / mpcon.earth_gravity
+            ivtv[n,:,:] = np.abs(np.trapz(vwnd[:,:,:].data*qvap[:,:,:].data, pres, axis=0)) / mpcon.earth_gravity
             ivtt[n,:,:] = np.sqrt(ivtu[n,:,:]**2 + ivtv[n,:,:]**2)
 
    return(ivtu, ivtv, ivtt)

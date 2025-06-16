@@ -646,21 +646,30 @@ def plotSummarySens(lat, lon, ivt, pvort, ivsens, tesens, pvsens, fileout, plotD
    pltis = plt.contour(lon,lat,ivsens,[-0.3, 0.3], linewidths=2.0, colors='g',transform=ccrs.PlateCarree()) 
    pltp = plt.contourf(lon,lat,ivsens,[-0.3, 0.3], hatches=['/', None, '/'], colors='none', \
                         extend='both',transform=ccrs.PlateCarree())
-   for i, collection in enumerate(pltp.collections):
-      collection.set_edgecolor('g')
+   try:
+      for i, collection in enumerate(pltp.collections):
+         collection.set_edgecolor('g')
+   except:
+      pltp.set_edgecolor('g')
 
    pltc1 = plt.contour(lon,lat,pvsens,[-0.3, 0.3], linewidths=2.0, colors='m',transform=ccrs.PlateCarree())
    pltp = plt.contourf(lon,lat,pvsens,[-0.3, 0.3], hatches=['/', None, '/'], colors='none', \
                        extend='both',transform=ccrs.PlateCarree())
-   for i, collection in enumerate(pltp.collections):
-      collection.set_edgecolor('m')
+   try:
+      for i, collection in enumerate(pltp.collections):
+         collection.set_edgecolor('m')
+   except:
+      pltp.set_edgecolor('m')
 
    pltc2 = plt.contour(lon,lat,tesens,[-0.3, 0.3], linewidths=2.0, colors='b', \
                              zorder=10, transform=ccrs.PlateCarree())
 #   pltt = plt.contourf(lon,lat,tesens,[-0.3, 0.3], hatches=['\\', None, '\\'], colors='none', \
 #                       extend='both',transform=ccrs.PlateCarree())
-#   for i, collection in enumerate(pltt.collections):
-#      collection.set_edgecolor('b')
+#   if 'collections' in pltp:
+#      for i, collection in enumerate(pltp.collections):
+#         collection.set_edgecolor('b')
+#   else:
+#      pltp.set_edgecolor('b')
 
    if 'metric_lat' in plotDict and 'metric_lon' in plotDict:
       plt.plot(plotDict['metric_lon'], plotDict['metric_lat'], color=plotDict.get('metric_color','lime'), \

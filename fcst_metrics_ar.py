@@ -372,7 +372,7 @@ class ComputeForecastMetrics:
                      "#FF4B00", "#FF1900", "#E60015", "#B3003E", "#80007B", "#570088")
 
         try:
-           dcoa = pd.read_csv(self.config['metric'].get('coast_points_file'), sep = '\s+', header=None, names=['latitude', 'longitude'])
+           dcoa = pd.read_csv(self.config['metric'].get('coast_points_file'), sep = '\\s+', header=None, names=['latitude', 'longitude'])
            latcoa = dcoa['latitude'].values
            loncoa = dcoa['longitude'].values
            f = open(self.config['metric'].get('coast_points_file'), 'r')
@@ -1158,7 +1158,7 @@ class ComputeForecastMetrics:
                  for j in range(nlat):
                     if fmgrid[j,i] > 0.0:
                        ngrid = ngrid + 1
-                       ensarr[:,ngrid] = ensmat[:,j,i] * np.sqrt(coslat[j])
+                       ensarr[:,ngrid] = ensmat[:,j,i].data * np.sqrt(coslat[j])
 
               solver = Eof_xarray(ensarr[:,0:ngrid])
 
@@ -1188,7 +1188,7 @@ class ComputeForecastMetrics:
                        for j in range(nlat):
                           if lmask[j,i] > 0.0:
                              ngrid = ngrid + 1
-                             ensarr[:,ngrid] = ensmat[:,j,i] * np.sqrt(coslat[j]) * lmask[j,i]
+                             ensarr[:,ngrid] = ensmat[:,j,i].data * np.sqrt(coslat[j]) * lmask[j,i]
 
                  else:
 
@@ -1196,7 +1196,7 @@ class ComputeForecastMetrics:
                        for j in range(nlat):
                           if lmask[j,i] > 0.0:
                              ngrid = ngrid + 1
-                             ensarr[:,ngrid] = ensmat[:,j,i] * lmask[j,i]
+                             ensarr[:,ngrid] = ensmat[:,j,i].data * lmask[j,i]
            
                  solver = Eof_xarray(ensarr[:,0:ngrid])
 
@@ -1478,7 +1478,7 @@ class ComputeForecastMetrics:
               else:
 
                  ensmat[:,:] = ensmat[:,:] + prate[:,:]
-                 ylabel = 'Precipitation Rate (mm 6 $\mathregular{h^{-1}}$)'
+                 ylabel = 'Precipitation Rate (mm 6 $\\mathregular{h^{-1}}$)'
 
            
            ensmat[:,:] = ensmat[:,:] / basinsum 
