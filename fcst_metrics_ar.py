@@ -753,7 +753,7 @@ class ComputeForecastMetrics:
         precipitation pattern along with the metric area.
         '''
 
-        search_max = 150.
+        search_max = 250.
 
         logging.warning('  Mean Precipitation Metrics:')
 
@@ -771,7 +771,8 @@ class ComputeForecastMetrics:
               lon1 = float(conf['definition'].get('longitude_min',-130))
               lon2 = float(conf['definition'].get('longitude_max',-108))
               latc = float(conf['definition'].get('latitude_center'))
-              latc = float(conf['definition'].get('longitude_center'))
+              lonc = float(conf['definition'].get('longitude_center'))
+              maxf = float(conf['definition'].get('max_std_dev_factor',0.667))
               adapt = eval(conf['definition'].get('adapt',self.config['metric'].get('precip_mean_adapt','False')))
               time_adapt = eval(conf['definition'].get('time_adapt',self.config['metric'].get('precip_mean_time_adapt','False')))
               time_dbuff = float(conf['definition'].get('time_adapt_domain',self.config['metric'].get('precip_mean_time_adapt_domain',2.0)))
@@ -787,8 +788,6 @@ class ComputeForecastMetrics:
            if eval(self.config['model'].get('flip_lon','False')):
               lon1 = (lon1 + 360.) % 360.
               lon2 = (lon2 + 360.) % 360.
-
-#           maxf = float(f.readline())
 
            datea_1   = self.datea + dt.timedelta(hours=fhr1)
            date1_str = datea_1.strftime("%Y%m%d%H")
@@ -828,6 +827,16 @@ class ComputeForecastMetrics:
            nloc       = 0
            iloc[nloc] = icen
            jloc[nloc] = jcen
+           latc       = ensmat.latitude.values[jcen]
+           lonc       = ensmat.longitude.values[icen]
+
+           if mask_land:
+              g1 = self.dpp.ReadGribFiles(self.datea_str, fhr2, self.config)
+              vDict['flip_lon'] = self.config['model'].get('flip_lon','False')
+              lmask = g1.read_static_field(self.config['metric'].get('static_fields_file'), 'landmask', vDict).values
+           else:
+              lmask      = np.ones(e_mean.shape)
+              lmask[:,:] = 1.0
 
            k = 0
            while k <= nloc:
@@ -860,17 +869,22 @@ class ComputeForecastMetrics:
            plotBase['subrows']       = 1
            plotBase['subcols']       = 2
            plotBase['subnumber']     = 1
-           plotBase['grid_interval'] = config['fcst_diag'].get('grid_interval', 5)
+           plotBase['grid_interval'] = self.config['fcst_diag'].get('grid_interval', 5)
            plotBase['left_labels'] = 'None'
            plotBase['right_labels'] = 'None'
            plotBase['bottom_labels'] = 'None'
-           ax1 = background_map(config['model'].get('projection', 'PlateCarree'), lon1, lon2, lat1, lat2, plotBase)
+           ax1 = background_map(self.config['model'].get('projection', 'PlateCarree'), lon1, lon2, lat1, lat2, plotBase)
 
            #  Plot the ensemble-mean precipitation on the left panel
            mpcp = [0.0, 0.25, 0.50, 1., 1.5, 2., 4., 6., 8., 12., 16., 24., 32., 64., 96., 97.]
            norm = matplotlib.colors.BoundaryNorm(mpcp,len(mpcp))
            pltf1 = plt.contourf(ensmat.longitude.values,ensmat.latitude.values,e_mean,mpcp, \
-                                 cmap=matplotlib.colors.ListedColormap(colorlist), norm=norm, extend='max')
+                                 cmap=matplotlib.colors.ListedColormap(colorlist), norm=norm, extend='max',transform=ccrs.PlateCarree())
+
+           pltb = plt.contour(ensmat.longitude.values,ensmat.latitude.values,fmgrid,[0.5],linewidths=2.5,colors='w', \
+                                    zorder=10,transform=ccrs.PlateCarree())
+           if 'lonc' in locals():
+              plt.plot(lonc, latc, '+', color='k', markersize=12, markeredgewidth=3, transform=ccrs.PlateCarree())
 
            cbar = plt.colorbar(pltf1, fraction=0.15, aspect=45., pad=0.04, orientation='horizontal', ticks=mpcp)
            cbar.set_ticks(mpcp[1:(len(mpcp)-1):2])
@@ -878,7 +892,7 @@ class ComputeForecastMetrics:
            plt.title('Mean')
 
            plotBase['subnumber']     = 2
-           ax2 = background_map(config['model'].get('projection', 'PlateCarree'), lon1, lon2, lat1, lat2, plotBase)
+           ax2 = background_map(self.config['model'].get('projection', 'PlateCarree'), lon1, lon2, lat1, lat2, plotBase)
 
            #  Plot the ensemble standard deviation precipitation on the right panel
            spcp = [0., 3., 6., 9., 12., 15., 18., 21., 24., 27., 30., 33., 36., 39., 42., 43.]
@@ -886,7 +900,9 @@ class ComputeForecastMetrics:
            pltf2 = plt.contourf(ensmat.longitude.values,ensmat.latitude.values,e_std,spcp, \
                                  cmap=matplotlib.colors.ListedColormap(colorlist), norm=norm, extend='max')
 
-           pltm = plt.contour(ensmat.longitude.values,ensmat.latitude.values,fmgrid,[0.49, 0.51],linewidths=2.5, colors='w') 
+           pltm = plt.contour(ensmat.longitude.values,ensmat.latitude.values,fmgrid,[0.49, 0.51],linewidths=2.5, colors='w',transform=ccrs.PlateCarree()) 
+           if 'lonc' in locals():
+              plt.plot(lonc, latc, '+', color='k', markersize=12, markeredgewidth=3, transform=ccrs.PlateCarree())
 
            cbar = plt.colorbar(pltf2, fraction=0.15, aspect=45., pad=0.04, orientation='horizontal', ticks=spcp)
            cbar.set_ticks(spcp[1:(len(spcp)-1)])
@@ -915,7 +931,7 @@ class ComputeForecastMetrics:
 
            endict = {'fore_met_init': {'dtype': 'float32'}}
 
-           f_met = {'coords': {}, 'attrs': fmetatt, 'dims': {'num_ens': self.nens}, 'data_vars': {}}
+           f_met = {'coords': {}, 'attrs': fmetatt, 'dims': {'num_ens': g1.nens}, 'data_vars': {}}
            f_met['coords']['longitude'] = {'dims': ('longitude'), 'attrs': {'units': 'degrees', 'description': 'longitude of grid points'}, 'data': ensmat.longitude.values}
            endict['longitude'] = {'dtype': 'float32'}
            f_met['coords']['latitude']  = {'dims': ('latitude'), 'attrs': {'units': 'degrees', 'description': 'latitude of grid points'}, 'data': ensmat.latitude.values}
@@ -925,7 +941,7 @@ class ComputeForecastMetrics:
            endict['ensemble_mean'] = {'dtype': 'float32'}
            f_met['data_vars']['metric_domain'] = {'dims': ('latitude', 'longitude'), 'attrs': {'units': '', 'description': ' precipitation metric domain'}, 'data': fmgrid.data}
            endict['metric_domain'] = {'dtype': 'float32'}
-           f_met['data_vars']['fore_met_init'] = {'dims': ('num_ens',), 'attrs': {'units': 'mm', 'description': 'precipitation'}, 'data': pc1.data}
+           f_met['data_vars']['fore_met_init'] = {'dims': ('num_ens',), 'attrs': {'units': 'mm', 'description': 'precipitation'}, 'data': fmout}
 
            xr.Dataset.from_dict(f_met).to_netcdf("{0}/{1}_f{2}_{3}.nc".format(self.config['locations']['work_dir'],str(self.datea_str),'%0.3i' % fhr2,metname), encoding=endict)
 
