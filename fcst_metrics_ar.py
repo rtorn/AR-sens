@@ -118,6 +118,10 @@ class ComputeForecastMetrics:
         if self.config['metric'].get('temp_eof_metric', 'False') == 'True':
            self.__temp_eof()
 
+        #  Compute wind speed EOF metric
+        if self.config['metric'].get('wind_eof_metric', 'False') == 'True':
+           self.__wind_speed_eof()
+
 
     def get_metlist(self):
         '''
@@ -125,44 +129,6 @@ class ComputeForecastMetrics:
         '''
         return self.metlist
 
-
-    def __background_map(self, ax, lat1, lon1, lat2, lon2):
-        '''
-        Function that creates a background map for plotting.
-
-        Attributes:
-           ax    (axis):  figure axes being used for the plot
-           lat1 (float):  minimum latitude of the plot
-           lon1 (float):  minimum longitude of the plot
-           lat2 (float):  maximum latitude of the plot
-           lon2 (float):  maximum longitude of the plot
-        '''
-
-
-        gridInt = 5
-
-        states = NaturalEarthFeature(category="cultural", scale="50m",
-                                     facecolor="none",
-                                     name="admin_1_states_provinces_shp")
-        ax.add_feature(states, linewidth=0.5, edgecolor="black")
-        ax.coastlines('50m', linewidth=1.0)
-        ax.add_feature(cartopy.feature.LAKES, facecolor='None', linewidth=1.0, edgecolor='black')
-        ax.add_feature(cartopy.feature.BORDERS, facecolor='None', linewidth=1.0, edgecolor='black')
-
-        gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True,
-                           linewidth=1, color='gray', alpha=0.5, linestyle='-')
-        gl.top_labels = None
-        gl.left_labels = None
-        gl.xlocator = mticker.FixedLocator(np.arange(10.*np.floor(0.1*lon1),10.*np.ceil(0.1*lon2)+1.,gridInt))
-        gl.xformatter = LONGITUDE_FORMATTER
-        gl.xlabel_style = {'size': 12, 'color': 'gray'}
-        gl.ylocator = mticker.FixedLocator(np.arange(10.*np.floor(0.1*lat1),10.*np.ceil(0.1*lat2)+1.,gridInt))
-        gl.yformatter = LATITUDE_FORMATTER
-        gl.ylabel_style = {'size': 12, 'color': 'gray'}
-
-        ax.set_extent([lon1, lon2, lat1, lat2], ccrs.PlateCarree())
-
-        return ax
 
     def __ivt_eof(self):
         '''
@@ -1702,6 +1668,8 @@ class ComputeForecastMetrics:
            colorlist = ("#9A32CD","#00008B","#3A5FCD","#00BFFF","#B0E2FF","#FFFFFF","#FFEC8B","#FFA500","#FF4500","#B22222","#FF82AB")
 
            plotBase = self.config.copy()
+           for key in self.config['model']:
+             plotBase[key] = self.config['model'][key]
            plotBase['grid_interval'] = self.config['fcst_diag'].get('grid_interval', 5)
            plotBase['left_labels'] = 'True'
            plotBase['right_labels'] = 'None'
@@ -1841,12 +1809,16 @@ class ComputeForecastMetrics:
               dhght[:,:] = -dhght[:,:]
 
            #  Create basic figure, including political boundaries and grid lines
-           fig = plt.figure(figsize=(8.5,11))
+           fig = plt.figure(figsize=(11,8.5))
 
            colorlist = ("#9A32CD","#00008B","#3A5FCD","#00BFFF","#B0E2FF","#FFFFFF","#FFEC8B","#FFA500","#FF4500","#B22222","#FF82AB")
 
-           ax = plt.axes(projection=ccrs.PlateCarree())
-           ax = self.__background_map(ax, lat1, lon1, lat2, lon2)
+           plotBase = self.config.copy()
+#           plotBase['grid_interval'] = self.config['fcst_diag'].get('grid_interval', 5)
+           plotBase['left_labels'] = 'True'
+           plotBase['right_labels'] = 'False'
+
+           ax = background_map(self.config['model'].get('projection', 'PlateCarree'), lon1, lon2, lat1, lat2, plotBase)
 
            #  Plot the SLP EOF pattern in shading
            hfac = np.ceil(np.max(dhght) / 5.0)
@@ -2195,6 +2167,8 @@ class ComputeForecastMetrics:
            colorlist = ("#9A32CD","#00008B","#3A5FCD","#00BFFF","#B0E2FF","#FFFFFF","#FFEC8B","#FFA500","#FF4500","#B22222","#FF82AB")
  
            plotBase = self.config.copy()
+           for key in self.config['model']:
+              plotBase[key] = self.config['model'][key]
            plotBase['grid_interval'] = self.config['fcst_diag'].get('grid_interval', 5)
            plotBase['left_labels'] = 'True'
            plotBase['right_labels'] = 'None'
@@ -2252,6 +2226,143 @@ class ComputeForecastMetrics:
            f_met['data_vars']['EOF_pattern'] = {'dims': ('latitude', 'longitude'), 'attrs': {'units': 'K', 'description': '{0} hPa temp. EOF pattern'.format(level)}, 'data': dtemp}
            endict['EOF_pattern'] = {'dtype': 'float32'}
            f_met['data_vars']['fore_met_init'] = {'dims': ('num_ens',), 'attrs': {'units': '', 'description': 'temperature PC'}, 'data': pc1.data}
+
+           xr.Dataset.from_dict(f_met).to_netcdf("{0}/{1}_f{2}_{3}.nc".format(self.config['locations']['work_dir'],str(self.datea_str),'%0.3i' % fhr,metname), encoding=endict)
+
+           self.metlist.append('f{0}_{1}'.format('%0.3i' % fhr, metname))
+
+
+    def __wind_speed_eof(self):
+        '''
+        Function that computes SLP EOF metric, which is calculated by taking the EOF of 
+        the ensemble SLP forecast over a domain defined by the user in a text file.  
+        The resulting forecast metric is the principal component of the
+        EOF.  The function also plots a figure showing the ensemble-mean SLP pattern 
+        along with the SLP perturbation that is consistent with the first EOF. 
+        '''
+
+        for infull in glob.glob('{0}/{1}_*'.format(self.config['metric'].get('wind_metric_loc'),self.datea_str)):
+
+           try:
+              conf = configparser.ConfigParser()
+              conf.read(infull)
+              fhr   = int(conf['definition'].get('forecast_hour'))
+              lat1  = float(conf['definition'].get('latitude_min'))
+              lat2  = float(conf['definition'].get('latitude_max'))
+              lon1  = float(conf['definition'].get('longitude_min'))
+              lon2  = float(conf['definition'].get('longitude_max'))
+              eofn  = int(conf['definition'].get('eof_number',1))
+              metname = conf['definition'].get('metric_name','wspd')
+           except IOError:
+              logging.warning('{0} does not exist.  Cannot compute IVT Landfall EOF'.format(infull))
+              return None
+
+           if eval(self.config['model'].get('flip_lon','False')):
+              lon1 = (lon1 + 360.) % 360.
+              lon2 = (lon2 + 360.) % 360.
+
+           fff = '%0.3i' % fhr
+
+           g1 = self.dpp.ReadGribFiles(self.datea_str, fhr, self.config)
+
+           vDict = {'latitude': (lat1-0.00001, lat2+0.00001), 'longitude': (lon1-0.00001, lon2+0.00001), \
+                    'description': 'wind speed', 'units': 'm/s', '_FillValue': -9999.}
+           vDict = g1.set_var_bounds('temperature', vDict)
+
+           ensmat = g1.create_ens_array('zonal_wind_10m', g1.nens, vDict)
+
+           #  Read the ensemble 10 u/v winds, calculate wind speed, compute the mean
+           for n in range(g1.nens):
+              uwnd = g1.read_grib_field('zonal_wind_10m', n, vDict).squeeze()
+              vwnd = g1.read_grib_field('meridional_wind_10m', n, vDict).squeeze()
+              ensmat[n,:,:] = np.sqrt(uwnd[:,:]**2 + vwnd[:,:]**2)
+
+           e_mean = np.mean(ensmat, axis=0)
+           for n in range(g1.nens):
+              ensmat[n,:,:] = ensmat[n,:,:] - e_mean[:,:]
+
+           #  Compute the EOF of the precipitation pattern and then the PCs
+           if self.config['model'].get('grid_type','LatLon') == 'LatLon':
+
+              coslat = np.cos(np.deg2rad(ensmat.latitude.values)).clip(0., 1.)
+              wgts = np.sqrt(coslat)[..., np.newaxis]
+              solver = Eof_xarray(ensmat.rename({'ensemble': 'time'}), weights=wgts)
+
+           else:
+
+              solver = Eof_xarray(ensmat.rename({'ensemble': 'time'}))
+
+           pcout  = np.squeeze(solver.pcs(npcs=3, pcscaling=1))
+           pc1 = np.squeeze(pcout[:,eofn-1])
+           pc1[:] = pc1[:] / np.std(pc1)
+
+           #  Compute the SLP pattern associated with a 1 PC perturbation
+           dwnd = np.zeros(e_mean.shape)
+
+           for n in range(g1.nens):
+              dwnd[:,:] = dwnd[:,:] + ensmat[n,:,:] * pc1[n]
+
+           dwnd[:,:] = dwnd[:,:] / float(g1.nens) * 1.94
+
+           if np.sum(dwnd) < 0.:
+              pc1[:]    = -pc1[:]
+              dwnd[:,:] = -dwnd[:,:]
+
+           #  Create basic figure, including political boundaries and grid lines
+           fig = plt.figure(figsize=(11,8.5))
+
+           colorlist = ("#FFFFFF", "#00ECEC", "#01A0F6", "#00BFFF", "#00FF00", "#00C800", "#009000", "#FFFF00", \
+                        "#E7C000", "#FF9000", "#FF0000", "#D60000", "#C00000", "#FF00FF", "#9955C9")
+
+           ax = background_map(self.config['metric'].get('projection', 'PlateCarree'), lon1, lon2, lat1, lat2, self.config['metric'])
+
+           mwnd = [0.0, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45, 48, 51, 54]
+           norm = matplotlib.colors.BoundaryNorm(mwnd,len(mwnd))
+           pltf = plt.contourf(ensmat.longitude.values,ensmat.latitude.values,e_mean*1.94,mwnd,norm=norm,extend='max', \
+                                cmap=matplotlib.colors.ListedColormap(colorlist), alpha=0.5, antialiased=True, transform=ccrs.PlateCarree())
+
+           cntrs = np.array([-5., -4., -3., -2., -1., 1., 2., 3., 4., 5]) * np.ceil(np.max(dwnd) / 5.0)
+           pltm = plt.contour(ensmat.longitude.values,ensmat.latitude.values,dwnd,cntrs,linewidths=1.5, colors='k', zorder=10, transform=ccrs.PlateCarree())
+
+           #  Add colorbar to the plot
+           cbar = plt.colorbar(pltf, fraction=0.12, aspect=45., pad=0.04, orientation='horizontal', ticks=mwnd)
+           cbar.set_ticks(mwnd[1:(len(mwnd)-1)])
+           cb = plt.clabel(pltm, inline_spacing=0.0, fontsize=12, fmt="%1.0f")
+
+           if eofn == 1:
+              fracvar = '%4.3f' % solver.varianceFraction(neigs=1)
+           else:
+              fracvar = '%4.3f' % solver.varianceFraction(neigs=eofn)[-1]
+           plt.title("{0} {1} hour Max. Wind Speed, {2} of variance".format(str(self.datea_str),fhr,fracvar))
+
+           outdir = '{0}/f{1}_{2}'.format(self.config['locations']['figure_dir'], '%0.3i' % fhr, metname)
+           if not os.path.isdir(outdir):
+              try:
+                 os.makedirs(outdir)
+              except OSError as e:
+                 raise e
+
+           plt.savefig('{0}/metric.png'.format(outdir), format='png', dpi=120, bbox_inches='tight')
+           plt.close(fig)
+
+
+           fmetatt = {'FORECAST_METRIC_LEVEL': '', 'FORECAST_METRIC_NAME': 'wind speed PC', 'FORECAST_METRIC_SHORT_NAME': 'wndeof', \
+                      'FORECAST_HOUR': int(fhr), 'LATITUDE1': lat1, 'LATITUDE2': lat2, 'LONGITUDE1': lon1, \
+                      'LONGITUDE2': lon2, 'EOF_NUMBER': int(eofn)}
+
+           endict = {'fore_met_init': {'dtype': 'float32'}}
+
+           f_met = {'coords': {}, 'attrs': fmetatt, 'dims': {'num_ens': g1.nens}, 'data_vars': {}}
+           f_met['coords']['longitude'] = {'dims': ('longitude'), 'attrs': {'units': 'degrees', 'description': 'longitude of grid points'}, 'data': ensmat.longitude.values}
+           endict['longitude'] = {'dtype': 'float32'}
+           f_met['coords']['latitude']  = {'dims': ('latitude'), 'attrs': {'units': 'degrees', 'description': 'latitude of grid points'}, 'data': ensmat.latitude.values}
+           endict['latitude'] = {'dtype': 'float32'}
+
+           f_met['data_vars']['ensemble_mean'] = {'dims': ('latitude', 'longitude'), 'attrs': {'units': 'knots', 'description': 'wind speed ensemble mean'}, 'data': e_mean.data}
+           endict['ensemble_mean'] = {'dtype': 'float32'}
+           f_met['data_vars']['EOF_pattern'] = {'dims': ('latitude', 'longitude'), 'attrs': {'units': 'knots', 'description': 'wind speed EOF pattern'}, 'data': dwnd}
+           endict['EOF_pattern'] = {'dtype': 'float32'}
+           f_met['data_vars']['fore_met_init'] = {'dims': ('num_ens',), 'attrs': {'units': '', 'description': 'wind speed PC'}, 'data': pc1.data}
 
            xr.Dataset.from_dict(f_met).to_netcdf("{0}/{1}_f{2}_{3}.nc".format(self.config['locations']['work_dir'],str(self.datea_str),'%0.3i' % fhr,metname), encoding=endict)
 
