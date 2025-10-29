@@ -342,9 +342,9 @@ def ComputeSensitivity(datea, fhr, metname, config):
 
 
    #  Read PV on various pressure levels, compute sensitivity to that field
-   pvd = {'pv200hPa': [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0], \
-          'pv250hPa': [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0], \
-          'pv300hPa': [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0], \
+   pvd = {'pv200hPa': [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0], \
+          'pv250hPa': [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0], \
+          'pv300hPa': [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0], \
           'pv500hPa': [0.3, 0.6, 0.9, 1.2, 1.5, 1.8, 2.1, 2.4, 2.7, 3.0], \
           'pv700hPa': [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 1.0, 1.2, 1.4], \
           'pv850hPa': [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 1.0, 1.2, 1.4]}
@@ -477,32 +477,34 @@ def ComputeSensitivity(datea, fhr, metname, config):
 
 
    #  Read 300 hPa divergence, compute sensitivity to that field, if the file exists
-   ensfile = '{0}/{1}_f{2}_div300hPa_ens.nc'.format(config['locations']['work_dir'],datea,fhrt)
-   if os.path.isfile(ensfile):
+   for pres in [200, 250, 300]:
 
-      efile = nc.Dataset(ensfile)
-      lat   = efile.variables['latitude'][:]
-      lon   = efile.variables['longitude'][:]
-      ens   = np.squeeze(efile.variables['ensemble_data'][:])
-      emea  = np.mean(ens, axis=0)
-      emea.units = efile.variables['ensemble_data'].units
-      evar = np.var(ens, axis=0)
+      ensfile = '{0}/{1}_f{2}_div{3}hPa_ens.nc'.format(config['locations']['work_dir'],datea,fhrt,pres)
+      if os.path.isfile(ensfile):
 
-      sens, sigv = computeSens(ens, emea, evar, metric)
-      sens[:,:] = sens[:,:] * np.sqrt(evar[:,:])
+         efile = nc.Dataset(ensfile)
+         lat   = efile.variables['latitude'][:]
+         lon   = efile.variables['longitude'][:]
+         ens   = np.squeeze(efile.variables['ensemble_data'][:])
+         emea  = np.mean(ens, axis=0)
+         emea.units = efile.variables['ensemble_data'].units
+         evar = np.var(ens, axis=0)
 
-      outdir = '{0}/{1}/sens/div300hPa'.format(config['locations']['figure_dir'],metname)
-      if not os.path.isdir(outdir):
-         os.makedirs(outdir, exist_ok=True)
+         sens, sigv = computeSens(ens, emea, evar, metric)
+         sens[:,:] = sens[:,:] * np.sqrt(evar[:,:])
 
-#      if plotDict.get('output_sens', 'False')=='True':
-#         writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_div300hPa_sens.nc'.format(config['figure_dir'],metname,datea,fhrt), plotDict)
+         outdir = '{0}/{1}/sens/div{2}hPa'.format(config['locations']['figure_dir'],metname,pres)
+         if not os.path.isdir(outdir):
+            os.makedirs(outdir, exist_ok=True)
 
-      plotDict['meanCntrs'] = np.array([-5.0, -4.0, -3.0, -2.0, -1.5, -1.0, -0.5, 0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 5.0])
-      plotDict['clabel_fmt'] = "%2.1f"
-      plotDict['plotTitle'] = '{0} F{1} {4} hPa div.{2}{3}'.format(datea,fhrt,metstring,timestr,pres)
-      plotScalarSens(lat, lon, sens, emea, sigv, '{0}/{1}_f{2}_div300hPa_sens.png'.format(outdir,datea,fhrt), plotDict)
-      del plotDict['clabel_fmt']
+#         if plotDict.get('output_sens', 'False')=='True':
+#            writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_div300hPa_sens.nc'.format(config['figure_dir'],metname,datea,fhrt), plotDict)
+
+         plotDict['meanCntrs'] = np.array([-5.0, -4.0, -3.0, -2.0, -1.5, -1.0, -0.5, 0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 5.0])
+         plotDict['clabel_fmt'] = "%2.1f"
+         plotDict['plotTitle'] = '{0} F{1} {4} hPa div.{2}{3}'.format(datea,fhrt,metstring,timestr,pres)
+         plotScalarSens(lat, lon, sens, emea, sigv, '{0}/{1}_f{2}_div{3}hPa_sens.png'.format(outdir,datea,fhrt,pres), plotDict)
+         del plotDict['clabel_fmt']
 
  
    hghtd = {'h500hPa': [4920, 4980, 5040, 5100, 5160, 5220, 5280, 5340, 5400, 5460, 5520, 5580, 5640, 5700, 5760, 5820, 5880, 5940], \
