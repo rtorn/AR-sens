@@ -343,7 +343,7 @@ def ComputeFields(datea, fhr, config):
                lon  = ensmat.longitude.values
                dx, dy = mpcalc.lat_lon_grid_deltas(lon, lat, x_dim=-1, y_dim=-2, geod=None)
                div = mpcalc.divergence(uwnd, vwnd, dx=dx, dy=dy)
-               ensmat[n,:,:] = grid_calc.calc_circ_llgrid(div, 300., lat, lon, eval(config['fields'].get('global','False')), \
+               ensmat[n,:,:] = grid_calc.calc_circ_llgrid(div, 200., lat, lon, eval(config['fields'].get('global','False')), \
                                                           len(lon), len(lat)) * 1.0e5
 
             ensmat.to_netcdf(outfile, encoding=dencode)
