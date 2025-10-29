@@ -114,6 +114,10 @@ class ComputeForecastMetrics:
         if self.config['metric'].get('pvort_eof_metric', 'False') == 'True':
            self.__pvort_eof()
 
+        #  Compute Rossby wave EOF metric based on Hovmoller approach
+        if eval(self.config['metric'].get('rossby_eof_metric', 'False')):
+           self.__rossby_eof()
+
         #  Compute temperature EOF metric
         if self.config['metric'].get('temp_eof_metric', 'False') == 'True':
            self.__temp_eof()
@@ -1809,7 +1813,7 @@ class ComputeForecastMetrics:
               dhght[:,:] = -dhght[:,:]
 
            #  Create basic figure, including political boundaries and grid lines
-           fig = plt.figure(figsize=(11,8.5))
+           fig = plt.figure(figsize=(8.5,11))
 
            colorlist = ("#9A32CD","#00008B","#3A5FCD","#00BFFF","#B0E2FF","#FFFFFF","#FFEC8B","#FFA500","#FF4500","#B22222","#FF82AB")
 
@@ -1828,9 +1832,9 @@ class ComputeForecastMetrics:
 
            #  Plot the ensemble-mean SLP field in contours
            if level == 700:
-              mhght = np.arange(2400, 3300, 20)
+              mhght = np.arange(2400, 3300, 30)
            elif level == 500:
-              mhght = np.arange(4800, 6000, 30)
+              mhght = np.arange(4800, 6000, 60)
            pltm = plt.contour(ensmat.longitude.values,ensmat.latitude.values,e_mean,mhght,\
                                transform=ccrs.PlateCarree(),linewidths=1.5,colors='k',zorder=10)
 
@@ -1995,7 +1999,7 @@ class ComputeForecastMetrics:
            colorlist = ("#9A32CD","#00008B","#3A5FCD","#00BFFF","#B0E2FF","#FFFFFF","#FFEC8B","#FFA500","#FF4500","#B22222","#FF82AB")
 
            plotBase = self.config.copy()
-           plotBase['grid_interval'] = self.config['fcst_diag'].get('grid_interval', 5)
+#           plotBase['grid_interval'] = self.config['fcst_diag'].get('grid_interval', 5)
            plotBase['left_labels'] = 'True'
            plotBase['right_labels'] = 'None'
 
@@ -2057,6 +2061,138 @@ class ComputeForecastMetrics:
            xr.Dataset.from_dict(f_met).to_netcdf("{0}/{1}_f{2}_{3}.nc".format(self.config['locations']['work_dir'],str(self.datea_str),'%0.3i' % fhr,metname), encoding=endict)
 
            self.metlist.append('f{0}_{1}'.format('%0.3i' % fhr, metname))
+
+
+    def __rossby_eof(self):
+
+
+        for infull in glob.glob('{0}/{1}_*'.format(self.config['metric'].get('rossby_metric_loc'),self.datea_str)):
+
+           try:
+              conf = configparser.ConfigParser()
+              conf.read(infull)
+              fhr1  = int(conf['definition'].get('forecast_hour1'))
+              fhr2  = int(conf['definition'].get('forecast_hour2'))
+              lat1  = float(conf['definition'].get('latitude_min'))
+              lat2  = float(conf['definition'].get('latitude_max'))
+              lon1  = float(conf['definition'].get('longitude_min'))
+              lon2  = float(conf['definition'].get('longitude_max'))
+              eofn  = int(conf['definition'].get('eof_number',1))
+              level = float(conf['definition'].get('pressure', 250))
+              metname = conf['definition'].get('metric_name','ross{0}hPa'.format(int(level)))
+           except IOError:
+              logging.warning('{0} does not exist.  Cannot compute IVT Landfall EOF'.format(infull))
+              return None
+
+           if eval(self.config['model'].get('flip_lon','False')):
+              lon1 = (lon1 + 360.) % 360.
+              lon2 = (lon2 + 360.) % 360.
+
+           g1 = self.dpp.ReadGribFiles(self.datea_str, fhr1, self.config)
+
+           vDict = g1.set_var_bounds('meridional_wind', {'latitude': (lat1, lat2), 'longitude': (lon1, lon2), 'isobaricInhPa': (level, level), \
+                                                         'description': '{0} hPa meridional wind'.format(level), 'units': 'm.s-1', '_FillValue': -9999.})
+
+           fhrvec = np.arange(fhr1, fhr2+int(self.config['model']['fcst_hour_int']), int(self.config['model']['fcst_hour_int']))
+           lonvec = np.squeeze(g1.read_grib_field('meridional_wind', 0, vDict)).longitude.values
+           ensmat = xr.DataArray(name='ensemble_data', data=np.zeros([g1.nens, len(fhrvec), len(lonvec)]), \
+                                 dims=['ensemble', 'forecast_hour', 'longitude'], \
+                                 coords={'ensemble': [i for i in range(g1.nens)], 'forecast_hour': fhrvec, 'longitude': lonvec})
+
+           coslat = np.sqrt(np.cos(np.radians(g1.read_grib_field('meridional_wind', 0, vDict).latitude.values)))
+           coslatsum = np.sum(coslat)
+
+           for t in range(len(fhrvec)):
+              g1 = self.dpp.ReadGribFiles(self.datea_str, int(fhrvec[t]), self.config)
+              for n in range(g1.nens):
+                 ensmat[n,t,:] = np.sum(np.squeeze(g1.read_grib_field('meridional_wind', n, vDict)) * coslat[:,None], axis=0) / coslatsum
+
+           e_mean = np.mean(ensmat, axis=0)
+           for n in range(g1.nens):
+              ensmat[n,:,:] = ensmat[n,:,:] - e_mean[:,:]
+
+           solver = Eof_xarray(ensmat.rename({'ensemble': 'time'}))
+
+           pcout  = np.squeeze(solver.pcs(npcs=3, pcscaling=1))
+           pc1 = np.squeeze(pcout[:,eofn-1])
+           pc1[:] = pc1[:] / np.std(pc1)
+
+           #  Compute the SLP pattern associated with a 1 PC perturbation
+           dwnd = np.zeros(e_mean.shape)
+
+           for n in range(g1.nens):
+              dwnd[:,:] = dwnd[:,:] + ensmat[n,:,:] * pc1[n]
+
+           dwnd[:,:] = dwnd[:,:] / float(g1.nens)
+
+           if np.sum(dwnd) < 0.:
+              pc1[:]    = -pc1[:]
+              dwnd[:,:] = -dwnd[:,:]
+
+           #  Create basic figure, including political boundaries and grid lines
+           fig = plt.figure(figsize=(10, 10))
+           ax  = fig.add_axes([0.1, 0.1, 0.8, 0.8])
+
+           pltm = plt.contourf(lonvec, fhrvec, e_mean, [-45, -40, -35, -30, -25, -20, -15, -10, 10, 15, 20, 25, 30, 35, 40, 45], cmap='seismic', antialiased=True, extend='both', alpha=0.5)
+           pltp = plt.contour(lonvec, fhrvec, dwnd, [-16, -14, -12, -10, -8, -6, -4, -2, 2, 4, 6, 8, 10, 12, 14, 16], linewidths=1.5, colors='k', zorder=10)
+
+           ax.set_ylim(ax.get_ylim()[::-1])
+           ax.set_yticks(np.arange(np.ceil(fhr1 / 24)*24, (np.floor(fhr2 / 24)+1)*24, 24))
+           ax.tick_params(axis='y', labelsize=14)
+           ax.set_ylabel('Forecast Hour', fontsize=14)
+
+           lonlabels = []
+           xti = np.arange(np.ceil(lon1 / 30)*30, (np.floor(lon2 / 30)+1)*30, 30)
+           for lon in xti:
+             if lon < 0:
+               lonlabels.append('%3i' % lon + 'W')
+             elif lon > 180:
+               lonlabels.append('%3i' % abs(lon-360) + 'W')
+             else:
+               lonlabels.append('%3i' % lon + 'E')
+
+           ax.set_xticks(xti) 
+           ax.set_xticklabels(lonlabels, fontsize=14)
+
+           if eofn == 1:
+              fracvar = solver.varianceFraction(neigs=1).data
+           else:
+              fracvar = solver.varianceFraction(neigs=eofn)[-1].data
+           plt.title("{0} {1}-{2} hour meridional wind, {3} of variance".format(str(self.datea_str),fhr1,fhr2,'%4.3f' % fracvar))
+
+           cbar = plt.colorbar(pltm, fraction=0.06, aspect=45., pad=0.05, orientation='horizontal', shrink=0.9)
+           cb = plt.clabel(pltp, inline_spacing=0.0, fontsize=12, fmt="%1.0f")
+
+           outdir = '{0}/f{1}_{2}'.format(self.config['locations']['figure_dir'],'%0.3i' % fhr2,metname)
+           if not os.path.isdir(outdir):
+              try:
+                 os.makedirs(outdir)
+              except OSError as e:
+                 raise e
+
+           plt.savefig('{0}/metric.png'.format(outdir), format='png', dpi=120, bbox_inches='tight')
+           plt.close(fig)
+
+           fmetatt = {'FORECAST_METRIC_LEVEL': level, 'FORECAST_METRIC_NAME': 'Rossby Wave PC', 'FORECAST_METRIC_SHORT_NAME': 'rossveof', 'FORECAST_HOUR1': int(fhr1), \
+                      'FORECAST_HOUR2': int(fhr2), 'LATITUDE1': lat1, 'LATITUDE2': lat2, 'LONGITUDE1': lon1, 'LONGITUDE2': lon2, 'PRESSURE': level, 'EOF_NUMBER': int(eofn)}
+
+           endict = {'fore_met_init': {'dtype': 'float32'}}
+
+           f_met = {'coords': {}, 'attrs': fmetatt, 'dims': {'num_ens': g1.nens}, 'data_vars': {}}
+           f_met['coords']['longitude'] = {'dims': ('longitude'), 'attrs': {'units': 'degrees', 'description': 'longitude of grid points'}, 'data': ensmat.longitude.values}
+           endict['longitude'] = {'dtype': 'float32'}
+           f_met['coords']['forecast_hour']  = {'dims': ('forecast_hour'), 'attrs': {'units': 'hours', 'description': 'forecast hour'}, 'data': fhrvec}
+           endict['forecast_hour'] = {'dtype': 'float32'}
+
+           f_met['data_vars']['ensemble_mean'] = {'dims': ('forecast_hour', 'longitude'), 'attrs': {'units': 'm.s-1', 'description': '{0} hPa meridional wind ensemble mean'.format(level)}, 'data': e_mean.data}
+           endict['ensemble_mean'] = {'dtype': 'float32'}
+           f_met['data_vars']['EOF_pattern'] = {'dims': ('forecast_hour', 'longitude'), 'attrs': {'units': 'm.s-1', 'description': '{0} hPa meridional wind EOF pattern'.format(level)}, 'data': dwnd}
+           endict['EOF_pattern'] = {'dtype': 'float32'}
+           f_met['data_vars']['fore_met_init'] = {'dims': ('num_ens',), 'attrs': {'units': '', 'description': 'meridional wind PC'}, 'data': pc1.data}
+
+           xr.Dataset.from_dict(f_met).to_netcdf("{0}/{1}_f{2}_{3}.nc".format(self.config['locations']['work_dir'],str(self.datea_str),'%0.3i' % fhr2,metname), encoding=endict)
+
+           self.metlist.append('f{0}_{1}'.format('%0.3i' % fhr2, metname))
 
 
     def __temp_eof(self):
