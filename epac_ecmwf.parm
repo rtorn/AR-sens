@@ -52,6 +52,8 @@ hght_eof_metric=True
 hght_metric_loc=/rt11/torn/ar_sens/metrics_epac/hght
 pvort_eof_metric=True
 pvort_metric_loc=/rt11/torn/ar_sens/metrics_epac/pv
+rossby_eof_metric=True
+rossby_metric_loc=/rt11/torn/ar_sens/metrics_epac/rossby
 temp_eof_metric=True
 temp_metric_loc=/rt11/torn/ar_sens/metrics_epac/t850
 ivt_landfall_metric=True
@@ -80,6 +82,7 @@ calc_pv_pres=True
 calc_theta-e=True
 calc_qvapor=True
 calc_winds=False
+#calc_divergence=True
 calc_refractivity=True
 
 [sens]
