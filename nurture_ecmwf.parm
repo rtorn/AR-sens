@@ -10,8 +10,8 @@ tigge_surface_area=65/-100/5/20
 tigge_surface_grid_space=0.2/0.2
 
 projection=LambertAzimuthalEqualArea
-central_latitude=60
-central_longitude=-60
+central_latitude=53.34
+central_longitude=-60.45
 
 [locations]
 atcf_dir=/ct12/abrammer/graphics/ecmf_tc_data/data
@@ -19,8 +19,8 @@ model_dir=/tornlab_rit/torn/ecmwf
 
 work_dir=/rt11/torn/ar_sens/work_nurture
 output_dir=/rt11/torn/ar_sens/output_ecmwf
-figure_dir=/home11/staff/torn/html/AR-Sens/NURTURE
-outgrid_dir=/home11/staff/torn/html/AR-Sens/NURTURE
+figure_dir=/home11/staff/torn/html/NURTURE/ens-sens
+outgrid_dir=/home11/staff/torn/html/NURTURE/ens-sens
 log_dir=/rt11/torn/ar_sens/log_ecepac
 
 save_work_dir=True
@@ -75,14 +75,14 @@ min_lon=-180
 max_lon=179
 
 [sens]
-min_lat = 13.2123
-min_lon = -104.886
-max_lat = 45.3672
-max_lon = 42.0723
-#min_lat = 31.342673
-#min_lon = 89.284456
-#max_lat = -59.996850
-#max_lon = -4.9904711
+#min_lat = 13.2123
+#min_lon = -104.886
+#max_lat = 45.3672
+#max_lon = 42.0723
+min_lat = 31.342673
+min_lon = -89.284456
+max_lat = 59.996850
+max_lon = -4.9904711
 zero_non_sig_sens=True
 grid_interval=10.
 barb_interval=6
@@ -95,7 +95,10 @@ drop_mark_type=+
 rawinsonde_file=/free/torn/SHOUT/pynew/rawindsondes.tx
 rawin_mark_size=6
 rawin_mark_color=gray
-range_rings=False
+range_rings=True
+ring_center_lat=53.3137
+ring_center_lon=-60.4125
+ring_values=1863
 output_sens=False
 output_list=ivt, e850hPa, pv250hPa, pv500hPa
 multiprocessor=True
