@@ -260,7 +260,7 @@ class ComputeForecastMetrics:
                         "#FF4B00", "#FF1900", "#E60015", "#B3003E", "#80007B", "#570088")
 
            plotBase = self.config.copy()
-           plotBase['grid_interval'] = self.config['fcst_diag'].get('grid_interval', 5)
+           plotBase['grid_interval'] = self.config['metric'].get('grid_interval', 3)
            plotBase['left_labels'] = 'True'
            plotBase['right_labels'] = 'None'
 
@@ -839,7 +839,7 @@ class ComputeForecastMetrics:
            plotBase['subrows']       = 1
            plotBase['subcols']       = 2
            plotBase['subnumber']     = 1
-           plotBase['grid_interval'] = self.config['fcst_diag'].get('grid_interval', 5)
+           plotBase['grid_interval'] = self.config['metric'].get('grid_interval', 3)
            plotBase['left_labels'] = 'None'
            plotBase['right_labels'] = 'None'
            plotBase['bottom_labels'] = 'None'
@@ -1154,9 +1154,26 @@ class ComputeForecastMetrics:
               lat1 = ensmat.latitude.values[j1]
               lat2 = ensmat.latitude.values[j2]
 
-              ensmat = ensmat.sel(latitude=slice(lat1, lat2), longitude=slice(lon1, lon2))
-              fmgrid = fmgrid.sel(latitude=slice(lat1, lat2), longitude=slice(lon1, lon2))
-              e_mean = e_mean.sel(latitude=slice(lat1, lat2), longitude=slice(lon1, lon2))
+              if (lat2-lat1) < 5.0 and (lon2-lon1) < 5.0:
+                latm = 0.5*(lat1+lat2)
+                lonm = 0.5*(lon1+lon2)
+                lon1 = lon1 - 2.5
+                lon2 = lon2 + 2.5
+                if lat2 > lat1:
+                  lat1 = lat1 - 2.5
+                  lat2 = lat2 + 2.5
+                else:
+                  lat1 = lat1 + 2.5
+                  lat2 = lat2 - 2.5
+
+              ensmat = ensmat.sel(latitude=slice(lat1-0.00001, lat2+0.00001), longitude=slice(lon1-0.00001, lon2+0.00001))
+              fmgrid = fmgrid.sel(latitude=slice(lat1-0.00001, lat2+0.00001), longitude=slice(lon1-0.00001, lon2+0.00001))
+              e_mean = e_mean.sel(latitude=slice(lat1-0.00001, lat2+0.00001), longitude=slice(lon1-0.00001, lon2+0.00001))
+
+              lon1 = ensmat.longitude.values[0]
+              lon2 = ensmat.longitude.values[-1]
+              lat1 = ensmat.latitude.values[0]
+              lat2 = ensmat.latitude.values[-1]
 
            else:
 
@@ -1228,11 +1245,11 @@ class ComputeForecastMetrics:
                         "#E7C000", "#FF9000", "#FF0000", "#D60000", "#C00000", "#FF00FF", "#9955C9")
 
            plotBase = self.config.copy()
-           plotBase['grid_interval'] = self.config['fcst_diag'].get('grid_interval', 5)
+           plotBase['grid_interval'] = self.config['metric'].get('grid_interval', 3)
            plotBase['left_labels'] = 'True'
            plotBase['right_labels'] = 'None'
 
-           ax = background_map(self.config['model'].get('projection', 'PlateCarree'), lon1, lon2, lat1, lat2, plotBase)
+           ax = background_map(self.config['model'].get('projection', 'PlateCarree'), lon1, lon2, np.min([lat1,lat2]), np.max([lat1,lat2]), plotBase)
 
            #  Add the ensemble-mean precipitation in shading
            mpcp = [0.0, 0.25, 0.50, 1., 1.5, 2., 4., 6., 8., 12., 16., 24., 32., 64., 96., 97.]
@@ -1674,7 +1691,7 @@ class ComputeForecastMetrics:
            plotBase = self.config.copy()
            for key in self.config['model']:
              plotBase[key] = self.config['model'][key]
-           plotBase['grid_interval'] = self.config['fcst_diag'].get('grid_interval', 5)
+           plotBase['grid_interval'] = self.config['metric'].get('grid_interval', 3)
            plotBase['left_labels'] = 'True'
            plotBase['right_labels'] = 'None'
 
@@ -2064,7 +2081,13 @@ class ComputeForecastMetrics:
 
 
     def __rossby_eof(self):
-
+        '''
+        Function that computes the Rossby wave EOF metric, which is calculated by taking the EOF of 
+        the ensemble wind meridional wind averaged over a latitude range for a given longitude and time rage 
+        defined by the user in a text file.  The resulting forecast metric is the principal component of the
+        EOF.  The function also plots a figure showing the ensemble-mean Hovmoller diagram 
+        along with the meridional wind perturbation that is consistent with the first EOF. 
+        '''
 
         for infull in glob.glob('{0}/{1}_*'.format(self.config['metric'].get('rossby_metric_loc'),self.datea_str)):
 
@@ -2305,7 +2328,7 @@ class ComputeForecastMetrics:
            plotBase = self.config.copy()
            for key in self.config['model']:
               plotBase[key] = self.config['model'][key]
-           plotBase['grid_interval'] = self.config['fcst_diag'].get('grid_interval', 5)
+           plotBase['grid_interval'] = self.config['metric'].get('grid_interval', 5)
            plotBase['left_labels'] = 'True'
            plotBase['right_labels'] = 'None'
 
@@ -2370,11 +2393,11 @@ class ComputeForecastMetrics:
 
     def __wind_speed_eof(self):
         '''
-        Function that computes SLP EOF metric, which is calculated by taking the EOF of 
-        the ensemble SLP forecast over a domain defined by the user in a text file.  
+        Function that computes the wind speed EOF metric, which is calculated by taking the EOF of 
+        the ensemble wind speed forecast over a domain defined by the user in a text file.  
         The resulting forecast metric is the principal component of the
-        EOF.  The function also plots a figure showing the ensemble-mean SLP pattern 
-        along with the SLP perturbation that is consistent with the first EOF. 
+        EOF.  The function also plots a figure showing the ensemble-mean wind speed field
+        along with the wind speed perturbation that is consistent with the first EOF. 
         '''
 
         for infull in glob.glob('{0}/{1}_*'.format(self.config['metric'].get('wind_metric_loc'),self.datea_str)):
@@ -2450,7 +2473,14 @@ class ComputeForecastMetrics:
            colorlist = ("#FFFFFF", "#00ECEC", "#01A0F6", "#00BFFF", "#00FF00", "#00C800", "#009000", "#FFFF00", \
                         "#E7C000", "#FF9000", "#FF0000", "#D60000", "#C00000", "#FF00FF", "#9955C9")
 
-           ax = background_map(self.config['metric'].get('projection', 'PlateCarree'), lon1, lon2, lat1, lat2, self.config['metric'])
+           plotBase = self.config.copy()
+           for key in self.config['model']:
+              plotBase[key] = self.config['model'][key]
+           plotBase['grid_interval'] = self.config['metric'].get('grid_interval', 5)
+           plotBase['left_labels'] = 'True'
+           plotBase['right_labels'] = 'None'
+
+           ax = background_map(self.config['metric'].get('projection', 'PlateCarree'), lon1, lon2, lat1, lat2, plotBase)
 
            mwnd = [0.0, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45, 48, 51, 54]
            norm = matplotlib.colors.BoundaryNorm(mwnd,len(mwnd))
