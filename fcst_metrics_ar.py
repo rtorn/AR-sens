@@ -1080,7 +1080,7 @@ class ComputeForecastMetrics:
                  logging.error('  precipitation metric does not have any land points.  Skipping metric.')
                  continue
 
-              estd_mask = e_mean.values[:,:] * lmask[:,:]
+              estd_mask = e_mean.values[:,:] * lmask[:,:] * np.where(e_mean > pcpmin, 1.0, 0.0)
 #              estd_mask = e_std.values[:,:] * lmask.values[:,:]
 
               stdmax = estd_mask.max()
