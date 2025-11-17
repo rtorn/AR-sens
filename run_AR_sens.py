@@ -7,7 +7,7 @@ import tarfile
 import numpy as np
 import configparser
 import logging
-from multiprocessing import Pool
+from multiprocessing import Pool, cpu_count
 
 sys.path.append('../esens-util')
 from fcst_diag import precipitation_ens_maps, basin_ens_maps
@@ -153,7 +153,7 @@ def run_ens_sensitivity(datea, paramfile):
        if eval(config['fields'].get('multiprocessor','False')):
 
           arglist = [(datea, fhr, config) for fhr in range(0,fmaxfld+int(config['model']['fcst_hour_int']),int(config['model']['fcst_hour_int']))]
-          with Pool() as pool:       
+          with Pool(processes=config['fields'].get('processes',len(arglist))) as pool:       
              results = pool.map(ComputeFieldsParallel, arglist)
 
        else:
@@ -186,7 +186,7 @@ def run_ens_sensitivity(datea, paramfile):
              metarg.append(metlist[i])
 
        arglist = [(datea, fhrarg[i], metarg[i], config) for i in range(len(fhrarg))]
-       with Pool() as pool:
+       with Pool(processes=config['sens'].get('processes',np.min([cpu_count(), len(arglist)]))) as pool:
           results = pool.map(ComputeSensitivityParallel, arglist)
 
     else:  #  Use serial processing
