@@ -2020,7 +2020,7 @@ class ComputeForecastMetrics:
            plotBase['left_labels'] = 'True'
            plotBase['right_labels'] = 'None'
 
-           ax = background_map(self.config['model'].get('projection', 'PlateCarree'), lon1, lon2, lat1, lat2, plotBase)
+           ax = background_map('PlateCarree', lon1, lon2, lat1, lat2, plotBase)
 
            #  Plot the SLP EOF pattern in shading
            hfac = np.ceil((np.max(dpvort) / 5.0)*10.) / 10.
