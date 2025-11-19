@@ -66,6 +66,7 @@ fields_hour_max=120
 calc_ivt=True
 calc_iwv=True
 calc_height=True
+calc_mslp=True
 #height_levels=[1000, 925, 850, 700, 500, 300, 250, 200]
 thetae_levels=[1000, 925, 850, 700]
 #wind_levels=[1000, 925, 850, 700, 500, 300, 250, 200]
