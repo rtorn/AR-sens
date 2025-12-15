@@ -3,6 +3,7 @@
 model_src=ECMWF
 num_ens=50
 io_module=ecmwf_teton
+#io_module=ecmwf_aws_down
 fcst_hour_int=12
 #fcst_hour_int=6
 fcst_hour_max=168
@@ -22,6 +23,8 @@ work_dir=/rt11/torn/ar_sens/work_ecmwf
 output_dir=/rt11/torn/ar_sens/output_ecmwf
 script_dir=/home11/staff/torn/JHT-python
 figure_dir=/rt11/torn/html/AR-Sens/ECMWF
+html_base=https://www.atmos.albany.edu/facstaff/torn/AR-Sens/ECMWF
+html_file=ar_sens.php
 outgrid_dir=/rt11/torn/html/AR-Sens/ECMWF
 log_dir=/rt11/torn/ar_sens/log_ecepac
 
@@ -39,6 +42,7 @@ precip_hour_2=60, 72, 84, 96, 108, 120, 132, 144, 156, 168
 
 [metric]
 fcst_int=12
+#static_fields_file=/rt11/torn/JHT/landmask_ecmwf_0p25.grb2
 static_fields_file=/rt11/torn/JHT/landmask_ecmwf_0p2.grb2
 precipitation_mean_metric=False
 precipitation_eof_metric=True
@@ -84,6 +88,7 @@ calc_qvapor=True
 calc_winds=False
 #calc_divergence=True
 calc_refractivity=True
+multiprocessor=True
 
 [sens]
 zero_non_sig_sens=True

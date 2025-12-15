@@ -17,6 +17,8 @@ work_dir=/rt11/torn/ar_sens/work_gefs
 output_dir=/rt11/torn/ar_sens/output_gefs
 script_dir=/home11/staff/torn/JHT-python
 figure_dir=/rt11/torn/html/AR-Sens/GEFS
+html_base=https://www.atmos.albany.edu/facstaff/torn/AR-Sens/GEFS
+html_file=ar_sens.php
 outgrid_dir=/rt11/torn/html/AR-Sens/GEFS
 log_dir=/rt11/torn/ar_sens/log_gefs
 
