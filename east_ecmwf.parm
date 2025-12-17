@@ -18,6 +18,8 @@ work_dir=/rt11/torn/ar_sens/east_ecmwf
 output_dir=/rt11/torn/ar_sens/output_ecmwf
 script_dir=/home11/staff/torn/JHT-python
 figure_dir=/home11/staff/torn/html/AR-East/ECMWF
+html_base=https://www.atmos.albany.edu/facstaff/torn/AR-East/ECMWF
+html_file=ar_sens.php
 outgrid_dir=/home11/staff/torn/html/AR-East/ECMWF
 log_dir=/rt11/torn/ar_sens/log_eceast
 
