@@ -16,6 +16,7 @@ def ar_sens_html(init, metlist, paramfile):
 
   init_dt = dt.datetime.strptime(init, '%Y%m%d%H')
 
+  #  Loop over all metrics for this initialization time
   for metric in metlist:
 
     hhh      = metric.split('_')[0][1:4]
@@ -29,6 +30,7 @@ def ar_sens_html(init, metlist, paramfile):
    
     os.chdir(figbase)
 
+    #  create soft links to each figure, so it is possible to loop over images (needs a specific file name)
     for field in os.listdir(figbase):
 
       field = field.split('/')[0]
@@ -48,6 +50,7 @@ def ar_sens_html(init, metlist, paramfile):
 
     fout.write('  <h2><a href=\"{0}/metric.png\">F{1} metric</a> (valid {2})</h2>\n'.format(metric,hhh,valid_dt.strftime('%H00 UTC %d %b')))
 
+    #  Add code that allows for looping
     fout.write('  <br clear=\'left\'><br>\n')
     fout.write('\n')
     fout.write('  <script src=\'https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js\' integrity=\'sha512-894YE6QWD5I59HgZOGReFYm4dnWc1Qt5NtvYSaNcOP+u1T9qYdvdihz0PPSiiqn/+/3e7Jo4EaG7TubfWGUrMQ==\' crossorigin=\'anonymous\' referrerpolicy=\'no-referrer\'></script>\n')
@@ -61,6 +64,7 @@ def ar_sens_html(init, metlist, paramfile):
     fout.write('  useroptions.content = [];\n')
     fout.write('\n')
 
+    #  Create a line in the loop control panel for each field
     add_field(fout, 'ivt', 'IVT', figbase, htmlbase, int(conf['model']['fcst_hour_int']), fhrmax)
     add_field(fout, 'iwv', 'IWV', figbase, htmlbase, int(conf['model']['fcst_hour_int']), fhrmax)
     add_field(fout, 'qvap850hPa', '850 hPa water vapor', figbase, htmlbase, int(conf['model']['fcst_hour_int']), fhrmax)
