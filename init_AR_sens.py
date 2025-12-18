@@ -29,6 +29,10 @@ def init_AR_sens(init, paramfile):
       os.path.exists('{0}/yyyymmddhh_auto'.format(conf['metric'].get('ivt_land_metric_loc','.'))):
     shutil.copy('{0}/yyyymmddhh_auto'.format(conf['metric']['ivt_land_metric_loc']),'{0}/{1}_auto'.format(conf['metric']['ivt_land_metric_loc'],init))
 
+  if (not os.path.exists('{0}/{1}_auto'.format(conf['metric'].get('rossby_metric_loc','.'),init))) and \
+      os.path.exists('{0}/yyyymmddhh_auto'.format(conf['metric'].get('rossby_metric_loc','.'))):
+    shutil.copy('{0}/yyyymmddhh_auto'.format(conf['metric']['rossby_metric_loc']),'{0}/{1}_auto'.format(conf['metric']['rossby_metric_loc'],init))
+
   conf['locations']['work_dir'] = '{0}/{1}'.format(conf['locations']['work_dir'],init)
   os.makedirs(conf['locations']['work_dir'], exist_ok = True)
   os.chdir(conf['locations']['work_dir'])
@@ -41,8 +45,8 @@ def init_AR_sens(init, paramfile):
       os.remove('watershed_precip.nc')
 
   #  Download the AR Recon buoy files
-  if (not os.path.exists('{0}/arr_buoys.txt')) and dt.datetime.now().hour > 12:
-    fout = open('arr_buoys.txt', 'w')
+  if (not os.path.exists(conf['sens'].get('buoy1_file','arr_buoys.txt'))) and dt.datetime.now().hour > 12 and 'buoy1_file' in conf['sens']:
+    fout = open(conf['sens']['buoy1_file'], 'w')
     for yyyy in [2020, 2021, 2022, 2023, 2024, 2025, 2026]:
       urllib.request.urlretrieve('https://cw3e.ucsd.edu/images/CW3E_Obs/DriftingBuoys/ARRecon_{0}_SVP-B_BuoyLocations_latest_SLP.txt'.format(yyyy), 'buoy.txt')
       with open('buoy.txt') as infile:
@@ -52,8 +56,8 @@ def init_AR_sens(init, paramfile):
     fout.close()
 
   #  Download the other drifting buoys
-  if (not os.path.exists('{0}/other_buoys.txt')) and dt.datetime.now().hour > 12:
-    urllib.request.urlretrieve('https://cw3e.ucsd.edu/images/CW3E_Obs/DriftingBuoys/BuoyLocations_latest_SLP.txt', 'other_buoys.txt')
+  if (not os.path.exists(conf['sens'].get('buoy2_file','other_buoys.txt'))) and dt.datetime.now().hour > 12 and 'buoy2_file' in conf['sens']:
+    urllib.request.urlretrieve('https://cw3e.ucsd.edu/images/CW3E_Obs/DriftingBuoys/BuoyLocations_latest_SLP.txt', conf['sens']['buoy2_file'])
 
   #  Actually run the sensitivity code.  Using system call to make sure there is no overwrite of current variables
   os.chdir('/home11/staff/torn/ens-sens/AR-sens')
