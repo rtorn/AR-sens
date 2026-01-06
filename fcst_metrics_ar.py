@@ -1380,15 +1380,16 @@ class ComputeForecastMetrics:
            os.remove('watershed_precip.nc')
            return None
 
+        rbdf = gpd.read_file(self.config['metric'].get('basin_shape_file'))
+
         for infull in glob.glob('{0}/{1}_*'.format(self.config['metric'].get('basin_metric_loc'),self.datea_str)):
 
            try:
               f = open(infull, 'r')
+              logging.warning('  Creating river basin metric based on information in {0}'.format(infull))
            except IOError:
-              logging.warning('{0} does not exist.  Cannot compute basin precip EOF'.format(infull))
+              logging.warning('  {0} does not exist.  Cannot compute basin precip EOF'.format(infull))
               return None
-
-           print(infull)
 
            try:
               conf = configparser.ConfigParser()
@@ -1401,39 +1402,52 @@ class ComputeForecastMetrics:
               hucid_input = conf['definition'].get('hucid')
               auto_domain = eval(conf['definition'].get('automated','False'))
               auto_sdmin  = float(conf['definition'].get('automated_sd_min',0.80))
+              auto_mettype = conf['definition'].get('automated_type','std')
+              auto_minimum = float(conf['definition'].get('automated_minimum',12.7))
               accumulated = eval(conf['definition'].get('accumulation','False'))
            except IOError:
-              logging.warning('{0} does not exist.  Cannot compute precip EOF'.format(infull))
+              logging.warning('   {0} does not exist.  Cannot compute precip EOF'.format(infull))
               return None
 
            if auto_domain:
 
-              mean_min = 12.7
               bmea = np.mean(np.sum(ds.precip.sel(hour=slice(fhr1, fhr2)).squeeze().load(), axis=0), axis=0)
               bstd = np.std(np.sum(ds.precip.sel(hour=slice(fhr1, fhr2)).squeeze().load(), axis=0), axis=0)
+              brat = bstd[:] / np.fmax(bmea, auto_minimum)
 
-              brat = bstd[:] / np.fmax(bmea, mean_min)
-#              imax = np.argmax(brat.values)
-              imax = np.argmax(bstd.values)
+              if auto_mettype == 'mean':
+                bmet = bmea[:]
+              elif auto_mettype == 'std':
+                bmet = bstd[:]
+              elif auto_mettype == 'ratio':
+                bmet = brat[:]
 
-              print(bmea[imax].values,bstd[imax].values,brat[imax].values)
+              imax = np.argmax(bmet.values)
+              logging.warning('   Maximum for {0}, mean: {1}, std: {2}, std/mean ratio: {3}'.format( \
+                         db[db['ID'] == int(ds.HUCID[imax])]['Name'].values[0],bmea[imax].values,bstd[imax].values,brat[imax].values))
 
-              if bmea[imax] < mean_min:
-                 logging.error('  basin precipitation metric center point is below minimum.  Skipping metric.')
+              if bmea[imax] < auto_minimum:
+                 logging.error('   basin precipitation metric center point is below minimum.  Skipping metric.')
                  continue
 
-              hucid_list = []
-              basin_list = []
-              index_list = []
+              hucid = ds.HUCID[imax]
+              hucid_list = [int(hucid)]
+              basin_list = [db[db['ID'] == int(hucid)]['Name'].values]
+              index_list = [imax]
 
-              for basin in range(len(brat)):
-                 if bstd[basin] >= auto_sdmin * bstd[imax]:
-#                 if brat[basin] >= auto_sdmin * brat[imax]:
+              k = 0
+              while k < len(index_list):
+
+                ipoints, ipolygons = rbdf.sindex.query(rbdf.iloc[[index_list[k]]].geometry, predicate="intersects")
+                for basin in ipolygons:
+                  if bmet[basin] >= auto_sdmin * bmet[imax] and (not (basin in index_list)):
                     hucid = ds.HUCID[basin]
                     hucid_list.append(int(hucid))
                     basin_list.append(db[db['ID'] == int(hucid)]['Name'].values)
                     index_list.append(basin)
-#                    print('  adding basin',basin_list[-1],bstd[basin].values)
+                    logging.debug('   adding basin {0}, {1}'.format(basin_list[-1][0],bmet[basin].values))
+
+                k = k + 1
 
            else:
 
@@ -1504,12 +1518,10 @@ class ComputeForecastMetrics:
 
            if np.sum(dpcp) < 0.0:
               dpcp[:] = -dpcp[:]
-              pc1[:]    = -pc1[:]
+              pc1[:]  = -pc1[:]
 
            #  Create plots of MSLP and maximum wind for each member, mean and EOF perturbation
            fig = plt.figure(figsize=(13, 7.5))
-
-           gdf = gpd.read_file(self.config['metric'].get('basin_shape_file'))
 
            plotBase = self.config.copy()
            plotBase['subplot']       = 'True'
@@ -1522,12 +1534,12 @@ class ComputeForecastMetrics:
            plotBase['bottom_labels'] = 'None'
            ax0 = background_map('PlateCarree', -126, -105, 30, 53, plotBase)
 
-           gdf.plot(ax=ax0, color='white', edgecolor='silver', linewidth=0.5)
+           rbdf.plot(ax=ax0, color='white', edgecolor='silver', linewidth=0.5)
            for basin in index_list:
-              gdf.iloc[[basin]].plot(ax=ax0, facecolor='gold')
+              rbdf.iloc[[basin]].plot(ax=ax0, facecolor='gold')
 
            if auto_domain:
-              gdf.iloc[[imax]].plot(ax=ax0, facecolor='red')
+              rbdf.iloc[[imax]].plot(ax=ax0, facecolor='red')
 
            ax1  = fig.add_axes([0.54, 0.16, 0.42, 0.67])
 
