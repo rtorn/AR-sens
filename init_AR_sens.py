@@ -39,7 +39,10 @@ def init_AR_sens(init, paramfile):
 
   #  Download the watershed precipitation files.  Remove if this file does not match the initialization time
   if (not os.path.exists('{0}/watershed_precip.nc'.format(conf['locations']['work_dir']))) and 'basin_metric_loc' in conf['metric']:
-    urllib.request.urlretrieve('https://cw3e.ucsd.edu/Projects/QPF/data/watershed_HUC8_eps.nc', 'watershed_precip.nc')
+    if conf['model']['model_src'] == 'ECMWF':
+      urllib.request.urlretrieve('https://cw3e.ucsd.edu/Projects/QPF/data/watershed_HUC8_eps.nc', 'watershed_precip.nc')
+    elif conf['model']['model_src'] == 'GEFS':
+      urllib.request.urlretrieve('https://cw3e.ucsd.edu/Projects/QPF/data/watershed_HUC8_gefs.nc', 'watershed_precip.nc')
     ds = xr.open_dataset('watershed_precip.nc', decode_times=False).rename({'time': 'hour'})
     if ds.attrs['init'] != init:
       os.remove('watershed_precip.nc')
