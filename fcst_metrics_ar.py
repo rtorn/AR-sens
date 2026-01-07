@@ -76,12 +76,14 @@ class ComputeForecastMetrics:
         self.datea_str = datea
         self.datea = dt.datetime.strptime(datea, '%Y%m%d%H')
         self.datea_s = self.datea.strftime("%m%d%H%M")
+
+        self.dpp = importlib.import_module(config['model']['io_module'])
+        self.nens = self.dpp.ReadGribFiles(datea, float(config['model']['fcst_hour_max']), config).nens
         self.outdir = config['locations']['output_dir']
 
         self.config = config
 
         self.metlist = []
-        self.dpp = importlib.import_module(config['model']['io_module'])
 
         if self.config['metric'].get('precipitation_mean_metric', 'True') == 'True':
            self.__precipitation_mean()
@@ -1513,6 +1515,10 @@ class ComputeForecastMetrics:
 
            for n in range(ensmat.shape[0]):
               dpcp[:] = dpcp[:] + ensmat[n,:] * pc1[n]
+
+           #  Fix issue with watershed file that is missing control member
+           if len(pc1) != self.nens:
+             pc1 = np.insert(pc1, 0, 0.0)
 
            dpcp[:] = dpcp[:] / float(ensmat.shape[0])
 
