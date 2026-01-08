@@ -147,8 +147,6 @@ class ComputeForecastMetrics:
 
         for infull in glob.glob('{0}/{1}_*'.format(self.config['metric'].get('ivt_metric_loc'),self.datea_str)):
 
-           print(infull)
-
            #  Read the text file that contains information on the precipitation metric
            try:
               conf = configparser.ConfigParser()
@@ -161,8 +159,9 @@ class ComputeForecastMetrics:
               lon1 = float(conf['definition'].get('longitude_min'))
               lon2 = float(conf['definition'].get('longitude_max'))
               vecmet = eval(conf['definition'].get('vector',self.config['metric'].get('ivt_land_vector','False')))
+              logging.warning('  Creating IVT EOF metric based on information in {0}'.format(infull))
            except IOError:
-              logging.warning('{0} does not exist.  Cannot compute IVT EOF'.format(infull))
+              logging.warning('  {0} does not exist.  Cannot compute IVT EOF'.format(infull))
               return None
 
            if eval(self.config['model'].get('flip_lon','False')):
@@ -349,7 +348,7 @@ class ComputeForecastMetrics:
            loncoa = dcoa['longitude'].values
            f = open(self.config['metric'].get('coast_points_file'), 'r')
         except IOError:
-           logging.warning('{0} does not exist.  Cannot compute IVT Landfall EOF'.format(self.config['metric'].get('coast_points_file')))
+           logging.warning('  Coast Points File {0} does not exist.  Cannot compute IVT Landfall EOF'.format(self.config['metric'].get('coast_points_file')))
            return None
 
         for infull in glob.glob('{0}/{1}_*'.format(self.config['metric'].get('ivt_land_metric_loc'),self.datea_str)):
@@ -368,8 +367,9 @@ class ComputeForecastMetrics:
               ivtmin = float(conf['definition'].get('adapt_ivt_min',self.config['metric'].get('ivt_land_adapt_min',200.)))
               latbuff = float(conf['definition'].get('adapt_ivt_lat_buff',self.config['metric'].get('ivt_land_adapt_lat_buff',0.)))
               timebuff = int(conf['definition'].get('adapt_ivt_hour_buff',self.config['metric'].get('ivt_land_adapt_hour_buff',0)))
+              logging.warning('  Creating IVT landfall EOF metric based on information in {0}'.format(infull))
            except IOError:
-              logging.warning('{0} does not exist.  Cannot compute IVT Landfall EOF'.format(infull))
+              logging.warning('  {0} does not exist.  Cannot compute IVT Landfall EOF'.format(infull))
               continue
 
            latlist = []
@@ -460,7 +460,7 @@ class ComputeForecastMetrics:
 
               #  Evaluate whether the forecast metric grid has enough land points
               if k == 0 or fhr1 == fhr2 or lat1 == lat2:
-                 logging.error('  IVT landfall metric does not have any points above minimum.  Skipping metric.')
+                 logging.error('   IVT landfall metric does not have any points above minimum.  Skipping metric.')
                  continue
 
               fhr1 = max(fhr1-timebuff, min(e_mean.fcst_hour.values))
@@ -754,6 +754,7 @@ class ComputeForecastMetrics:
               mask_land = eval(conf['definition'].get('land_mask',self.config['metric'].get('precip_mean_land_mask','False')))
               frozen = eval(conf['definition'].get('frozen_mask',self.config['metric'].get('precip_mean_frozen_mask','False')))
               metname = conf['definition'].get('metric_name','pcp')
+              logging.warning('  Creating precipitation metric based on information in {0}'.format(infile))
            except:
               logging.warning('  {0} does not exist.  Using parameter and/or default values'.format(infile))
 
@@ -931,8 +932,6 @@ class ComputeForecastMetrics:
         along with the precipitation perturbation that is consistent with the first EOF. 
         '''
 
-        logging.warning('  Precipitation EOF Metrics:')
-
         if eval(self.config['metric'].get('metric_from_fields','False')):
 
            for pfile in glob.glob('{0}/*pcp1.nc'.format(self.config['locations']['work_dir'])):
@@ -963,6 +962,7 @@ class ComputeForecastMetrics:
               frozen = eval(conf['definition'].get('frozen_mask',self.config['metric'].get('precip_eof_frozen_mask','False')))
               metname = conf['definition'].get('metric_name','pcpeof')
               eofn = int(conf['definition'].get('eof_number',1))
+              logging.warning('  Creating precipitation EOF metric based on information in {0}'.format(infile))
            except:
               logging.warning('  {0} does not exist.  Using parameter and/or default values'.format(infile))
 
@@ -974,7 +974,7 @@ class ComputeForecastMetrics:
 
            #  Skip frozen precipitation for GEFS for now.  Can be removed when this is solved.
            if frozen and not (g1.has_precip_category or g1.has_frozen_fraction):
-              logging.warning('  This model does not support frozen precipitation metrics.  Skipping {0} metric'.format(metname))
+              logging.warning('    This model does not support frozen precipitation metrics.  Skipping {0} metric'.format(metname))
               continue
 
            #  Now figure out the 24 h after landfall, so we can set the appropriate 24 h period.
@@ -1025,7 +1025,7 @@ class ComputeForecastMetrics:
                     fhr2 = fhr+24
                     pmax = psum
 
-           logging.warning('  Precipitation Metric ({0}), Hours: {1}-{2}, Lat: {3}-{4}, Lon: {5}-{6}'.format(metname,fhr1,fhr2,lat1,lat2,lon1,lon2))
+           logging.warning('    Precipitation Metric ({0}), Hours: {1}-{2}, Lat: {3}-{4}, Lon: {5}-{6}'.format(metname,fhr1,fhr2,lat1,lat2,lon1,lon2))
 
 
            #  Read the total precipitation, scale to a 24 h value 
@@ -1079,7 +1079,7 @@ class ComputeForecastMetrics:
 
               # Search for maximum in ensemble precipitation SD 
               if np.amax(lmask) < lmaskmin:
-                 logging.error('  precipitation metric does not have any land points.  Skipping metric.')
+                 logging.error('    precipitation metric does not have any land points.  Skipping metric.')
                  continue
 
               estd_mask = e_mean.values[:,:] * lmask[:,:] * np.where(e_mean > pcpmin, 1.0, 0.0)
@@ -1117,7 +1117,7 @@ class ComputeForecastMetrics:
 
               #  Evaluate whether the forecast metric grid has enough land points
               if np.sum(fmgrid) <= 1.0:
-                 logging.error('  precipitation metric does not have any land points after doing search.  Skipping metric.')
+                 logging.error('    precipitation metric does not have any land points after doing search.  Skipping metric.')
                  continue
 
               #  Find the grid bounds for the precipitation domain (for plotting purposes)
@@ -1408,7 +1408,7 @@ class ComputeForecastMetrics:
               auto_minimum = float(conf['definition'].get('automated_minimum',12.7))
               accumulated = eval(conf['definition'].get('accumulation','False'))
            except IOError:
-              logging.warning('   {0} does not exist.  Cannot compute precip EOF'.format(infull))
+              logging.warning('    {0} does not exist.  Cannot compute precip EOF'.format(infull))
               return None
 
            if auto_domain:
@@ -1425,11 +1425,11 @@ class ComputeForecastMetrics:
                 bmet = brat[:]
 
               imax = np.argmax(bmet.values)
-              logging.warning('   Maximum for {0}, mean: {1}, std: {2}, std/mean ratio: {3}'.format( \
+              logging.warning('    Maximum for {0}, mean: {1}, std: {2}, std/mean ratio: {3}'.format( \
                          db[db['ID'] == int(ds.HUCID[imax])]['Name'].values[0],bmea[imax].values,bstd[imax].values,brat[imax].values))
 
               if bmea[imax] < auto_minimum:
-                 logging.error('   basin precipitation metric center point is below minimum.  Skipping metric.')
+                 logging.error('    basin precipitation metric center point is below minimum.  Skipping metric.')
                  continue
 
               hucid = ds.HUCID[imax]
@@ -1447,7 +1447,7 @@ class ComputeForecastMetrics:
                     hucid_list.append(int(hucid))
                     basin_list.append(db[db['ID'] == int(hucid)]['Name'].values)
                     index_list.append(basin)
-                    logging.debug('   adding basin {0}, {1}'.format(basin_list[-1][0],bmet[basin].values))
+                    logging.debug('    adding basin {0}, {1}'.format(basin_list[-1][0],bmet[basin].values))
 
                 k = k + 1
 
@@ -1481,7 +1481,7 @@ class ComputeForecastMetrics:
            for hucid in hucid_list:
 
               bmask = db['ID'] == int(hucid)
-              logging.debug('{0} ({1}), {2} Acres'.format(db[bmask]['Name'].values[0],db[bmask]['ID'].values[0],np.round(db[bmask]['Size'].values[0])))
+              logging.debug('    {0} ({1}), {2} Acres'.format(db[bmask]['Name'].values[0],db[bmask]['ID'].values[0],np.round(db[bmask]['Size'].values[0])))
 
               prate = ((ds.precip.sel(hour=slice(fhr1, fhr2), HUCID=int(hucid)).squeeze()).transpose()).load()
               prate[:,:] = prate[:,:] * db[bmask]['Size'].values
@@ -1636,8 +1636,6 @@ class ComputeForecastMetrics:
               logging.warning('{0} does not exist.  Cannot compute SLP EOF'.format(infull))
               return None
 
-           print(infull)
-
            #  Read the text file that contains information on the SLP metric
            try:
               conf = configparser.ConfigParser()
@@ -1649,8 +1647,9 @@ class ComputeForecastMetrics:
               lat2 = float(conf['definition'].get('latitude_max'))
               lon1 = float(conf['definition'].get('longitude_min'))
               lon2 = float(conf['definition'].get('longitude_max'))
+              logging.warning('  Creating MSLP EOF metric based on information in {0}'.format(infull))
            except IOError:
-              logging.warning('{0} does not exist.  Cannot compute SLP EOF'.format(infull))
+              logging.warning('  {0} does not exist.  Cannot compute SLP EOF'.format(infull))
               return None
 
            if eval(self.config['model'].get('flip_lon','False')):
@@ -1792,8 +1791,9 @@ class ComputeForecastMetrics:
               eofn  = int(conf['definition'].get('eof_number',1))
               level = float(conf['definition'].get('pressure', 500)) 
               metname = conf['definition'].get('metric_name','h{0}hPa'.format(int(level)))
+              logging.warning('  Creating {0} hPa height EOF metric based on information in {1}'.format(level,infull))
            except IOError:
-              logging.warning('{0} does not exist.  Cannot compute IVT Landfall EOF'.format(infull))
+              logging.warning('  {0} does not exist.  Cannot compute height EOF metric'.format(infull))
               return None
 
            if eval(self.config['model'].get('flip_lon','False')):
@@ -1938,8 +1938,9 @@ class ComputeForecastMetrics:
               eofn  = int(conf['definition'].get('eof_number',1))
               level = float(conf['definition'].get('pressure', 250))
               metname = conf['definition'].get('metric_name','pv{0}hPa'.format(int(level)))
+              logging.warning('  Creating {0} hPa PV EOF metric based on information in {1}'.format(level,infull))
            except IOError:
-              logging.warning('{0} does not exist.  Cannot compute PV EOF'.format(infull))
+              logging.warning('  {0} does not exist.  Cannot compute PV EOF'.format(infull))
               return None
 
            if eval(self.config['model'].get('flip_lon','False')):
@@ -2121,8 +2122,9 @@ class ComputeForecastMetrics:
               eofn  = int(conf['definition'].get('eof_number',1))
               level = float(conf['definition'].get('pressure', 250))
               metname = conf['definition'].get('metric_name','ross{0}hPa'.format(int(level)))
+              logging.warning('  Creating {0} hPa wind Hovmoller EOF metric based on information in {1}'.format(level,infull))
            except IOError:
-              logging.warning('{0} does not exist.  Cannot compute IVT Landfall EOF'.format(infull))
+              logging.warning('  {0} does not exist.  Cannot compute v-wind Hovmoller EOF'.format(infull))
               return None
 
            if eval(self.config['model'].get('flip_lon','False')):
@@ -2247,8 +2249,6 @@ class ComputeForecastMetrics:
 
         for infull in glob.glob('{0}/{1}_*'.format(self.config['metric'].get('temp_metric_loc'),self.datea_str)):
 
-           print(infull)
-
            try:
               conf = configparser.ConfigParser()
               conf.read(infull)
@@ -2262,8 +2262,9 @@ class ComputeForecastMetrics:
               eofn  = int(conf['definition'].get('eof_number',1))
               level = float(conf['definition'].get('pressure', 850))
               metname = conf['definition'].get('metric_name','t{0}hPa'.format(int(level)))
+              logging.warning('  Creating {0} hPa temperature EOF metric based on information in {1}'.format(level,infull))
            except IOError:
-              logging.warning('{0} does not exist.  Cannot compute temperature EOF'.format(infull))
+              logging.warning('  {0} does not exist.  Cannot compute temperature EOF'.format(infull))
               return None
 
            if eval(self.config['model'].get('flip_lon','False')):
@@ -2430,8 +2431,9 @@ class ComputeForecastMetrics:
               lon2  = float(conf['definition'].get('longitude_max'))
               eofn  = int(conf['definition'].get('eof_number',1))
               metname = conf['definition'].get('metric_name','wspd')
+              logging.warning('  Creating 10 m wind speed EOF metric based on information in {0}'.format(infull))
            except IOError:
-              logging.warning('{0} does not exist.  Cannot compute IVT Landfall EOF'.format(infull))
+              logging.warning('  {0} does not exist.  Cannot compute 10 m wind speed EOF'.format(infull))
               return None
 
            if eval(self.config['model'].get('flip_lon','False')):
@@ -2551,13 +2553,3 @@ class ComputeForecastMetrics:
            xr.Dataset.from_dict(f_met).to_netcdf("{0}/{1}_f{2}_{3}.nc".format(self.config['locations']['work_dir'],str(self.datea_str),'%0.3i' % fhr,metname), encoding=endict)
 
            self.metlist.append('f{0}_{1}'.format('%0.3i' % fhr, metname))
-
-
-if __name__ == "__main__":
-    src1 = "/Users/parthpatwari/RA_Atmospheric_Science/Old_Code/atcf_data"
-    grib_src = "/Users/parthpatwari/RA_Atmospheric_Science/GRIB_files"
-    atcf = dpp.Readatcfdata(src1)
-    atcf_data = atcf.atcf_files
-    no_files = atcf.no_atcf_files
-    # g1 = dpp.ReadGribFiles(grib_src, '2019082900', 180)
-    ct = ComputeForecastMetrics("ECMWF", '2019082900', atcf.atcf_files, atcf.atcf_array, grib_src)
