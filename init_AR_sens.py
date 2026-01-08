@@ -82,7 +82,7 @@ def init_AR_sens(init, paramfile):
   ar_sens_html(init, metlist, paramfile)
 
   #  Place the most recent version of different metrics into special directory for Google Earth.  Only done if within 24 h of initialization
-  for mettype in ['pcp1', 'pcp2', 'ivtland1', 'ivtland2', 'ivt1', 'slp1', 'hght1', 'pv1', 'snow1', 'pcpa', 'ivtla', 'hova']:
+  for mettype in ['pcp1', 'pcp2', 'ivtland1', 'ivtland2', 'ivt1', 'slp1', 'hght1', 'pv1', 'snow1', 'pcpa', 'ivtla', 'rivera', 'hova']:
 
     if os.path.exists('{0}/latest/{1}'.format(conf['locations']['figure_dir'],mettype)) and (dt.datetime.now()-init_dt).total_seconds() < 86400.:
 
