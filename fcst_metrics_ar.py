@@ -767,9 +767,45 @@ class ComputeForecastMetrics:
            datea_2   = self.datea + dt.timedelta(hours=fhr2)
            date2_str = datea_2.strftime("%Y%m%d%H")
 
-           #  Read the total precipitation, scale to a 24 h value 
+           g1 = self.dpp.ReadGribFiles(self.datea_str, fhr2, self.config)
+
            vDict = {'latitude': (lat1-0.00001, lat2+0.00001), 'longitude': (lon1-0.00001, lon2+0.00001),
-                       'description': 'precipitation', 'units': 'mm', '_FillValue': -9999.}
+                    'description': 'precipitation', 'units': 'mm', '_FillValue': -9999., 'flip_lon': self.config['model'].get('flip_lon','False')}
+           vDict = g1.set_var_bounds('precipitation', vDict)
+
+           if mask_land:
+              g1 = self.dpp.ReadGribFiles(self.datea_str, fhr2, self.config)
+              lmask = g1.read_static_field(self.config['metric'].get('static_fields_file'), 'landmask', vDict).values
+           else:
+              lmask      = np.ones(e_mean.shape)
+              lmask[:,:] = 1.0
+
+           if time_adapt:
+
+              #  Read precipitation over the default window, calculate SD, search for maximum value
+              ensmat = self.__read_precip(fhr1, fhr2, self.config, vDict)
+              e_std = np.std(ensmat, axis=0)
+              estd_mask = e_std.values[:,:] * lmask[:,:]
+
+              maxloc = np.where(estd_mask == estd_mask.max())
+              lonc   = ensmat.longitude.values[int(maxloc[1])]
+              latc   = ensmat.latitude.values[int(maxloc[0])]
+
+              logging.info('    Precip. Time Adapt: Lat/Lon center: {0}, {1}'.format(latc,lonc))
+
+              pmax = -1.0
+              for fhr in range(fhr1, fhr2-24+time_freq, time_freq):
+
+                 psum = np.sum(np.mean(self.__read_precip(fhr, fhr+24, self.config, vDict), axis=0))
+                 logging.info('    Precip. Time Adapt: {0}-{1} h, area precip: {2}'.format(fhr,fhr+24,psum.values))
+                 if psum > pmax:
+                    fhr1 = fhr
+                    fhr2 = fhr+24
+                    pmax = psum
+
+           logging.warning('    Precipitation Mean Metric ({0}), Hours: {1}-{2}, Lat: {3}-{4}, Lon: {5}-{6}'.format(metname,fhr1,fhr2,lat1,lat2,lon1,lon2))
+
+           #  Read the total precipitation, scale to a 24 h value
            ensmat = self.__read_precip(fhr1, fhr2, self.config, vDict)
            ensmat[:,:,:] = ensmat[:,:,:] * 24. / float(fhr2-fhr1)
 
@@ -802,14 +838,6 @@ class ComputeForecastMetrics:
            jloc[nloc] = jcen
            latc       = ensmat.latitude.values[jcen]
            lonc       = ensmat.longitude.values[icen]
-
-           if mask_land:
-              g1 = self.dpp.ReadGribFiles(self.datea_str, fhr2, self.config)
-              vDict['flip_lon'] = self.config['model'].get('flip_lon','False')
-              lmask = g1.read_static_field(self.config['metric'].get('static_fields_file'), 'landmask', vDict).values
-           else:
-              lmask      = np.ones(e_mean.shape)
-              lmask[:,:] = 1.0
 
            k = 0
            while k <= nloc:
@@ -1086,6 +1114,11 @@ class ComputeForecastMetrics:
 #              estd_mask = e_std.values[:,:] * lmask.values[:,:]
 
               stdmax = estd_mask.max()
+
+              if stdmax < 0.001:
+                 logging.error('    all precipitation points below minimum value.  Skipping metric.')
+                 continue
+
               maxloc = np.where(estd_mask == stdmax)
               icen   = int(maxloc[1])
               jcen   = int(maxloc[0])
