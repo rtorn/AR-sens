@@ -101,8 +101,9 @@ def init_AR_sens(init, paramfile):
 
         for field in ['ivt', 'e850hPa', 'pv500hPa', 'pv250hPa', 'summ']:
           for fhrt in ['048', '072']:
-            shutil.copy('{0}/{1}/{2}/sens/{3}/{1}_f{4}_{3}_sens.png'.format(conf['locations']['figure_dir'],init,metname,field,fhrt), \
-                        '{0}/latest/{1}/f{2}_{3}_sens.png'.format(conf['locations']['figure_dir'],mettype,fhrt,field))
+            if os.path.exists('{0}/{1}/{2}/sens/{3}/{1}_f{4}_{3}_sens.png'.format(conf['locations']['figure_dir'],init,metname,field,fhrt)):
+              shutil.copy('{0}/{1}/{2}/sens/{3}/{1}_f{4}_{3}_sens.png'.format(conf['locations']['figure_dir'],init,metname,field,fhrt), \
+                          '{0}/latest/{1}/f{2}_{3}_sens.png'.format(conf['locations']['figure_dir'],mettype,fhrt,field))
 
 
 if __name__ == '__main__':
