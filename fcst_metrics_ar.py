@@ -295,8 +295,11 @@ class ComputeForecastMetrics:
            cbar = plt.colorbar(pltf, fraction=0.15, aspect=45., pad=0.04, orientation='horizontal', ticks=mivt)
            cbar.set_ticks(mivt[1:(len(mivt)-1)])
 
-           fracvar = '%4.3f' % solver.varianceFraction(neigs=1)
-           plt.title("{0} {1} hour IVT, {2} of variance".format(str(self.datea_str),fhr,fracvar))
+           if eofn == 1:
+              fracvar = solver.varianceFraction(neigs=1).data
+           else:
+              fracvar = solver.varianceFraction(neigs=eofn)[-1].data
+           plt.title("{0} {1} hour IVT, {2} of variance".format(str(self.datea_str),fhr,'%4.3f' % fracvar))
 
            outdir = '{0}/f{1}_{2}'.format(self.config['locations']['figure_dir'],fff,metname)
            if not os.path.isdir(outdir):
@@ -309,7 +312,7 @@ class ComputeForecastMetrics:
            plt.close(fig)
 
            fmetatt = {'FORECAST_METRIC_LEVEL': '', 'FORECAST_METRIC_NAME': 'IVT PC', 'FORECAST_METRIC_SHORT_NAME': 'ivteof', 'FORECAST_HOUR': int(fhr), \
-                      'LATITUDE1': lat1, 'LATITUDE2': lat2, 'LONGITUDE1': lon1, 'LONGITUDE2': lon2, 'VECTOR': str(vecmet), 'EOF_NUMBER': int(eofn)}
+                      'LATITUDE1': lat1, 'LATITUDE2': lat2, 'LONGITUDE1': lon1, 'LONGITUDE2': lon2, 'VECTOR': str(vecmet), 'EOF_NUMBER': int(eofn), 'VAR_FRACTION': fracvar}
 
            endict = {'fore_met_init': {'dtype': 'float32'}}
 
@@ -786,6 +789,10 @@ class ComputeForecastMetrics:
               ensmat = self.__read_precip(fhr1, fhr2, self.config, vDict)
               e_std = np.std(ensmat, axis=0)
               estd_mask = e_std.values[:,:] * lmask[:,:]
+
+              if estd_mask.max() < 0.001:
+                 logging.error('    all precipitation points below minimum value.  Skipping metric.')
+                 continue
 
               maxloc = np.where(estd_mask == estd_mask.max())
               lonc   = ensmat.longitude.values[int(maxloc[1])]
@@ -1605,9 +1612,9 @@ class ComputeForecastMetrics:
            ax1.tick_params(axis='y', labelsize=12)
 
            if eofn == 1:
-              fracvar = '%4.3f' % solver.varianceFraction(neigs=1)
+              fracvar = '%4.3f' % solver.varianceFraction(neigs=1).data
            else:
-              fracvar = '%4.3f' % solver.varianceFraction(neigs=eofn)[-1]
+              fracvar = '%4.3f' % solver.varianceFraction(neigs=eofn)[-1].data
            plt.suptitle("{0} {1}-{2} hour Precipitation, {3} of variance".format(str(self.datea_str),fhr1,fhr2,\
                                   fracvar), x=0.5, y=0.86, fontsize=15)
 
@@ -1630,7 +1637,7 @@ class ComputeForecastMetrics:
 
            fmetatt = {'FORECAST_METRIC_LEVEL': '', 'FORECAST_METRIC_NAME': 'river basin precipitation PC', 'FORECAST_METRIC_SHORT_NAME': 'rpcpeof', \
                       'FORECAST_HOUR1': int(fhr1), 'FORECAST_HOUR2': int(fhr2), 'AUTOMATED': str(auto_domain), \
-                      'AUTOMATED_SD_MIN': auto_sdmin, 'ACCUMULATION': str(accumulated), 'EOF_NUMBER': int(eofn)} 
+                      'AUTOMATED_SD_MIN': auto_sdmin, 'ACCUMULATION': str(accumulated), 'EOF_NUMBER': int(eofn), 'VAR_FRACTION': fracvar} 
 
            endict = {'fore_met_init': {'dtype': 'float32'}}
 
@@ -1764,10 +1771,10 @@ class ComputeForecastMetrics:
            cb = plt.clabel(pltm, inline_spacing=0.0, fontsize=12, fmt="%1.0f")
 
            if eofn == 1:
-              fracvar = '%4.3f' % solver.varianceFraction(neigs=1)
+              fracvar = solver.varianceFraction(neigs=1).data
            else:
-              fracvar = '%4.3f' % solver.varianceFraction(neigs=eofn)[-1]
-           plt.title("{0} {1} hour SLP, {2} of variance".format(str(self.datea_str),fhr,fracvar))
+              fracvar = solver.varianceFraction(neigs=eofn)[-1].data
+           plt.title("{0} {1} hour SLP, {2} of variance".format(str(self.datea_str),fhr,'%4.3f' % fracvar))
 
            #  Create a output directory with the metric file
            outdir = '{0}/f{1}_{2}'.format(self.config['locations']['figure_dir'],fff,metname)
@@ -1781,7 +1788,7 @@ class ComputeForecastMetrics:
            plt.close(fig)
 
            fmetatt = {'FORECAST_METRIC_LEVEL': '', 'FORECAST_METRIC_NAME': 'SLP PC', 'FORECAST_METRIC_SHORT_NAME': 'slpeof', 'FORECAST_HOUR': int(fhr), \
-                      'LATITUDE1': lat1, 'LATITUDE2': lat2, 'LONGITUDE1': lon1, 'LONGITUDE2': lon2, 'EOF_NUMBER': int(eofn)}
+                      'LATITUDE1': lat1, 'LATITUDE2': lat2, 'LONGITUDE1': lon1, 'LONGITUDE2': lon2, 'EOF_NUMBER': int(eofn), 'VAR_FRACTION': fracvar}
 
            endict = {'fore_met_init': {'dtype': 'float32'}}
 
@@ -1912,10 +1919,10 @@ class ComputeForecastMetrics:
            cb = plt.clabel(pltm, inline_spacing=0.0, fontsize=12, fmt="%1.0f")
 
            if eofn == 1:
-              fracvar = '%4.3f' % solver.varianceFraction(neigs=1)
+              fracvar = solver.varianceFraction(neigs=1).data
            else:
-              fracvar = '%4.3f' % solver.varianceFraction(neigs=eofn)[-1]
-           plt.title("{0} {1} hour height, {2} of variance".format(str(self.datea_str),fhr,fracvar))
+              fracvar = solver.varianceFraction(neigs=eofn)[-1].data
+           plt.title("{0} {1} hour height, {2} of variance".format(str(self.datea_str),fhr,'%4.3f' % fracvar))
 
            outdir = '{0}/f{1}_{2}'.format(self.config['locations']['figure_dir'],fff,metname)
            if not os.path.isdir(outdir):
@@ -1928,7 +1935,7 @@ class ComputeForecastMetrics:
            plt.close(fig)
 
            fmetatt = {'FORECAST_METRIC_LEVEL': level, 'FORECAST_METRIC_NAME': 'Height PC', 'FORECAST_METRIC_SHORT_NAME': 'hghteof', 'FORECAST_HOUR': int(fhr), \
-                      'LATITUDE1': lat1, 'LATITUDE2': lat2, 'LONGITUDE1': lon1, 'LONGITUDE2': lon2, 'PRESSURE': level, 'EOF_NUMBER': int(eofn)}
+                      'LATITUDE1': lat1, 'LATITUDE2': lat2, 'LONGITUDE1': lon1, 'LONGITUDE2': lon2, 'PRESSURE': level, 'EOF_NUMBER': int(eofn), 'VAR_FRACTION': fracvar}
 
            endict = {'fore_met_init': {'dtype': 'float32'}}
 
@@ -2095,10 +2102,10 @@ class ComputeForecastMetrics:
            cb = plt.clabel(pltm, inline_spacing=0.0, fontsize=12, fmt="%1.0f")
 
            if eofn == 1:
-              fracvar = '%4.3f' % solver.varianceFraction(neigs=1)
+              fracvar = solver.varianceFraction(neigs=1).data
            else:
-              fracvar = '%4.3f' % solver.varianceFraction(neigs=eofn)[-1]
-           plt.title("{0} {1} hour PV, {2} of variance".format(str(self.datea_str),fhr,fracvar))
+              fracvar = solver.varianceFraction(neigs=eofn)[-1].data
+           plt.title("{0} {1} hour PV, {2} of variance".format(str(self.datea_str),fhr,'%4.3f' % fracvar))
 
            outdir = '{0}/f{1}_{2}'.format(self.config['locations']['figure_dir'],fff,metname)
            if not os.path.isdir(outdir):
@@ -2111,7 +2118,7 @@ class ComputeForecastMetrics:
            plt.close(fig)
 
            fmetatt = {'FORECAST_METRIC_LEVEL': level, 'FORECAST_METRIC_NAME': 'Potential Vorticity PC', 'FORECAST_METRIC_SHORT_NAME': 'pveof', 'FORECAST_HOUR': int(fhr), \
-                      'LATITUDE1': lat1, 'LATITUDE2': lat2, 'LONGITUDE1': lon1, 'LONGITUDE2': lon2, 'PRESSURE': level, 'EOF_NUMBER': int(eofn)}
+                      'LATITUDE1': lat1, 'LATITUDE2': lat2, 'LONGITUDE1': lon1, 'LONGITUDE2': lon2, 'PRESSURE': level, 'EOF_NUMBER': int(eofn), 'VAR_FRACTION': fracvar}
 
            endict = {'fore_met_init': {'dtype': 'float32'}}
 
@@ -2250,7 +2257,8 @@ class ComputeForecastMetrics:
            plt.close(fig)
 
            fmetatt = {'FORECAST_METRIC_LEVEL': level, 'FORECAST_METRIC_NAME': 'Rossby Wave PC', 'FORECAST_METRIC_SHORT_NAME': 'rossveof', 'FORECAST_HOUR1': int(fhr1), \
-                      'FORECAST_HOUR2': int(fhr2), 'LATITUDE1': lat1, 'LATITUDE2': lat2, 'LONGITUDE1': lon1, 'LONGITUDE2': lon2, 'PRESSURE': level, 'EOF_NUMBER': int(eofn)}
+                      'FORECAST_HOUR2': int(fhr2), 'LATITUDE1': lat1, 'LATITUDE2': lat2, 'LONGITUDE1': lon1, 'LONGITUDE2': lon2, \
+                      'PRESSURE': level, 'EOF_NUMBER': int(eofn), 'VAR_FRACTION': fracvar}
 
            endict = {'fore_met_init': {'dtype': 'float32'}}
 
@@ -2404,10 +2412,10 @@ class ComputeForecastMetrics:
            cb = plt.clabel(pltm, inline_spacing=0.0, fontsize=12, fmt="%1.0f")
 
            if eofn == 1:
-              fracvar = '%4.3f' % solver.varianceFraction(neigs=1)
+              fracvar = solver.varianceFraction(neigs=1).data
            else:
-              fracvar = '%4.3f' % solver.varianceFraction(neigs=eofn)[-1]
-           plt.title("{0} {1} hour temperature, {2} of variance".format(str(self.datea_str),fhr,fracvar))
+              fracvar = solver.varianceFraction(neigs=eofn)[-1].data
+           plt.title("{0} {1} hour temperature, {2} of variance".format(str(self.datea_str),fhr,'%4.3f' % fracvar))
 
            #  Create metric directory, save image file with metric
            outdir = '{0}/f{1}_{2}'.format(self.config['locations']['figure_dir'],fff,metname)
@@ -2422,7 +2430,7 @@ class ComputeForecastMetrics:
 
            fmetatt = {'FORECAST_METRIC_LEVEL': level, 'FORECAST_METRIC_NAME': 'Temperature PC', 'FORECAST_METRIC_SHORT_NAME': 'tempeof', 'FORECAST_HOUR': int(fhr), \
                       'LATITUDE1': lat1, 'LATITUDE2': lat2, 'LONGITUDE1': lon1, 'LONGITUDE2': lon2, 'PRESSURE': level, \
-                      'TEMPERATURE_MIN': tmin, 'TEMPERATURE_MAX': tmax, 'EOF_NUMBER': int(eofn)}
+                      'TEMPERATURE_MIN': tmin, 'TEMPERATURE_MAX': tmax, 'EOF_NUMBER': int(eofn), 'VAR_FRACTION': fracvar}
 
            endict = {'fore_met_init': {'dtype': 'float32'}}
 
@@ -2549,10 +2557,10 @@ class ComputeForecastMetrics:
            cb = plt.clabel(pltm, inline_spacing=0.0, fontsize=12, fmt="%1.0f")
 
            if eofn == 1:
-              fracvar = '%4.3f' % solver.varianceFraction(neigs=1)
+              fracvar = solver.varianceFraction(neigs=1).data
            else:
-              fracvar = '%4.3f' % solver.varianceFraction(neigs=eofn)[-1]
-           plt.title("{0} {1} hour Max. Wind Speed, {2} of variance".format(str(self.datea_str),fhr,fracvar))
+              fracvar = solver.varianceFraction(neigs=eofn)[-1].data
+           plt.title("{0} {1} hour Max. Wind Speed, {2} of variance".format(str(self.datea_str),fhr,'%4.3f' % fracvar))
 
            outdir = '{0}/f{1}_{2}'.format(self.config['locations']['figure_dir'], '%0.3i' % fhr, metname)
            if not os.path.isdir(outdir):
@@ -2567,7 +2575,7 @@ class ComputeForecastMetrics:
 
            fmetatt = {'FORECAST_METRIC_LEVEL': '', 'FORECAST_METRIC_NAME': 'wind speed PC', 'FORECAST_METRIC_SHORT_NAME': 'wndeof', \
                       'FORECAST_HOUR': int(fhr), 'LATITUDE1': lat1, 'LATITUDE2': lat2, 'LONGITUDE1': lon1, \
-                      'LONGITUDE2': lon2, 'EOF_NUMBER': int(eofn)}
+                      'LONGITUDE2': lon2, 'EOF_NUMBER': int(eofn), 'VAR_FRACTION': fracvar}
 
            endict = {'fore_met_init': {'dtype': 'float32'}}
 
