@@ -17,13 +17,13 @@ central_longitude=-60.45
 atcf_dir=/ct12/abrammer/graphics/ecmf_tc_data/data
 model_dir=/tornlab_rit/torn/ecmwf
 
-work_dir=/rt11/torn/ar_sens/work_nurture
-output_dir=/rt11/torn/ar_sens/output_ecmwf
+work_dir=/rt11/torn/ar_sens/work/ecmwf/nurture
+output_dir=/rt11/torn/ar_sens/output/ecmwf/nurture
 figure_dir=/home11/staff/torn/html/NURTURE/ens-sens
 html_base=https://www.atmos.albany.edu/facstaff/torn/NURTURE/ens-sens
 html_file=sens.php
 outgrid_dir=/home11/staff/torn/html/NURTURE/ens-sens
-log_dir=/rt11/torn/ar_sens/log_nurture
+log_dir=/rt11/torn/ar_sens/log/ecmwf/nurture
 
 save_work_dir=True
 
@@ -42,19 +42,19 @@ left_labels=True
 right_labels=False
 precipitation_mean_metric=False
 precipitation_eof_metric=True
-precip_metric_loc=/rt11/torn/ar_sens/metrics_nurture/pcp
+precip_metric_loc=/rt11/torn/ar_sens/metrics/nurture/pcp
 ivt_eof_metric=True
-ivt_metric_loc=/rt11/torn/ar_sens/metrics_nurture/ivt
+ivt_metric_loc=/rt11/torn/ar_sens/metrics/nurture/ivt
 slp_eof_metric=True
-slp_metric_loc=/rt11/torn/ar_sens/metrics_nurture/slp
+slp_metric_loc=/rt11/torn/ar_sens/metrics/nurture/slp
 pvort_eof_metric=True
-pvort_metric_loc=/rt11/torn/ar_sens/metrics_nurture/pv
+pvort_metric_loc=/rt11/torn/ar_sens/metrics/nurture/pv
 temp_eof_metric=True
-temp_metric_loc=/rt11/torn/ar_sens/metrics_nurture/t850
+temp_metric_loc=/rt11/torn/ar_sens/metrics/nurture/t850
 wind_eof_metric=True
-wind_metric_loc=/rt11/torn/ar_sens/metrics_nurture/wind
+wind_metric_loc=/rt11/torn/ar_sens/metrics/nurture/wind
 ivt_landfall_metric=False
-ivt_land_metric_loc=/rt11/torn/ar_sens/metrics_nurture/ivtl
+ivt_land_metric_loc=/rt11/torn/ar_sens/metrics/nurture/ivtl
 coast_points_file=/home11/staff/torn/JHT-python/latlon_coast_1p0.txt
 
 [fields]
