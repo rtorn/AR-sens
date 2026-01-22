@@ -81,8 +81,18 @@ def init_AR_sens(init, paramfile):
   #  Create html panel for each initialization time for metric, update sidebar and metric list
   ar_sens_html(init, metlist, paramfile)
 
+  if 'product_fields' in conf['locations']:
+    field_list = [e.strip() for e in conf['locations']['product_fields'].split(',')]
+  else:
+    field_list = ['ivt', 'e850hPa', 'pv500hPa', 'pv250hPa', 'summ']
+
+  if 'product_hours' in conf['locations']:
+    hour_list = [float(i) for i in [e.strip() for e in conf['locations']['product_hours'].split(',')]]
+  else:
+    hour_list = [48, 72]
+
   #  Place the most recent version of different metrics into special directory for Google Earth.  Only done if within 24 h of initialization
-  for mettype in ['pcp1', 'pcp2', 'ivtland1', 'ivtland2', 'ivt1', 'slp1', 'hght1', 'pv1', 'snow1', 'pcpa', 'ivtla', 'rivera', 'hova']:
+  for mettype in ['pcp1', 'pcp2', 'ivtland1', 'ivtland2', 'ivt1', 'slp1', 'hght1', 'pv1', 'snow1', 'pcpa', 'ivtla', 'rivera', 'hova', 'met1']:
 
     if os.path.exists('{0}/latest/{1}'.format(conf['locations']['figure_dir'],mettype)) and (dt.datetime.now()-init_dt).total_seconds() < 86400.:
 
@@ -99,8 +109,9 @@ def init_AR_sens(init, paramfile):
         shutil.copy('{0}/{1}_{2}.nc'.format(conf['locations']['work_dir'],init,metname),'{0}/latest/{1}/metric.nc'.format(conf['locations']['figure_dir'],mettype))
         shutil.copy('{0}/{1}/{1}_{2}_esens.tar'.format(conf['locations']['figure_dir'],init,metname),'{0}/latest/{1}/esens.tar'.format(conf['locations']['figure_dir'],mettype))
 
-        for field in ['ivt', 'e850hPa', 'pv500hPa', 'pv250hPa', 'summ']:
-          for fhrt in ['048', '072']:
+        for field in field_list:
+          for fhr in hour_list:
+            fhrt = '%0.3i' % fhr
             if os.path.exists('{0}/{1}/{2}/sens/{3}/{1}_f{4}_{3}_sens.png'.format(conf['locations']['figure_dir'],init,metname,field,fhrt)):
               shutil.copy('{0}/{1}/{2}/sens/{3}/{1}_f{4}_{3}_sens.png'.format(conf['locations']['figure_dir'],init,metname,field,fhrt), \
                           '{0}/latest/{1}/f{2}_{3}_sens.png'.format(conf['locations']['figure_dir'],mettype,fhrt,field))

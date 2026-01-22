@@ -26,6 +26,9 @@ outgrid_dir=/home11/staff/torn/html/NURTURE/ens-sens
 log_dir=/rt11/torn/ar_sens/log/ecmwf/nurture
 
 save_work_dir=True
+product_fields=ivt, e850hPa, pv250hPa, pv500hPa, qvap500hPa, summ
+product_hours=42
+
 
 [fcst_diag]
 min_lat_precip=25
@@ -103,6 +106,6 @@ range_rings=True
 ring_center_lat=53.3137
 ring_center_lon=-60.4125
 ring_values=1863
-output_sens=False
-output_list=ivt, e850hPa, pv250hPa, pv500hPa
+output_sens=True
+output_list=ivt, e850hPa, pv250hPa, pv500hPa, qvap500hPa
 multiprocessor=True
