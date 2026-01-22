@@ -1746,13 +1746,13 @@ class ComputeForecastMetrics:
            colorlist = ("#9A32CD","#00008B","#3A5FCD","#00BFFF","#B0E2FF","#FFFFFF","#FFEC8B","#FFA500","#FF4500","#B22222","#FF82AB")
 
            plotBase = self.config.copy()
-           for key in self.config['model']:
-             plotBase[key] = self.config['model'][key]
+#           for key in self.config['model']:
+#             plotBase[key] = self.config['model'][key]
            plotBase['grid_interval'] = self.config['metric'].get('grid_interval', 3)
            plotBase['left_labels'] = 'True'
            plotBase['right_labels'] = 'None'
 
-           ax = background_map(self.config['model'].get('projection', 'PlateCarree'), lon1, lon2, lat1, lat2, plotBase)
+           ax = background_map('PlateCarree', lon1, lon2, lat1, lat2, plotBase)
 
            #  Plot the SLP EOF pattern in shading
            slpfac = np.ceil(np.max(np.abs(dslp)) / 5.0)
