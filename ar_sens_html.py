@@ -67,7 +67,10 @@ def ar_sens_html(init, metlist, paramfile):
     #  Create a line in the loop control panel for each field
     add_field(fout, 'ivt', 'IVT', figbase, htmlbase, int(conf['model']['fcst_hour_int']), fhrmax)
     add_field(fout, 'iwv', 'IWV', figbase, htmlbase, int(conf['model']['fcst_hour_int']), fhrmax)
-    add_field(fout, 'qvap850hPa', '850 hPa water vapor', figbase, htmlbase, int(conf['model']['fcst_hour_int']), fhrmax)
+    
+    for pres in ['850', '500']:
+      add_field(fout, 'qvap{0}hPa'.format(pres), '{0} hPa qvapor'.format(pres), figbase, htmlbase, int(conf['model']['fcst_hour_int']), fhrmax)
+
     add_field(fout, 'e850hPa', '850 hPa Theta-E', figbase, htmlbase, int(conf['model']['fcst_hour_int']), fhrmax)
     add_field(fout, 'mslp', 'MSLP', figbase, htmlbase, int(conf['model']['fcst_hour_int']), fhrmax)
     

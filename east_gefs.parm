@@ -13,14 +13,14 @@ tigge_surface_area=55/-165/5/-15
 atcf_dir=/ct12/abrammer/graphics/ecmf_tc_data/data
 model_dir=/tornlab_rit/torn/ecmwf
 
-work_dir=/rt11/torn/ar_sens/east_gefs
-output_dir=/rt11/torn/ar_sens/output_gefs
+work_dir=/rt11/torn/ar_sens/work/gefs/east
+output_dir=/rt11/torn/ar_sens/output/gefs/east
 script_dir=/home11/staff/torn/JHT-python
 figure_dir=/home11/staff/torn/html/AR-East/GEFS
 html_base=https://www.atmos.albany.edu/facstaff/torn/AR-East/GEFS
 html_file=ar_sens.php
 outgrid_dir=/home11/staff/torn/html/AR-East/GEFS
-log_dir=/rt11/torn/ar_sens/log_geeast
+log_dir=/rt11/torn/ar_sens/log/gefs/east
 
 save_work_dir=True
 
@@ -38,15 +38,15 @@ static_fields_file=/rt11/torn/JHT/landmask_gefs_0p5.grb2
 fcst_int=6
 precipitation_mean_metric=False
 precipitation_eof_metric=True
-precip_metric_loc=/rt11/torn/ar_sens/metrics_east/pcp
+precip_metric_loc=/rt11/torn/ar_sens/metrics/east/pcp
 ivt_eof_metric=True
-ivt_metric_loc=/rt11/torn/ar_sens/metrics_east/ivt
+ivt_metric_loc=/rt11/torn/ar_sens/metrics/east/ivt
 slp_eof_metric=True
-slp_metric_loc=/rt11/torn/ar_sens/metrics_east/slp
+slp_metric_loc=/rt11/torn/ar_sens/metrics/east/slp
 temp_eof_metric=True
-temp_metric_loc=/rt11/torn/ar_sens/metrics_east/t850
+temp_metric_loc=/rt11/torn/ar_sens/metrics/east/t850
 ivt_landfall_metric=False
-ivt_land_metric_loc=/rt11/torn/ar_sens/metrics_east/ivtl
+ivt_land_metric_loc=/rt11/torn/ar_sens/metrics/east/ivtl
 coast_points_file=/home11/staff/torn/JHT-python/latlon_coast_1p0.txt
 
 [fields]
