@@ -16,8 +16,6 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import cartopy
 import cartopy.crs as ccrs
-from cartopy.feature import NaturalEarthFeature
-from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 
 import metpy.constants as mpcon
 import metpy.calc as mpcalc
@@ -68,7 +66,6 @@ class ComputeForecastMetrics:
 
         #  Define class-specific variables
         self.fhr = None
-        self.deg2rad = 0.01745
         self.earth_radius = 6378388.
         self.missing = -9999.
         self.deg2km = self.earth_radius * np.radians(1)
@@ -123,6 +120,10 @@ class ComputeForecastMetrics:
         #  Compute temperature EOF metric
         if self.config['metric'].get('temp_eof_metric', 'False') == 'True':
            self.__temp_eof()
+
+        #  Compute CAPE EOF metric
+        if eval(self.config['metric'].get('cape_eof_metric', 'False')):
+           self.__cape_eof()
 
         #  Compute wind speed EOF metric
         if self.config['metric'].get('wind_eof_metric', 'False') == 'True':
@@ -1086,6 +1087,11 @@ class ComputeForecastMetrics:
 #              estd_mask = e_std.values[:,:] * lmask.values[:,:]
 
               stdmax = estd_mask.max()
+
+              if stdmax < 0.001:
+                 logging.error('    all precipitation points below minimum value.  Skipping metric.')
+                 continue
+
               maxloc = np.where(estd_mask == stdmax)
               icen   = int(maxloc[1])
               jcen   = int(maxloc[0])
@@ -2404,6 +2410,152 @@ class ComputeForecastMetrics:
            f_met['data_vars']['EOF_pattern'] = {'dims': ('latitude', 'longitude'), 'attrs': {'units': 'K', 'description': '{0} hPa temp. EOF pattern'.format(level)}, 'data': dtemp}
            endict['EOF_pattern'] = {'dtype': 'float32'}
            f_met['data_vars']['fore_met_init'] = {'dims': ('num_ens',), 'attrs': {'units': '', 'description': 'temperature PC'}, 'data': pc1.data}
+
+           xr.Dataset.from_dict(f_met).to_netcdf("{0}/{1}_f{2}_{3}.nc".format(self.config['locations']['work_dir'],str(self.datea_str),'%0.3i' % fhr,metname), encoding=endict)
+
+           self.metlist.append('f{0}_{1}'.format('%0.3i' % fhr, metname))
+
+
+    def __cape_eof(self):
+        '''
+        Function that computes CAPE EOF metric, which is calculated by taking the EOF of 
+        the ensemble CAPE forecast over a domain defined by the user in a text file.  
+        The resulting forecast metric is the principal component of the
+        EOF.  The function also plots a figure showing the ensemble-mean CAPE pattern 
+        along with the CAPE perturbation that is consistent with the requested EOF. 
+        '''
+
+        for infull in glob.glob('{0}/{1}_*'.format(self.config['metric'].get('cape_metric_loc'),self.datea_str)):
+
+           try:
+              f = open(infull, 'r')
+           except IOError:
+              logging.warning('{0} does not exist.  Cannot compute CAPE EOF'.format(infull))
+              return None
+
+           #  Read the text file that contains information on the SLP metric
+           try:
+              conf = configparser.ConfigParser()
+              conf.read(infull)
+              fhr = int(conf['definition'].get('forecast_hour'))
+              metname = conf['definition'].get('metric_name','capeeof')
+              eofn = int(conf['definition'].get('eof_number',1))
+              lat1 = float(conf['definition'].get('latitude_min'))
+              lat2 = float(conf['definition'].get('latitude_max'))
+              lon1 = float(conf['definition'].get('longitude_min'))
+              lon2 = float(conf['definition'].get('longitude_max'))
+              logging.warning('  Creating CAPE EOF metric based on information in {0}'.format(infull))
+           except IOError:
+              logging.warning('  {0} does not exist.  Cannot compute CAPE EOF'.format(infull))
+              return None
+
+           if eval(self.config['model'].get('flip_lon','False')):
+              lon1 = (lon1 + 360.) % 360.
+              lon2 = (lon2 + 360.) % 360.
+
+           fff = '%0.3i' % fhr
+
+           g1 = self.dpp.ReadGribFiles(self.datea_str, fhr, self.config)
+
+           vDict = {'latitude': (lat1, lat2), 'longitude': (lon1, lon2),
+                    'description': 'convective available potential energy', 'units': 'J/kg', '_FillValue': -9999.}
+           vDict = g1.set_var_bounds('temperature', vDict)
+
+           ensmat = g1.create_ens_array('cape', g1.nens, vDict)
+
+           #  Read the ensemble SLP fields, compute the mean
+           for n in range(g1.nens):
+              ensmat[n,:,:] = g1.read_grib_field('cape', n, vDict)
+
+           e_mean = np.mean(ensmat, axis=0)
+           for n in range(g1.nens):
+              ensmat[n,:,:] = ensmat[n,:,:] - e_mean[:,:]
+
+           #  Compute the EOF of the precipitation pattern and then the PCs
+           if self.config['model'].get('grid_type','LatLon') == 'LatLon':
+
+              coslat = np.cos(np.deg2rad(ensmat.latitude.values)).clip(0., 1.)
+              wgts = np.sqrt(coslat)[..., np.newaxis]
+              solver = Eof_xarray(ensmat.rename({'ensemble': 'time'}), weights=wgts)
+
+           else:
+
+              solver = Eof_xarray(ensmat.rename({'ensemble': 'time'}))
+
+           pcout  = np.squeeze(solver.pcs(npcs=3, pcscaling=1))
+           pc1 = np.squeeze(pcout[:,eofn-1])
+           pc1[:] = pc1[:] / np.std(pc1)
+
+           #  Compute the SLP pattern associated with a 1 PC perturbation
+           dcape = np.zeros(e_mean.shape)
+
+           for n in range(g1.nens):
+             dcape[:,:] = dcape[:,:] + ensmat[n,:,:] * pc1[n]
+
+           dcape[:,:] = dcape[:,:] / float(g1.nens)
+
+           #  Create basic figure, including political boundaries and grid lines
+           fig = plt.figure(figsize=(8.5,11))
+
+           colorlist = ("#9A32CD","#00008B","#3A5FCD","#00BFFF","#B0E2FF","#FFFFFF","#FFEC8B","#FFA500","#FF4500","#B22222","#FF82AB")
+
+           plotBase = self.config.copy()
+           for key in self.config['model']:
+             plotBase[key] = self.config['model'][key]
+           plotBase['grid_interval'] = self.config['metric'].get('grid_interval', 3)
+           plotBase['left_labels'] = 'True'
+           plotBase['right_labels'] = 'None'
+
+           ax = background_map(self.config['model'].get('projection', 'PlateCarree'), lon1, lon2, lat1, lat2, plotBase)
+
+           #  Plot the CAPE EOF pattern in shading
+           cntrs = np.array([-5., -4., -3., -2., -1., 1., 2., 3., 4., 5]) * np.ceil(np.max(np.abs(dcape)) / 5.0)
+           pltf = plt.contourf(ensmat.longitude.values,ensmat.latitude.values,dcape,cntrs,transform=ccrs.PlateCarree(), \
+                                cmap=matplotlib.colors.ListedColormap(colorlist), extend='both')
+
+           #  Plot the ensemble-mean SLP field in contours
+           capecntr = [50, 100, 150, 200, 400, 600, 800, 1000, 1200, 1400, 1600, 1800, 2000]
+           pltm = plt.contour(ensmat.longitude.values,ensmat.latitude.values,e_mean,capecntr, \
+                               linewidths=1.5,colors='k',zorder=10,transform=ccrs.PlateCarree())
+
+           #  Add colorbar to the plot
+           cbar = plt.colorbar(pltf, fraction=0.15, aspect=45., pad=0.04, orientation='horizontal', ticks=cntrs)
+           cbar.set_ticks(cntrs[1:(len(cntrs)-1)])
+           cb = plt.clabel(pltm, inline_spacing=0.0, fontsize=12, fmt="%1.0f")
+
+           if eofn == 1:
+             fracvar = solver.varianceFraction(neigs=1).data
+           else:
+             fracvar = solver.varianceFraction(neigs=eofn)[-1].data
+           plt.title("{0} {1} hour CAPE, {2} of variance".format(str(self.datea_str),fhr,'%4.3f' % fracvar))
+
+           #  Create a output directory with the metric file
+           outdir = '{0}/f{1}_{2}'.format(self.config['locations']['figure_dir'],fff,metname)
+           if not os.path.isdir(outdir):
+             try:
+               os.makedirs(outdir)
+             except OSError as e:
+               raise e
+
+           plt.savefig('{0}/metric.png'.format(outdir), format='png', dpi=120, bbox_inches='tight')
+           plt.close(fig)
+
+           fmetatt = {'FORECAST_METRIC_LEVEL': '', 'FORECAST_METRIC_NAME': 'CAPE PC', 'FORECAST_METRIC_SHORT_NAME': 'capeeof', 'FORECAST_HOUR': int(fhr), \
+                      'LATITUDE1': lat1, 'LATITUDE2': lat2, 'LONGITUDE1': lon1, 'LONGITUDE2': lon2, 'EOF_NUMBER': int(eofn), 'VAR_FRACTION': fracvar}
+
+           endict = {'fore_met_init': {'dtype': 'float32'}}
+
+           f_met = {'coords': {}, 'attrs': fmetatt, 'dims': {'num_ens': g1.nens}, 'data_vars': {}}
+           f_met['coords']['longitude'] = {'dims': ('longitude'), 'attrs': {'units': 'degrees', 'description': 'longitude of grid points'}, 'data': ensmat.longitude.values}
+           endict['longitude'] = {'dtype': 'float32'}
+           f_met['coords']['latitude']  = {'dims': ('latitude'), 'attrs': {'units': 'degrees', 'description': 'latitude of grid points'}, 'data': ensmat.latitude.values}
+           endict['latitude'] = {'dtype': 'float32'}
+
+           f_met['data_vars']['ensemble_mean'] = {'dims': ('latitude', 'longitude'), 'attrs': {'units': 'J/kg', 'description': 'CAPE ensemble mean'}, 'data': e_mean.data}
+           endict['ensemble_mean'] = {'dtype': 'float32'}
+           f_met['data_vars']['EOF_pattern'] = {'dims': ('latitude', 'longitude'), 'attrs': {'units': 'J/kg', 'description': 'CAPE EOF pattern'}, 'data': dcape}
+           endict['EOF_pattern'] = {'dtype': 'float32'}
+           f_met['data_vars']['fore_met_init'] = {'dims': ('num_ens',), 'attrs': {'units': '', 'description': 'CAPE PC'}, 'data': pc1.data}
 
            xr.Dataset.from_dict(f_met).to_netcdf("{0}/{1}_f{2}_{3}.nc".format(self.config['locations']['work_dir'],str(self.datea_str),'%0.3i' % fhr,metname), encoding=endict)
 
