@@ -43,6 +43,8 @@ def ComputeSensitivity(datea, fhr, metname, config):
       if key in plotDict:
          plotDict.pop(key)
 
+   plotDict['work_dir'] = config['locations']['work_dir'] 
+
    fhrt = '%0.3i' % fhr
 
    logging.warning('Sensitivity of {0} to F{1}'.format(metname,fhrt))
@@ -71,6 +73,8 @@ def ComputeSensitivity(datea, fhr, metname, config):
       date1 = fdate.strftime("%Y%m%d%H")
       timestr = " ({0})".format(date1)
 
+   plotDict['figBase']      = '{0}/{1}'.format(config['locations']['figure_dir'],metname)
+   plotDict['titleBase']    = '{0} F{1} {{0}}{2}{3}'.format(datea,fhrt,metstring,timestr)
    plotDict['plotTitle']    = '{0} F{1}{2}{3}'.format(datea,fhrt,metstring,timestr)
    plotDict['fileTitle']    = 'AR Recon ECMWF Sensitivity'
    plotDict['initDate']     = '{0}-{1}-{2} {3}:00:00'.format(datea[0:4],datea[4:6],datea[6:8],datea[8:10])
@@ -112,6 +116,7 @@ def ComputeSensitivity(datea, fhr, metname, config):
       flist = [e.strip() for e in config['sens']['output_list'].split(',')]
    else:
       flist = []
+   plotDict['outputList'] = flist
 
    if 'flip_lon' in config:
       plotDict['flip_lon'] = config['model']['flip_lon']
@@ -122,68 +127,10 @@ def ComputeSensitivity(datea, fhr, metname, config):
 
 
    #  Read IVT, compute sensitivity to that field, if the file exists
-   ensfile = '{0}/{1}_f{2}_ivt_ens.nc'.format(config['locations']['work_dir'],datea,fhrt)
-   if os.path.isfile(ensfile):
-
-      efile = nc.Dataset(ensfile)
-      lat   = efile.variables['latitude'][:]
-      lon   = efile.variables['longitude'][:]
-      ens   = np.squeeze(efile.variables['ensemble_data'][:])
-      emea  = np.mean(ens, axis=0)
-      emea.units = efile.variables['ensemble_data'].units
-      evar = np.var(ens, axis=0)
-
-      plotDict['plotTitle']    = '{0} F{1} IVT{2}{3}'.format(datea,fhrt,metstring,timestr)
-      plotDict['projinfo'] = set_projection(plotDict.get('projection', 'PlateCarree'), \
-                                            float(plotDict.get('min_lon', np.amin(lon))), \
-                                            float(plotDict.get('max_lon', np.amax(lon))), plotDict)
-
-      sens, sigv = computeSens(ens, emea, evar, metric)
-      sens[:,:] = sens[:,:] * np.sqrt(evar[:,:])
-
-      outdir = '{0}/{1}/sens/ivt'.format(config['locations']['figure_dir'],metname)
-      if not os.path.isdir(outdir):
-         os.makedirs(outdir, exist_ok=True)
-
-      if eval(config['sens'].get('output_sens', 'False')) and ('ivt' in flist):
-         writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_ivt_sens.nc'.format(config['locations']['figure_dir'],metname,datea,fhrt), plotDict)
-
-      plotDict['meanCntrs'] = np.array([250., 400., 600., 800., 1000., 1200., 1400., 1600., 2000.])
-      plotScalarSens(lat, lon, sens, emea, sigv, '{0}/{1}_f{2}_ivt_sens.png'.format(outdir,datea,fhrt), plotDict)
-
-      mivt = emea[:,:]
-      sivt = sens[:,:]
-
+   mivt, sivt = calc_sens_field(datea, fhrt, metric, 'ivt', 'IVT', np.array([250., 400., 600., 800., 1000., 1200., 1400., 1600., 2000.]), plotDict)
 
    #  Read IWV, compute sensitivity to that field, if the file exists
-   ensfile = '{0}/{1}_f{2}_iwv_ens.nc'.format(config['locations']['work_dir'],datea,fhrt)
-   if os.path.isfile(ensfile):
-
-      efile = nc.Dataset(ensfile)
-      lat   = efile.variables['latitude'][:]
-      lon   = efile.variables['longitude'][:]
-      ens   = np.squeeze(efile.variables['ensemble_data'][:])
-      emea  = np.mean(ens, axis=0)
-      emea.units = efile.variables['ensemble_data'].units
-      evar = np.var(ens, axis=0)
-
-      plotDict['plotTitle']    = '{0} F{1} IWV{2}{3}'.format(datea,fhrt,metstring,timestr)
-      plotDict['projinfo'] = set_projection(plotDict.get('projection', 'PlateCarree'), \
-                                            float(plotDict.get('min_lon', np.amin(lon))), \
-                                            float(plotDict.get('max_lon', np.amax(lon))), plotDict)
-
-      sens, sigv = computeSens(ens, emea, evar, metric)
-      sens[:,:] = sens[:,:] * np.sqrt(evar[:,:])
-
-      outdir = '{0}/{1}/sens/iwv'.format(config['locations']['figure_dir'],metname)
-      if not os.path.isdir(outdir):
-         os.makedirs(outdir, exist_ok=True)
-
-      if eval(config['sens'].get('output_sens', 'False')) and ('iwv' in flist):
-         writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_iwv_sens.nc'.format(config['locations']['figure_dir'],metname,datea,fhrt), plotDict)
-
-      plotDict['meanCntrs'] = np.array([4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64, 68])
-      plotScalarSens(lat, lon, sens, emea, sigv, '{0}/{1}_f{2}_iwv_sens.png'.format(outdir,datea,fhrt), plotDict)
+   calc_sens_field(datea, fhrt, metric, 'ivw', 'IVW', np.arange(4,72,4), plotDict)
 
 
    if 'wind_levels' in config['sens']: 
@@ -285,63 +232,23 @@ def ComputeSensitivity(datea, fhr, metname, config):
       plist = [1000, 925, 850, 700, 500, 300, 250, 200]
 
    for pres in plist:
-
-      ensfile = '{0}/{1}_f{2}_e{3}hPa_ens.nc'.format(config['locations']['work_dir'],datea,fhrt,pres)
-      if os.path.isfile(ensfile):
-
-         efile = nc.Dataset(ensfile)
-         lat  = efile.variables['latitude'][:]
-         lon  = efile.variables['longitude'][:]
-         ens  = np.squeeze(efile.variables['ensemble_data'][:])
-         emea = np.mean(ens, axis=0)
-         emea.units = efile.variables['ensemble_data'].units
-         evar = np.var(ens, axis=0)
-
-         sens, sigv = computeSens(ens, emea, evar, metric)
-         sens[:,:] = sens[:,:] * np.sqrt(evar[:,:])
-
-         outdir = '{0}/{1}/sens/e{2}hPa'.format(config['locations']['figure_dir'],metname,pres)
-         if not os.path.isdir(outdir):
-            os.makedirs(outdir, exist_ok=True)
-
-         if eval(config['sens'].get('output_sens', 'False')) and 'e{0}hPa'.format(pres) in flist:
-            writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_e{4}hPa_sens.nc'.format(config['locations']['figure_dir'],metname,datea,fhrt,pres), plotDict)
-
-         plotDict['meanCntrs'] = np.array(range(240,390,3))
-         plotDict['plotTitle'] = '{0} F{1} {4} hPa $\\theta_e${2}{3}'.format(datea,fhrt,metstring,timestr,pres)
-         plotScalarSens(lat, lon, sens, emea, sigv, '{0}/{1}_f{2}_e{3}hPa_sens.png'.format(outdir,datea,fhrt,pres), plotDict)
+     calc_sens_field(datea, fhrt, metric, 'e{0}hPa'.format(pres), '{0} hPa $\\theta_e$'.format(pres), np.array(range(240,390,3)), plotDict)
 
 
-   plist = [1000, 925, 850, 700, 500, 300, 250, 200]
+   #  Compute Sensitivity to water vapor mixing ratio
+   if 'qvapor_levels' in config['sens']:
+      plist = json.loads(config['sens'].get('qvapor_levels'))
+   else:
+      plist = [1000, 925, 850, 700, 500, 300, 250, 200]
+
    for pres in plist:
-
-      ensfile = '{0}/{1}_f{2}_qvap{3}hPa_ens.nc'.format(config['locations']['work_dir'],datea,fhrt,pres)
-      if os.path.isfile(ensfile):
-
-         efile = nc.Dataset(ensfile)
-         lat   = efile.variables['latitude'][:]
-         lon   = efile.variables['longitude'][:]
-         ens   = np.squeeze(efile.variables['ensemble_data'][:])
-         emea  = np.mean(ens, axis=0)
-         emea.units = efile.variables['ensemble_data'].units
-         evar = np.var(ens, axis=0)
-
-         sens, sigv = computeSens(ens, emea, evar, metric)
-         sens[:,:] = sens[:,:] * np.sqrt(evar[:,:])
-
-         outdir = '{0}/{1}/sens/qvap{2}hPa'.format(config['locations']['figure_dir'],metname,pres)
-         if not os.path.isdir(outdir):
-            os.makedirs(outdir, exist_ok=True)
-
-         if eval(config['sens'].get('output_sens', 'False')) and 'qvap{0}hPa'.format(pres) in flist:
-            writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_qvap{4}hPa_sens.nc'.format(config['locations']['figure_dir'],metname,datea,fhrt,pres), plotDict)
-
-         plotDict['meanCntrs'] = np.array([0.25, 0.50, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25])
-         plotDict['plotTitle'] = '{0} F{1} {4} hPa qvapor{2}{3}'.format(datea,fhrt,metstring,timestr,pres)
-         plotScalarSens(lat, lon, sens, emea, sigv, '{0}/{1}_f{2}_qvap{3}hPa_sens.png'.format(outdir,datea,fhrt,pres), plotDict)
+     if pres <= 500.:
+       plotDict['clabel_fmt'] = "%4.2f"
+     calc_sens_field(datea, fhrt, metric, 'qvap{0}hPa'.format(pres), '{0} hPa qvapor'.format(pres), \
+                     np.array([0.05, 0.10, 0.15, 0.20, 0.25, 0.50, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]), plotDict)
 
 
-   #  Read PV on various pressure levels, compute sensitivity to that field
+   #  Compute sensitivity to PV at various pressure levels
    pvd = {'pv200hPa': [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0], \
           'pv250hPa': [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0], \
           'pv300hPa': [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0], \
@@ -356,37 +263,18 @@ def ComputeSensitivity(datea, fhr, metname, config):
 
    for pres in plist:
 
-      ensfile = '{0}/{1}_f{2}_pv{3}hPa_ens.nc'.format(config['locations']['work_dir'],datea,fhrt,pres)
-      if os.path.isfile(ensfile): 
+     if pres >= 500.:
+       plotDict['clabel_fmt'] = "%2.1f"
+     calc_sens_field(datea, fhrt, metric, 'pv{0}hPa'.format(pres), '{0} hPa PV'.format(pres), np.array(pvd['pv{0}hPa'.format(pres)]), plotDict)
 
-         ds = xr.open_dataset(ensfile)
-         ens = ds.ensemble_data.squeeze()
-         lat = ens.latitude.values
-         lon = ens.longitude.values
-         emea  = np.mean(ens, axis=0)
-         emea.attrs['units'] = ds.ensemble_data.attrs['units']
-         evar = np.var(ens, axis=0)
-
-         sens, sigv = computeSens(ens, emea, evar, metric)
-         sens[:,:] = sens[:,:] * np.sqrt(evar[:,:])
-
-         outdir = '{0}/{1}/sens/pv{2}hPa'.format(config['locations']['figure_dir'],metname,pres)
-         if not os.path.isdir(outdir):
-            os.makedirs(outdir, exist_ok=True)
-
-         if eval(config['sens'].get('output_sens', 'False')) and 'pv{0}hPa'.format(pres) in flist:
-            writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_pv{4}hPa_sens.nc'.format(config['locations']['figure_dir'],metname,datea,fhrt,pres), plotDict)
-
-         if pres >= 500.:
-            plotDict['clabel_fmt'] = "%2.1f" 
-         plotDict['meanCntrs'] = np.array(pvd['pv{0}hPa'.format(pres)])
-         plotDict['plotTitle'] = '{0} F{1} {4} hPa PV{2}{3}'.format(datea,fhrt,metstring,timestr,pres)
-         plotScalarSens(lat, lon, sens, emea, sigv, '{0}/{1}_f{2}_pv{3}hPa_sens.png'.format(outdir,datea,fhrt,pres), plotDict)
-         if 'clabel_fmt' in plotDict:
-            del plotDict['clabel_fmt']          
-  
 
    if eval(config['sens'].get('plot_summary','True')):
+
+      ds = xr.open_dataset('{0}/{1}_f{2}_ivt_ens.nc'.format(config['locations']['work_dir'],datea,fhrt))
+#      ens = ds.ensemble_data.sel(latitude=slice(float(plotDict['min_lat'])-0.0001, float(plotDict['max_lat'])+0.0001), \
+#                                 longitude=slice(float(plotDict['min_lon'])-0.0001, float(plotDict['max_lon'])+0.0001))
+      lat = ds.ensemble_data.latitude.values
+      lon = ds.ensemble_data.longitude.values
 
       if 'summary_pressure_pv' in config['sens']:
          pres = [e.strip() for e in config['sens'].get('summary_pressure_pv','').split(',')]
@@ -476,135 +364,98 @@ def ComputeSensitivity(datea, fhr, metname, config):
       plotSummarySens(lat, lon, mivt, mpv, sivt, esens, pvsens, '{0}/{1}_f{2}_summ_sens.png'.format(outdir,datea,fhrt), plotDict)
 
 
-   #  Read 300 hPa divergence, compute sensitivity to that field, if the file exists
-   for pres in [200, 250, 300]:
+   #  Compute sensitivity to divergence at various pressure levels
+   if 'divergence_levels' in config['sens']:
+      plist = json.loads(config['sens'].get('divergence_levels'))
+   else:
+      plist = [200, 250, 300]
 
-      ensfile = '{0}/{1}_f{2}_div{3}hPa_ens.nc'.format(config['locations']['work_dir'],datea,fhrt,pres)
-      if os.path.isfile(ensfile):
+   for pres in plist:
 
-         efile = nc.Dataset(ensfile)
-         lat   = efile.variables['latitude'][:]
-         lon   = efile.variables['longitude'][:]
-         ens   = np.squeeze(efile.variables['ensemble_data'][:])
-         emea  = np.mean(ens, axis=0)
-         emea.units = efile.variables['ensemble_data'].units
-         evar = np.var(ens, axis=0)
+     plotDict['clabel_fmt'] = "%2.1f"
+     calc_sens_field(datea, fhrt, metric, 'div{0}hPa'.format(pres), '{0} hPa div.'.format(pres), \
+                     np.array([-5.0, -4.0, -3.0, -2.0, -1.5, -1.0, -0.5, 0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 5.0]), plotDict)
 
-         sens, sigv = computeSens(ens, emea, evar, metric)
-         sens[:,:] = sens[:,:] * np.sqrt(evar[:,:])
 
-         outdir = '{0}/{1}/sens/div{2}hPa'.format(config['locations']['figure_dir'],metname,pres)
-         if not os.path.isdir(outdir):
-            os.makedirs(outdir, exist_ok=True)
-
-#         if plotDict.get('output_sens', 'False')=='True':
-#            writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_div300hPa_sens.nc'.format(config['figure_dir'],metname,datea,fhrt), plotDict)
-
-         plotDict['meanCntrs'] = np.array([-5.0, -4.0, -3.0, -2.0, -1.5, -1.0, -0.5, 0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 5.0])
-         plotDict['clabel_fmt'] = "%2.1f"
-         plotDict['plotTitle'] = '{0} F{1} {4} hPa div.{2}{3}'.format(datea,fhrt,metstring,timestr,pres)
-         plotScalarSens(lat, lon, sens, emea, sigv, '{0}/{1}_f{2}_div{3}hPa_sens.png'.format(outdir,datea,fhrt,pres), plotDict)
-         del plotDict['clabel_fmt']
-
- 
+   #  Compute sensitivity to geopotential height at various pressure levels 
    hghtd = {'h500hPa': [4920, 4980, 5040, 5100, 5160, 5220, 5280, 5340, 5400, 5460, 5520, 5580, 5640, 5700, 5760, 5820, 5880, 5940], \
             'h700hPa': [2700, 2730, 2760, 2790, 2820, 2850, 2880, 2910, 2940, 2970, 3000, 3030, 3060, 3090, 3120, 3150, 3180, 3210], \
             'h850hPa': [1110, 1140, 1170, 1200, 1230, 1260, 1290, 1320, 1350, 1380, 1410, 1440, 1470, 1500, 1530, 1560, 1590]}
 
-   #  Read height on various pressure levels, compute sensitivity to that field
-   for pres in [500, 700, 850]:
+   if 'height_levels' in config['sens']:
+      plist = json.loads(config['sens'].get('height_levels'))
+   else:
+      plist = [500, 700, 850]
 
-      ensfile = '{0}/{1}_f{2}_h{3}hPa_ens.nc'.format(config['locations']['work_dir'],datea,fhrt,pres)
-      if os.path.isfile(ensfile):
-
-         ds = xr.open_dataset(ensfile)
-         ens = ds.ensemble_data.squeeze()
-         lat = ens.latitude.values
-         lon = ens.longitude.values
-         emea  = np.mean(ens, axis=0)
-         emea.attrs['units'] = ds.ensemble_data.attrs['units']
-         evar = np.var(ens, axis=0)
-
-         sens, sigv = computeSens(ens, emea, evar, metric)
-         sens[:,:] = sens[:,:] * np.sqrt(evar[:,:])
-
-         outdir = '{0}/{1}/sens/h{2}hPa'.format(config['locations']['figure_dir'],metname,pres)
-         if not os.path.isdir(outdir):
-            os.makedirs(outdir, exist_ok=True)
-
-         if eval(config['sens'].get('output_sens', 'False')) and 'h{0}hPa'.format(pres) in flist:
-            writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_h{4}hPa_sens.nc'.format(config['locations']['figure_dir'],metname,datea,fhrt,pres), plotDict)
-
-         plotDict['meanCntrs'] = np.array(hghtd['h{0}hPa'.format(pres)])
-         plotDict['plotTitle'] = '{0} F{1} {4} hPa height{2}{3}'.format(datea,fhrt,metstring,timestr,pres)
-         plotScalarSens(lat, lon, sens, emea, sigv, '{0}/{1}_f{2}_h{3}hPa_sens.png'.format(outdir,datea,fhrt,pres), plotDict)
+   for pres in plist:
+     calc_sens_field(datea, fhrt, metric, 'h{0}hPa'.format(pres), '{0} hPa height'.format(pres), np.array(hghtd['h{0}hPa'.format(pres)]), plotDict)
 
 
+   #  Compute sensitivity to refractivity at various pressure levels 
    refd = {'ref850hPa': [205, 210, 215, 220, 225, 230, 235, 240, 245, 250, 255, 260, 265, 270, 275, 280, 285, 290, 295, 300, 305, 310], \
            'ref500hPa': [126, 129, 132, 135, 138, 141, 144, 147, 150, 153, 156, 159, 162, 165, 168, 171, 174, 177], \
            'ref200hPa': [60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80]}      
 
-   #  Read GPS RO refractivity on pressure levels, compute sensitivity to that field
-   for pres in [850, 500, 200]:
+   if 'refractivity_levels' in config['sens']:
+      plist = json.loads(config['sens'].get('refractivity_levels'))
+   else:
+      plist = [850, 500, 200]
 
-      ensfile = '{0}/{1}_f{2}_ref{3}hPa_ens.nc'.format(config['locations']['work_dir'],datea,fhrt,pres)
-      if os.path.isfile(ensfile):
-
-         ds = xr.open_dataset(ensfile)
-         ens = ds.ensemble_data.squeeze()
-         lat = ens.latitude.values
-         lon = ens.longitude.values
-         emea  = np.mean(ens, axis=0)
-         emea.attrs['units'] = ds.ensemble_data.attrs['units']      
-         evar = np.var(ens, axis=0)
-
-         sens, sigv = computeSens(ens, emea, evar, metric)
-         sens[:,:] = sens[:,:] * np.sqrt(evar[:,:])
-
-         outdir = '{0}/{1}/sens/ref{2}hPa'.format(config['locations']['figure_dir'],metname,pres)
-         if not os.path.isdir(outdir):
-            os.makedirs(outdir, exist_ok=True)
-
-         if eval(config['sens'].get('output_sens', 'False')) and 'ref{0}hPa'.format(pres) in flist:
-            writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_ref{4}hPa_sens.nc'.format(config['locations']['figure_dir'],metname,datea,fhrt,pres), plotDict)
-
-         plotDict['meanCntrs'] = np.array(refd['ref{0}hPa'.format(pres)])
-         plotDict['plotTitle'] = '{0} F{1} {4} hPa refract.{2}{3}'.format(datea,fhrt,metstring,timestr,pres)
-         plotScalarSens(lat, lon, sens, emea, sigv, '{0}/{1}_f{2}_ref{3}hPa_sens.png'.format(outdir,datea,fhrt,pres), plotDict)
+   for pres in plist:
+     calc_sens_field(datea, fhrt, metric, 'ref{0}hPa'.format(pres), '{0} hPa refract.'.format(pres), np.array(refd['ref{0}hPa'.format(pres)]), plotDict)
 
 
-   ensfile = '{0}/{1}_f{2}_mslp_ens.nc'.format(config['locations']['work_dir'],datea,fhrt)
-   if os.path.isfile(ensfile):
+   #  Compute sensitivity to mean sea-level pressure (MSLP)
+   for key in ['buoy1_file', 'buoy2_file']:
+     if key in config['sens']:
+       plotDict[key] = config['sens'][key]
 
-      ds = xr.open_dataset(ensfile)
-      ens = ds.ensemble_data.squeeze()
-      lat = ens.latitude.values
-      lon = ens.longitude.values
-      emea  = np.mean(ens, axis=0)
-      emea.attrs['units'] = ds.ensemble_data.attrs['units']
-      evar = np.var(ens, axis=0)
+   calc_sens_field(datea, fhrt, metric, 'mslp', 'MSLP', np.array([960, 968, 976, 980, 984, 988, 992, 996, 1000, 1004, 1008, 1012, 1016, 1020, 1024, 1028, 1032, 1036, 1040, 1044]), plotDict)
 
-      sens, sigv = computeSens(ens, emea, evar, metric)
-      sens[:,:] = sens[:,:] * np.sqrt(evar[:,:])
+   for key in ['buoy1_file', 'buoy2_file']:
+     if key in plotDict:
+       plotDict.pop(key)
 
-      outdir = '{0}/{1}/sens/mslp'.format(config['locations']['figure_dir'],metname)
-      if not os.path.isdir(outdir):
-         os.makedirs(outdir, exist_ok=True)
 
-      if eval(config['sens'].get('output_sens', 'False')) and 'mslp' in flist:
-         writeSensFile(lat, lon, fhr, emea, sens, sigv, '{0}/{1}/{2}_f{3}_mslp_sens.nc'.format(config['locations']['figure_dir'],metname,datea,fhrt), plotDict)
+def calc_sens_field(datea, fhrt, metric, icfield, fldname, cntrs, plotDict):
 
-      for key in ['buoy1_file', 'buoy2_file']:
-         if key in config['sens']:
-            plotDict[key] = config['sens'][key]
+  ensfile = '{0}/{1}_f{2}_{3}_ens.nc'.format(plotDict['work_dir'],datea,fhrt,icfield)
+  if os.path.isfile(ensfile):
 
-      plotDict['meanCntrs'] = np.array([960, 968, 976, 980, 984, 988, 992, 996, 1000, 1004, 1008, 1012, 1016, 1020, 1024, 1028, 1032, 1036, 1040, 1044])
-      plotDict['plotTitle'] = '{0} F{1} MSLP{2}{3}'.format(datea,fhrt,metstring,timestr)
-      plotScalarSens(lat, lon, sens, emea, sigv, '{0}/{1}_f{2}_mslp_sens.png'.format(outdir,datea,fhrt), plotDict)
+    ds = xr.open_dataset(ensfile)
+#    ens = ds.ensemble_data.sel(latitude=slice(float(plotDict['min_lat'])-0.0001, float(plotDict['max_lat'])+0.0001), \
+#                               longitude=slice(float(plotDict['min_lon'])-0.0001, float(plotDict['max_lon'])+0.0001))
+    ens = ds.ensemble_data.squeeze()
+    lat = ens.latitude.values
+    lon = ens.longitude.values
 
-      for key in ['buoy1_file', 'buoy2_file']:
-         if key in plotDict:
-            plotDict.pop(key)
+    if not 'projinfo' in plotDict:
+      plotDict['projinfo'] = set_projection(plotDict.get('projection', 'PlateCarree'), \
+                                            float(plotDict.get('min_lon', np.amin(lon))), \
+                                            float(plotDict.get('max_lon', np.amax(lon))), plotDict)
+
+    emea  = np.mean(ens, axis=0)
+    emea.attrs['units'] = ds.ensemble_data.attrs['units']
+    evar = np.var(ens, axis=0)
+
+    sens, sigv = computeSens(ens, emea, evar, metric)
+    sens[:,:] = sens[:,:] * np.sqrt(evar[:,:])
+
+    outdir = '{0}/sens/{1}'.format(plotDict['figBase'],icfield)
+    if not os.path.isdir(outdir):
+      os.makedirs(outdir, exist_ok=True)
+
+    if eval(plotDict.get('output_sens', 'False')) and (icfield in plotDict['outputList']):
+      writeSensFile(lat,lon,int(fhrt),emea,sens,sigv,'{0}/{1}_f{2}_{3}_sens.nc'.format(plotDict['figBase'],datea,fhrt,icfield),plotDict)
+
+    plotDict['plotTitle'] = plotDict['titleBase'].format(fldname)
+    plotDict['meanCntrs'] = cntrs
+    plotScalarSens(lat, lon, sens, emea, sigv, '{0}/{1}_f{2}_{3}_sens.png'.format(outdir,datea,fhrt,icfield), plotDict)
+
+    if 'clabel_fmt' in plotDict:
+      del plotDict['clabel_fmt']
+
+    return(emea,sens)
 
 
 def plotSummarySens(lat, lon, ivt, pvort, ivsens, tesens, pvsens, fileout, plotDict):
